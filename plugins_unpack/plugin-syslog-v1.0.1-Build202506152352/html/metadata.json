@@ -1,0 +1,8 @@
+{
+    "name": "syslog",
+    "alias": "日志推送",
+    "manufacturer": "iKuai",
+    "version": "1.0.1",
+    "type": "external",
+    "description": "本插件允许将本地日志上传至指定的syslog服务器，或兼容syslog协议的腾讯云、阿里云等云服务的日志收集器。"
+}

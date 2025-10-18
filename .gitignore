@@ -1,0 +1,13 @@
+./*.exe
+__pycache__
+
+*.ext2
+source_dump
+
+dump/**
+!dump/firmware/boot/grub/grub.cfg
+!dump/rootfs/system/sbin/autoinit
+
+source*.bin
+
+decrypt_rootfs.exe

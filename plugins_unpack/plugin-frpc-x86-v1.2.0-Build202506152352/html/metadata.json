@@ -1,0 +1,9 @@
+{
+  "name": "frpc",
+  "alias": "frpc客户端",
+  "manufacturer": "iKuai",
+  "version": "1.2.0",
+  "type": "external",
+  "description": "FRPC 客户端用于连接 FRP 服务器（FRPS），将本地服务（如 Web 服务、SSH、RDP 等）暴露给外部网络。FRPC 会主动连接 FRPS，并通过隧道将内网的流量转发到 FRPS",
+  "scripts":["service"]
+}

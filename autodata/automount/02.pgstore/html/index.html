@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <script src="../../static/js/vue.js"></script>
+    <script src="../../static/js/plugin.js"></script>
+    <script src="../../static/js/element.js"></script>
+    <link rel="stylesheet" href="../../static/css/plugin.css" type="text/css">
+    <link rel="stylesheet" href="../../static/css/element.css">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+</head>
+
+<body>
+    <div id="app" class="wrapper row"  v-loading="loading" :element-loading-text="loading_text">
+        <div class="box clearfix">
+            <div class="box_block">
+                <div class="clearfix margin_phone col-lg-11 col-lg-offset-1 ">
+                    <div class="h20"></div>
+                    <div style="display: flex;">
+                        <div style="padding-top: 0px; width: 250px; text-align: center; display:block; ">
+                            <el-progress type="circle" width="100" stroke-width="8" :percentage="plusage.precentage"></el-progress> 
+                            <div style="padding-top: 20px; ">
+                                <div><span><b>内置存储空间</b></span></div>
+                                <div class="h5"></div>
+                                <div><span>总存储空间: {{plusage.totalSize}}</span></div>
+                                <div><span>剩余存储空间: {{plusage.avaiableSize}}</span></div>
+                            </div>
+                        </div>
+                        <div style="padding-top: 0px;width: 250px; text-align: center; display:block; ">
+                            <el-progress type="circle" width="100" stroke-width="8" :percentage="explusage.precentage"></el-progress> 
+                            <div style="padding-top: 20px;">
+                                <div><span><b>扩展存储空间</b></span></div>
+                                <div class="h5"></div>
+                                <div v-show="explusage.totalSize !== '-'"><span>总存储空间: {{explusage.totalSize}}</span></div>
+                                <div v-show="explusage.totalSize !== '-'"><span>剩余存储空间: {{explusage.avaiableSize}}</span></div>
+                                <div v-show="explusage.totalSize === '-'" class="colorGrayA"><span>扩展存储空间未启用</span></div>
+                                <el-popover  v-show="explusage.totalSize === '-'" placement="top" width="360" v-model="showExtStorageMsg">
+                                    <p style="margin: 10px;">{{extstorageMsg}}</p>
+                                    <div style="text-align:center; padding-top: 10px; padding-bottom: 10px;">
+                                        <el-button type="primary" @click="checkExtStorage">检测并设置</el-button>
+                                    </div>
+                                    <el-button type="text" style="padding-top: 2px;" slot="reference" 
+                                    @click="extstorageMsg='请在内置EMMC或USB设备的任意位置新建一个名为“ik-plugin-dir”的目录，然后点击下方“检测并设置”按钮。'">
+                                        点击这里设置</el-button>
+                                </el-popover>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="h20"></div>
+                </div>
+            </div>
+        </div>
+        <div class="box clearfix">
+            <div class="title_h4 clearfix">
+                <h4>插件安装</h4>
+            </div>
+            <div class="box_block">
+                <div class="clearfix margin_phone col-lg-11 col-lg-offset-1 ">
+                    <div class="h20"></div>
+                    <span class="colorR" v-show="regInfo.status==='0'">&nbsp;当前系统未激活高级插件功能，仅可以使用有限内置插件。
+                        <el-button type="text" @click="showNotice = true">查看详情</el-button>
+                        <div class="h20"></div>
+                    </span>
+                    <span class="colorR" v-show="regInfo.status==='1' && regInfo.allowRenew==='0'">&nbsp;当前系统为体验版，到期时间: {{regInfo.expireDate}}。
+                        <el-button type="text" @click="showNotice = true">现在激活永久版</el-button>
+                        <div class="h20"></div>
+                    </span>
+                    <span class="colorG" v-show="regInfo.status==='1' && regInfo.allowRenew==='1'">&nbsp;当前系统为永久激活版。
+                        <el-button type="text" @click="showNotice = true">更新授权码</el-button>
+                        <div class="h20"></div>
+                    </span>
+                    <div class="line_edit">
+                        <span class="input_tit">手动安装插件：</span>
+                        <div class="input_group">
+                            <div class="type_file file_W tl margin-r-5 fl">
+                                <input type="text" id="pluginfileName" class="inptText textfield rounded"> 
+                                <input name="" type="submit" class="btn btn_blue rounded type_file_button height26 fl" value="选择文件">
+                                <input type="file" id="pluginfileUploads" accept=".ipk" class="type_file_file fileField" onchange="document.getElementById('pluginfileName').value = this.files[0].name;">
+                            </div>
+                        </div>
+                        <div class="input_P" style="padding-top: 0px;">
+                            <input value="确认安装" @click="uploadPlugin" type="button" class="btn btn_green rounded height26"> 
+                        </div>
+                    </div>
+                    <div class="h20 colorG" v-show="onlinePlugins.length">&nbsp;未安装插件，点击可安装：</div>
+                    <div v-show="onlinePlugins.length">
+                        <ul class="plugin_list">
+                            <li v-for="item in onlinePlugins">
+                                <el-popover  placement="top" width="450" v-model="item.showdetail">
+                                    <div style="margin: 20px;">
+                                        <div style="color: forestgreen; width: 100%;">
+                                            <label><b>{{item.alias}}</b> | v{{item.version}} </label>     
+                                        </div>
+                                        <p style="padding-top: 10px;" v-html="item.description"> </p>
+                                    </div>
+
+                                    <div style="text-align:center; padding-top: 10px; padding-bottom: 20px;">
+                                        <button type="button" @click="installOnline(item)" class="btn btn_green btn_confirm margin-l-10">安装插件</button>
+                                    </div>
+                                    <a slot="reference">
+                                        <img :src= "getOnlineLogoUrl(item)" style="width: 48px; height: 48px">
+                                        <p>{{item.alias}}</p>
+                                    </a>
+                                </el-popover>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="box clearfix">
+            <div class="title_h4 clearfix">
+                <h4>已安装插件</h4>
+            </div>
+            <div class="box_block">
+                <div class="clearfix margin_phone col-lg-11 col-lg-offset-1 ">
+                    <div class="h20"></div>
+                    <div class="h20 colorG">&nbsp;已安装插件，点击可更新或删除：</div>
+                    <div>
+                        <ul class="plugin_list">
+                            <li v-for="item in installed">
+                                <el-popover  placement="top" width="450" v-model="item.showdetail">
+                                    <div style="margin: 20px;">
+                                        <div style="color: forestgreen; ">
+                                            <label><b>{{item.alias}}</b></label>
+                                            <label v-show="item.type!='internal'"> | v{{item.version}} </label>     
+                                            <label v-show="item.newversion && item.type!='internal'">(最新:v{{item.newversion}})</label>
+                                        </div>
+                                        <p style="padding-top: 10px;" v-html="item.description"></p>
+                                        <p v-show="item.newversion && item.type!='internal' && item.releasenotes != 'null'" style="padding-top: 10px;" v-html="item.releasenotes"></p>
+                                        <p v-show="item.newversion && item.type!='internal' && item.upgradetype==='reinstall'" style="padding-top: 10px; color: orangered;" >
+                                            注意：本次更新不支持保留配置，更新后需重新配置！
+                                        </p>
+                                    </div>
+
+                                    <div style="text-align:center; padding-top: 10px; padding-bottom: 20px;">
+                                        <button type="button" @click="upgradePlugin(item)" v-show="item.newversion" class="btn btn_green btn_confirm">更新插件</button>
+                                        <button type="button" @click="removePlugin(item)" v-show="item.type && item.type!='internal'" class="btn btn_red btn_confirm margin-l-10">删除插件</button>
+                                    </div>
+                                    <a slot="reference">
+                                        <el-badge is-dot :hidden="!item.newversion">
+                                            <img :src= "getLogoUrl(item)" style="width: 48px; height: 48px">
+                                        </el-badge>
+                                        
+                                        <p>{{item.alias}}</p>
+                                    </a>
+                                </el-popover>
+                                
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="notice_box" v-show="showNotice">
+            <div class="notice_head clearfix">
+                <div class="fl">高级插件功能激活</div><a href="javascript:void(0);" @click="showNotice = false" class="fr notice_close">×</a>
+            </div>
+            <div class="notice_lay">
+                <div style="margin-top: 20px; line-height: 18px; padding: 20px; background-color: rgb(242, 242, 242); color: rgb(136, 136, 136);">
+                    <div style="margin-top: 5px; line-height: 16px; color: rgb(136, 136, 136);">
+                        <span v-show="regInfo.status==0">当前系统未激活高级插件功能，仅可以使用有限内置插件。&nbsp;</span>
+                        <span v-show="regInfo.status==1 && regInfo.allowRenew==0">当前系统为体验版，到期时间为：{{regInfo.expireDate}}。&nbsp;{{regInfo.admsg}}</span>
+                        <span v-show="regInfo.status==1 && regInfo.allowRenew==1">请在下方输入新的激活授权码</span>
+                    </div> 
+                </div>
+                <div style="padding: 2px 0px; margin-top: 5px;">如遇激活异常请提供以下信息:</div>
+                <div style="padding: 2px 0px;">路由ID: {{regInfo.gwid}}</div>
+                <input placeholder="请输入激活码" v-model="registrationCode" type="text" class="inptText" style="width: 100%; max-width: 380px; margin: 10px auto; text-align: center;">
+                <div class="h20"></div>
+                <div style="text-align: center;">
+                    <input type="button" value="立即激活" @click="registerCode" class="btn btn_green btn_confirm margin-t-5" style="padding: 7px 20px;">
+                    <input type="button" value="稍后激活" @click="showNotice = false" class="btn btn_confirm margin-t-5" style="padding: 7px 20px;">
+                </div>
+            </div>
+        </div> 
+    </div>
+</body>
+<script type="module">
+    var app = new Vue({
+        el: '#app',
+        data: {
+            result: "",
+            registrationCode: "",
+            installed: [],
+            onlinePlugins: [],
+            showNotice: false,
+            regInfo: {},
+            plusage: {},
+            explusage: {},
+            loading: false,
+            loading_text: "",
+            extstorageMsg: "",
+            showExtStorageMsg:false,
+            arch: "",
+        },
+        
+        created() {
+            this.loadInitData();
+            this.loadOnlinePlugins();
+        },
+        methods: {
+            checkExtStorage() {
+                
+                this.extstorageMsg = "正在检测，请稍后...";
+                var payload = {
+                    func_name: 'plugin_pgstore',
+                    action: 'checkExtStorage',
+                    param: {}
+                };
+                AjaxPost('/Action/call', payload, (response) => {
+                    if (response.Result % 10000 == 0) {
+                        this.extstorageMsg="检测到“ik-plugin-dir”目录，已设置成功。"
+                        this.showExtStorageMsg=false;
+                        this.loadInitData();
+                    } else {
+                        this.extstorageMsg="未检测到“ik-plugin-dir”目录，请检查EMMC或USB是否工作正常并已创建该目录。"
+                    }
+                });
+            },
+            showEffect(event, item) {
+                event.target.style.transform = 'scale(1.1)';
+                event.target.style.transition = 'transform 0.3s ease-in-out';
+            },
+            hideEffect(event) {
+                event.target.style.transform = 'scale(1)';
+            },
+            getLogoUrl(item) {
+                const protocol = window.location.protocol;
+                const host = window.location.hostname;
+                const port = window.location.port ? `:${window.location.port}` : '';
+                return `${protocol}//${host}${port}/plugins/${item.name}/logo.png`;
+            },
+            getOnlineLogoUrl(item) {
+                const protocol = window.location.protocol;
+                const host = window.location.hostname;
+                const port = window.location.port ? `:${window.location.port}` : '';
+                return `${protocol}//${host}${port}/plugins/img/${item.name}.png`;
+            },
+            loadInitData() {
+                var payload = {
+                    func_name: 'plugin_pgstore',
+                    action: 'show',
+                    param: {TYPE: 'data,regInfo'}
+                };
+                AjaxPost('/Action/call', payload, (response) => {
+                    if (response.Result % 10000 == 0 && response.Data) {
+                        const data = response.Data;
+                        this.regInfo = data.regInfo;
+                        this.plusage = data.plusage;
+                        this.explusage = data.explusage;
+                        this.installed = data.installed;
+                        this.arch = data.arch;
+                        this.showNotice = this.regInfo.status==0 ? true : false;
+                    }
+                });
+                
+            },
+            loadOnlinePlugins() {
+                var payload = {
+                    func_name: 'plugin_pgstore',
+                    action: 'show',
+                    param: {TYPE: 'onlinePlugins'}
+                };
+                AjaxPost('/Action/call', payload, (response) => {
+                    if (response.Result % 10000 == 0 && response.Data) {
+                        const data = response.Data;
+                        this.onlinePlugins = data.onlinePlugins;
+                        if (data.havenew === 1) {
+                            this.loadInitData();
+                        }
+                    }
+                });
+            },
+            uploadPlugin() {
+
+                var fileInput = document.getElementById('pluginfileUploads');
+                var file = fileInput.files[0];
+
+                if (!file) {
+                    return;
+                }
+
+                self=this;
+                self.loading = true;
+                self.loading_text = "插件安装中...";
+
+                var formData = new FormData();
+                formData.append('file', file);
+
+                var xhr = new XMLHttpRequest();
+                xhr.open('POST', '/Action/upload', true);
+                xhr.upload.onprogress = function(event) {
+					if (event.lengthComputable) {
+						var percentComplete = Math.round((event.loaded * 100) / event.total);
+						self.loading_text = "正在上传插件安装包... " + percentComplete + "%";
+					}
+				};
+                xhr.onload = function () {
+                    if (xhr.status == 200) {
+                        app.install();
+                    } else {
+                        self.loading = false;
+                        self.$message.error('插件上传失败！');
+                    }
+                };
+                xhr.onerror = function () {
+					self.loading = false;
+					self.$message.error('网络错误，上传失败');
+				};
+                xhr.send(formData);
+            },
+            install() {
+                self=this;
+                self.loading_text = "上传成功！正在安装...."
+                var payload = {
+                    func_name: 'plugin_pgstore',
+                    action: 'install',
+                    param: {}
+                };
+                
+                AjaxPost('/Action/call', payload, (response) => {
+                    if (response.Result % 10000 == 0) {
+                        self.loading = false;
+                        self.$message({message: '插件安装成功！', type: 'success'});
+                        document.getElementById('pluginfileName').value = '';
+                        self.loadInitData(); 
+                        self.loadOnlinePlugins();
+                    } else {
+                        self.loading = false;
+                        self.$message.error(`插件安装失败！${response.ErrMsg}`);
+                    }
+                });
+            },
+
+            upgradePlugin(item){
+
+                self=this;
+                self.loading = true;
+                self.loading_text = "插件更新中...";
+
+                var payload = {
+                    func_name: 'plugin_pgstore',
+                    action: 'upgrade_online',
+                    param: {
+                        name: item.name
+                    }
+                };
+                
+                AjaxPost('/Action/call', payload, (response) => {
+                    if (response.Result % 10000 == 0) {
+                        self.loading = false;
+                        self.$message({message: '插件更新成功！', type: 'success'});
+                        self.loadInitData(); 
+                        self.loadOnlinePlugins();
+                    } else {
+                        self.loading = false;
+                        self.$message.error(`插件更新失败！${response.ErrMsg}`);
+                    }
+                });
+            },
+
+            installOnline(item){
+
+                self=this;
+                self.loading = true;
+                self.loading_text = "插件安装中...";
+
+                if (item.onlyOfflineInstall == "true") {
+                    self.loading = false;
+                    self.$message.error(`该插件仅支持离线安装！请联系作者获取安装文件！`);
+        			return;
+                }
+
+                var payload = {
+                    func_name: 'plugin_pgstore',
+                    action: 'install_online',
+                    param: {
+                        name: item.name,
+                        version:item.version,
+                        build:item.build,
+                        compatibility:item.compatibility.join(",")
+                    }
+                };
+                
+                AjaxPost('/Action/call', payload, (response) => {
+                    if (response.Result % 10000 == 0) {
+                        self.loading = false;
+                        self.$message({message: '插件安装成功！', type: 'success'});
+                        self.loadInitData(); 
+                        self.loadOnlinePlugins();
+                    } else {
+                        self.loading = false;
+                        self.$message.error(`插件安装失败！${response.ErrMsg}`);
+                    }
+                });
+
+            },
+          
+            removePlugin(item) {
+
+                self=this
+
+                self.$confirm('此操作将永久删除该插件, 是否继续?', '删除插件', {
+                    confirmButtonText: '确定',
+                    cancelButtonText: '取消',
+                    type: 'warning'
+                }).then(() => {
+                    var payload = {
+                        func_name: 'plugin_pgstore',
+                        action: 'uninstall',
+                        param: {
+                            app: item.name
+                        }
+                    };
+                    AjaxPost('/Action/call', payload, (response) => {
+                        if (response.Result % 10000 == 0) {
+                            self.$message({message: `已删除${item.name}！`,type: 'success'});
+                            self.loadInitData();  
+                            self.loadOnlinePlugins();
+                        } else {
+                            self.$message.error(`插件删除失败！${response.ErrMsg}`);
+                        }
+                    });
+                    
+                }).catch(() => { });
+            },
+
+            registerCode() {
+                self=this
+                if (!self.registrationCode) {
+                    return;
+                }
+                if (!/^(?:(PRO|STD))?[A-Fa-f0-9]{12,32}$/.test(self.registrationCode)) {
+                    self.$message.error("您输入的注册码无效！");
+                    return;
+                }
+                var payload = {
+                    func_name: 'plugin_pgstore',
+                    action: 'register',
+                    param: {
+                        code: self.registrationCode
+                    }
+                };
+
+                AjaxPost('/Action/call', payload, (response) => {
+                    if (response.Result % 10000 == 0) {
+                        self.showNotice = false
+                        self.$message({message: '激活成功，系统将于5秒钟后重新启动！', type: 'success'});
+                    } else {
+                        self.$message.error(`激活失败！${response.ErrMsg}`);
+                    }
+                });
+            }
+        }
+    });
+</script>
+<style scoped>
+    body {
+        margin: 0;
+    }
+    .notice_box {
+      top: 0px;
+      bottom: auto; 
+    }
+</style>
+</html>

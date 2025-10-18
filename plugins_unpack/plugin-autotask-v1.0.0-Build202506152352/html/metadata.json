@@ -1,0 +1,8 @@
+{
+    "name": "autotask",
+    "alias": "自动任务",
+    "manufacturer": "",
+    "version": "1.0.0",
+    "type": "external",
+    "description": "自动任务插件可以自动执行预定义任务，目前提供每月随机时间开启云端远控后关闭，以此解决一些需要定期云端同步的功能。"
+}

@@ -1,0 +1,180 @@
+<html>
+    <head>
+        <script src="../../static/js/vue.js"></script>
+        <script src="../../static/js/plugin.js"></script>
+        <script src="../../static/js/element.js"></script>
+        <link rel="stylesheet" href="../../static/css/plugin.css" type="text/css">
+        <link rel="stylesheet" href="../../static/css/element.css">
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    </head>
+    <body>
+        <div id="app" class="wrapper row" v-loading="loading" :element-loading-text="loading_text">
+            <div class="box clearfix">
+                <div class="box_block">
+                    <div class="clearfix margin_phone col-lg-11 col-lg-offset-1 ">
+                        <div  class="line_edit">
+                            <span  class="input_tit">开机自启动：</span> 
+                            <div  class="input_group">
+                                <el-switch @change="set_auto_start" v-model="autostart"  ></el-switch>
+                            </div>
+                        </div>
+                        <div  class="line_edit">
+                            <span  class="input_tit">AC状态：</span> 
+                            <div  class="input_group">
+                                <span :class="statusClass">{{ statusMessage }}</span>
+                            </div>
+                        </div>
+                        <div class="line_edit">
+                            <span class="input_tit">AC面板：</span> 
+                            <div class="input_group">
+                                <a :href="gecoosUrl" target="_blank" style="color: blue; text-decoration: underline;">{{gecoosUrl}}</a>
+                            </div>
+                        </div>
+                        <div class="line_edit">
+                            <div class="input_group">
+                                <button type="button" @click="start" :disabled="this.status === 2" class="btn btn_green btn_confirm">启动AC</button>
+                                <button type="button" @click="stop"  :disabled="this.status === 2" class="btn btn_red btn_confirm margin-l-10">停止AC</button>
+                            </div>
+                        </div>
+                        <div class="h20"></div>
+                        <div class="readme col-lg-11 col-xs-12">
+                            <span class="note">帮助提示：</span>
+                            <div>初始登录密码为gecoos，进入系统后可修改。</div>
+                        </div>
+                        <div class="h40"></div>
+
+
+                    </div>
+                </div>
+            </div>
+        </div>
+    </body>
+    <script type="module">
+        var app = new Vue({
+            el: '#app',
+            props: ["type"],
+            data: { 
+                autostart:false,
+                status: 1, 
+                statusMessage: "",
+                statusClass: "",
+                loading:false,
+                loading_text: "",
+                gecoosUrl: "" 
+            },
+            mounted() {
+                this.loadInitData();
+                this.setGecoosUrl();
+            },
+            methods: {
+                loadInitData() {
+                    self=this;
+                    var payload = {
+                        func_name: 'plugin_gecoos',
+                        action: 'show',
+                        param: {
+                            TYPE: 'data'
+                        }
+                    };
+                    AjaxPost('/Action/call', payload, (response) => {
+                        if (response.Result % 10000 == 0 && response.Data) {
+                            const data = response.Data;
+
+                            self.status = data.status;
+                            if (data.status === 1) {
+                                self.statusMessage = "正在运行";
+                                self.statusClass = "colorG";
+                            } else if (data.status === 2 ) {
+                                self.statusMessage = "正在初始化，请等待...";
+                                self.statusClass = "colorR";
+                                setTimeout(() => {
+                                    self.loadInitData();
+                                }, 2000);
+                            } else {
+                                self.statusMessage = "已停止运行";
+                                self.statusClass = "colorR";
+                            }
+
+                            if (data.autostart === 1) {
+                                self.autostart = true;
+                            } else {
+                                self.autostart = false;
+                            }
+                        }
+                    });
+                },
+                setGecoosUrl() {
+                    var port = 60650;
+                    var host = window.location.hostname; 
+                    this.gecoosUrl = `http://${host}:${port}`;
+                },
+                set_auto_start() {
+                    var payload = {
+                        func_name: 'plugin_gecoos',
+                        action: 'set_auto_start',
+                        param: {autostart:this.autostart}
+                    };
+                    AjaxPost('/Action/call', payload, (response) => {
+                        if (response.Result % 10000 == 0) {
+                            this.$message({message: `集客AC已${this.autostart ? '设为开机自启动' : '取消开机自启动'}！`,type: 'success'});
+                        } else {
+                            this.autostart = !this.autostart;
+                        }
+                    });
+                },
+                start() {
+                    var self = this;
+                    self.loading = true;
+                    self.loading_text = "正在保存...";
+
+                    var payload = {
+                        func_name: 'plugin_gecoos',
+                        action: 'start',
+                        param: {}
+                    };
+                    AjaxPost('/Action/call', payload, (response) => {
+                        if(response.Result % 10000 == 0) {
+                            self.loading = false;
+                            self.statusMessage = "正在运行";
+                            self.statusClass = "colorG";
+                            self.$message.success('集客AC已启动！');
+                        }
+                        else {
+                            self.loading = false;
+                            self.$message.error(`集客AC启动失败！${response.ErrMsg}`);
+                        }
+                        setTimeout(() => {
+                            self.loadInitData();
+                        }, 500);
+                    });
+                },
+                stop() {
+                    self = this;
+                    self.loading = true;
+                    self.loading_text = "正在停止...";
+
+                    var payload = {
+                        func_name: 'plugin_gecoos',
+                        action: 'stop',
+                        param: {}
+                    };
+                    AjaxPost('/Action/call', payload, (response) => {
+                        if(response.Result % 10000 == 0) {
+                            self.loading = false;
+                            self.statusMessage = "已停止运行";
+                            self.statusClass = "colorR";
+                            self.$message.success('集客AC已停止运行！');
+                        }
+                        else {
+                            self.loading = false;
+                            self.$message.error(`停止集客AC失败！${response.ErrMsg}`);
+                        }
+                        setTimeout(() => {
+                            self.loadInitData();
+                        }, 500);
+                    });
+                }
+            }
+        });
+    </script>
+</html>

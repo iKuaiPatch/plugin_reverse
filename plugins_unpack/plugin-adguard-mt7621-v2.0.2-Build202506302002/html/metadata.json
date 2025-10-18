@@ -1,0 +1,10 @@
+{
+    "name": "adguard",
+    "alias": "AdGuardHome",
+    "manufacturer": "iKuai",
+    "version": "2.0.2",
+    "type": "external",
+    "description": "AdGuard Home是一个用于拦截广告和跟踪的 DNS 服务器，使您网络冲浪更快速，更安全，更便捷！<br>官网地址：<a>https://adguard.com/</a>",
+    "releasenotes": "更新说明：<br>更新AdGuardHome内核版本为v0.108.0-b.69。<br>修复有时开机不能自启动的问题。<br>更合理的检测机制，允许Clash禁用DNS劫持时与之搭配使用。<br>默认禁止外网访问。",
+    "scripts":["service"]
+}

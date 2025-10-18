@@ -1,0 +1,9 @@
+{
+    "name": "extapi",
+    "alias": "扩展API",
+    "manufacturer": "",
+    "version": "1.0.1",
+    "type": "external",
+    "description": "扩展API插件可以提供扩展API接口，用于外部系统调用来实现自动化功能。",
+    "scripts":["service"]
+}

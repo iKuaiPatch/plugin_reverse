@@ -1,0 +1,10 @@
+{
+    "name": "vremote",
+    "alias": "VRemote服务",
+    "manufacturer": "",
+    "version": "1.2.5",
+    "type": "external",
+    "description": "VRemote服务配合相应的移动端App，可实现对路由器远程管理及网络共享等功能。",
+    "releasenotes": "更新说明：<br>新增：新增通过服务器代理访问设备管理页面的功能。",
+    "scripts":["service","vremote"]
+}

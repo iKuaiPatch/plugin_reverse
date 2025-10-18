@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <script src="../../static/js/vue.js"></script>
+    <script src="../../static/js/plugin.js"></script>
+    <script src="../../static/js/element.js"></script>
+    <link rel="stylesheet" href="../../static/css/plugin.css" type="text/css">
+    <link rel="stylesheet" href="../../static/css/element.css">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+</head>
+
+<body>
+    
+    <div id="app" class="wrapper row"  v-loading="loading" :element-loading-text="loading_text">
+        <div class="box clearfix">
+            <div class="title_h4 clearfix">
+                <h4>系统功能管理</h4>
+            </div>
+            <div class="box_block">
+                <div class="clearfix margin_phone col-lg-11 col-lg-offset-1 ">
+                    <div class="h40"></div>
+                    <div class="line_edit">
+                        <span class="input_tit">禁用云端远控：</span>
+                        <el-switch @change="switchRC" v-model="rcTurnoffStatus"  ></el-switch>
+                    </div>
+                    <div class="h10"></div>
+                    <div class="readme col-lg-11 col-xs-12" >
+                        <span class="note">帮助提示：</span>
+                        <div>1、无论是否绑定云服务，系统后台会有远控进程存在，“禁用云端远控”可以彻底关闭该远程控制通道。</div>
+                        <div>2、开启此功能后爱快官方将无法对你的路由器进行远程管控，同时你也将无法使用爱快云服务，若要使用云服务需要先关闭此功能。</div>
+                    </div>
+                    <div class="h40" v-show="arch === 'x86' && allowSwitchEnt"></div>
+                    <div class="line_edit" v-show="arch === 'x86' && allowSwitchEnt">
+                        <span class="input_tit">切换为企业版：</span>
+                        <el-switch @change="enableEnterprise" v-model="enterprise"  ></el-switch>
+                    </div>
+                    <div class="h10" v-show="arch === 'x86' && allowSwitchEnt"></div>
+                    <div class="readme col-lg-11 col-xs-12" v-show="arch === 'x86' && allowSwitchEnt">
+                        <span class="note">帮助提示：</span>
+                        <div>切换为企业版后建议开启“禁用云端远控”。</div>
+                    </div>
+                    <!-- <div class="h40" v-show="arch === 'x86'"></div>
+                    <div class="line_edit" v-show="arch === 'x86'">
+                        <span class="input_tit">修改路由ID：</span>
+                        <input type="text" class="inptText" v-model="gwid" >
+                        <button type="button" @click="generateGWID" class="btn btn_green rounded height26 w100">随机生成</button> 
+                        <button type="button" @click="updateGWID" class="btn btn_blue rounded height26 w100">更新路由ID</button> 
+                    </div>
+                    <div class="h10" v-show="arch === 'x86'"></div>
+                    <div class="readme col-lg-11 col-xs-12"  v-show="arch === 'x86'">
+                        <span class="note">帮助提示：</span>
+                        <div>1.路由ID格式为长度为32的十六进制字符串，请正确填写。</div>
+                        <div class="colorR">2.若你已经激活，修改路由ID将导致激活失效，请谨慎操作。</div>
+                    </div> -->
+                    <div class="h40" v-show="arch !== 'x86'"></div>
+                    <div class="line_edit" v-show="arch !== 'x86'">
+                        <span class="input_tit">增强WIFI功率：</span>
+                        <el-switch @change="enhanceWifi" v-model="enhanceWifiStatus"  ></el-switch>
+                    </div>
+                    <div class="h10" v-show="arch !== 'x86'"></div>
+                    <div class="readme col-lg-11 col-xs-12" v-show="arch !== 'x86'">
+                        <span class="note">帮助提示：</span>
+                        <div>1、增强WIFI功率可一定程度提高WiFI的信号强度，但同时也可能对机器产生不可逆转的损坏，请谨慎使用。</div>
+                        <div>2、该功能仅调高WIFI可以设置的功率上限，开启并重启后需手动在WiFI设置页面中设定想要的功率。</div>
+                    </div>
+                    <div class="h40" v-show="arch !== 'x86'"></div>
+                    <div class="line_edit" v-show="arch !== 'x86'">
+                        <span class="input_tit">禁用Reset按钮：</span>
+                        <el-switch @change="switchReset" v-model="resetDisableStatus"  ></el-switch>
+                    </div>
+                    <div class="h10" v-show="arch !== 'x86'"></div>
+                    <div class="readme col-lg-11 col-xs-12" v-show="arch !== 'x86'">
+                        <span class="note">帮助提示：</span>
+                        <div>1、“禁用Reset按钮”打开后，可以防止长按Reset按钮重置路由器设置，适用公共场所路由器提高安全性。</div>
+                        <div>2、开启或关闭该功能后需重启方可生效。</div>
+                        <div>3、请谨慎使用该功能，开启后如忘记密码将导致无法对路由器进行管理。</div>
+                    </div>
+                    <div class="h40"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="box clearfix"  >
+            <div class="title_h4 clearfix">
+                <h4 v-show="arch !== 'x86'">EEPROM 管理</h4>
+                <h4 v-show="arch === 'x86'">激活备份管理</h4>
+            </div>
+            <div class="box_block">
+                <div class="clearfix margin_phone col-lg-11 col-lg-offset-1 ">
+                    <div class="h40"></div>
+                    <div class="line_edit">
+                        <span class="input_tit" v-show="arch !== 'x86'">下载EEPROM：</span>
+                        <span class="input_tit" v-show="arch === 'x86'">下载激活备份：</span>
+                        <div class="input_P" style="padding-top: 0px;">
+                            <button type="button" name="button" @click="downloadEEPROM" class="btn btn_green rounded height26">下载备份</button>
+                        </div>
+                    </div>
+                    <div class="line_edit">
+                        <span class="input_tit" v-show="arch !== 'x86'">上传EEPROM：</span>
+                        <span class="input_tit" v-show="arch === 'x86'">上传激活备份：</span>
+                        <div class="input_group">
+                            <div class="type_file file_W tl margin-r-5 fl">
+                                <input type="text" id="eepfileName" class="inptText textfield rounded"> 
+                                <input name="" type="submit" class="btn btn_blue rounded type_file_button height26 fl" value="选择文件">
+                                <input type="file" id="eepfileUploads"  accept=".bin" class="type_file_file fileField" onchange="document.getElementById('eepfileName').value = this.files[0].name;">
+                            </div>
+                        </div>
+                        <div class="input_P" style="padding-top: 0px;">
+                            <input value="确认上传" @click="uploadEEPROM"  type="button" class="btn btn_green rounded height26"> 
+                        </div>
+                    </div>
+                    <div class="line_edit" v-show="arch !== 'x86'">
+                        <div class="input_group">
+                            <label class="checkbox">
+                                <input type="checkbox"  v-model="eepOverwrite"> 
+                                <span></span>
+                                上传时覆盖本机激活、MAC及ID信息。
+                            </label>
+                        </div>
+                    </div>
+                    <div class="h20" ></div>
+                    <div class="readme col-lg-11 col-xs-12" v-show="arch !== 'x86'">
+                        <span class="note">帮助提示：</span>
+                        <div>1、备份当前硬件配置EEPROM，包含激活、MAC、ID、无线信息，备份后刷机无忧。</div>
+                        <div>2、默认上传时不覆盖本机激活、MAC及ID信息，可用于更换EEPROM以获得更好无线性能。</div>
+                        <div>3、若要完全恢复之前的EEPROM，请勾选下方的选项框，恢复重启后网卡顺序有可能会错乱，需要做一次恢复出厂设置。</div>
+                    </div>
+                    <div class="readme col-lg-11 col-xs-12" v-show="arch === 'x86'">
+                        <span class="note">帮助提示：</span>
+                        <div>1、备份当前设备激活信息，备份后刷机无忧；</div>
+                        <div>2、仅针对本机激活信息的备份及恢复，上传其他机器无效；</div>
+                        <div>3、上传后需要重启路由方可生效；</div>
+                    </div>
+                    <div class="h40"></div>
+                </div>
+            </div>
+        </div>
+    </div>   
+</body>
+<script type="module">
+    var app = new Vue({
+        el: '#app',
+        data: {
+            result: "",
+            regInfo: {},
+            allowSwitchEnt:false,
+            resetDisableStatus:false,
+            enhanceWifiStatus:false,
+            rcTurnoffStatus:false,
+            enterprise:false,
+            eepOverwrite: false,
+            loading: false,
+            loading_text: "",
+            arch: "",
+            gwid: "",
+        },
+        mounted() {},
+
+        created() {
+            this.loadInitData();
+        },
+        methods: {
+            loadInitData() {
+                var payload = {
+                    func_name: 'plugin_ctpanel',
+                    action: 'show',
+                    param: {TYPE: 'data,regInfo'}
+                };
+                AjaxPost('/Action/call', payload, (response) => {
+                    if (response.Result % 10000 == 0 && response.Data) {
+                        const data = response.Data;
+                        this.gwid = data.gwid;
+                        this.arch = data.arch;
+                        this.regInfo = data.regInfo;
+                        if (data.rcstatus === "off") {
+                            this.rcTurnoffStatus = true;
+                        } else {
+                            this.rcTurnoffStatus = false;
+                        }
+                        if (data.resetstatus === "off") {
+                            this.resetDisableStatus = true;
+                        } else {
+                            this.resetDisableStatus = false;
+                        }
+                        if (data.wifistatus === "on") {
+                            this.enhanceWifiStatus = true;
+                        } else {
+                            this.enhanceWifiStatus = false;
+                        }
+                        if (data.enterprise === "on") {
+                            this.enterprise = true;
+                        } else {
+                            this.enterprise = false;
+                        }
+                        if (data.allowSwitchEnt === "on") {
+                            this.allowSwitchEnt = true;
+                        } else {
+                            this.allowSwitchEnt = false;
+                        }
+                    }
+                });
+                
+            },
+            generateGWID() {
+                let hexString = '';
+                for (let i = 0; i < 32; i++) {
+                    // 生成 0 到 15 之间的随机数，并将其转换为十六进制
+                    hexString += Math.floor(Math.random() * 16).toString(16);
+                }
+                this.gwid=hexString;
+            },
+            updateGWID(){
+                const regex = /^[0-9a-fA-F]{32}$/;
+                if (!regex.test(this.gwid)) {
+                    this.$message.error("路由ID格式为32位16进制字符串，请重新输入！");
+                    return;
+                }
+
+                var payload = {
+                    func_name: 'plugin_ctpanel',
+                    action: 'update_gwid',
+                    param: {gwid:this.gwid}
+                };
+                AjaxPost('/Action/call', payload, (response) => {
+                    if (response.Result % 10000 == 0) {
+                        this.$message({message: "路由ID已更新，重启系统后生效！",type: 'success'});
+                    } else {
+                        this.$message.error(`操作失败！${response.ErrMsg}`);
+                    }
+                });
+            },
+            switchRC(){
+                var payload = {
+                    func_name: 'plugin_ctpanel',
+                    action: 'set_rc_trunoff',
+                    param: {status:this.rcTurnoffStatus}
+                };
+                AjaxPost('/Action/call', payload, (response) => {
+                    if (response.Result % 10000 == 0) {
+                        this.$message({message: `远控已${this.rcTurnoffStatus ? '设为禁用' : '恢复启用'}，重启系统后生效！`,type: 'success'});
+                    } else {
+                        this.rcTurnoffStatus = !this.rcTurnoffStatus;
+                        this.$message.error(`操作失败！${response.ErrMsg}`);
+                    }
+                });
+            },
+            enableEnterprise() {
+                this.loading = true;
+                this.loading_text = "正在切换中...";
+                var payload = {
+                    func_name: 'plugin_ctpanel',
+                    action: 'set_enterprise',
+                    param: {enterprise:this.enterprise}
+                };
+                AjaxPost('/Action/call', payload, (response) => {
+                    if (response.Result % 10000 == 0) {
+                        this.$message({message: `已${this.enterprise ? '切换为企业版' : '恢复为免费版'}，重新登录系统后生效！`,type: 'success'});
+                    } else {
+                        this.enterprise = !this.enterprise;
+                    }
+                });
+            },
+            switchReset(){
+                var payload = {
+                    func_name: 'plugin_ctpanel',
+                    action: 'set_reset_disable',
+                    param: {status:this.resetDisableStatus}
+                };
+                AjaxPost('/Action/call', payload, (response) => {
+                    if (response.Result % 10000 == 0) {
+                        this.$message({message: `Reset按钮已${this.resetDisableStatus ? '设为禁用' : '恢复启用'}，重启系统后生效！`,type: 'success'});
+                    } else {
+                        this.resetDisableStatus = !this.resetDisableStatus;
+                    }
+                });
+            },
+            enhanceWifi(){
+                var payload = {
+                    func_name: 'plugin_ctpanel',
+                    action: 'set_wifi_enhance',
+                    param: {status:this.enhanceWifiStatus}
+                };
+                AjaxPost('/Action/call', payload, (response) => {
+                    if (response.Result % 10000 == 0) {
+                        this.$message({message: `WiFi功率增强已${this.enhanceWifiStatus ? '启用' : '关闭'}，重启系统后生效！`,type: 'success'});
+                    } else {
+                        this.enhanceWifiStatus = !this.enhanceWifiStatus;
+                    }
+                });
+            },
+            downloadEEPROM() {
+                self=this;
+                var payload = {
+                    func_name: 'plugin_ctpanel',
+                    action: 'downloadEEPROM',
+                    param: {}
+                };
+                AjaxPost('/Action/call', payload, (response) => {
+                    if (response.Result % 10000 == 0) {
+                        window.location.href = `/Action/download?filename=EEPROM-${self.regInfo.mac.split(':').join('')}.bin`;
+                    }
+                });
+            },
+            uploadEEPROM() {
+                var fileInput = document.getElementById('eepfileUploads');
+                var eepOverwrite = this.eepOverwrite
+                var file = fileInput.files[0];
+
+                if (!file) {
+                    return;
+                }
+
+                self=this;
+                self.loading = true;
+                self.loading_text = "EEPROM更新中...";
+
+                var formData = new FormData();
+                formData.append('file', file);
+
+                var xhr = new XMLHttpRequest();
+                xhr.open('POST', '/Action/upload', true);
+                xhr.onload = function () {
+                    if (xhr.status == 200) {
+                        app.restoreEEPROM(eepOverwrite);
+                    } else {
+                        self.loading = false;
+                        self.$message.error('EEPROM文件上传失败！');
+                    }
+                };
+                xhr.send(formData);
+            },
+            restoreEEPROM(eepOverwrite) {
+                self=this;
+                var payload = {
+                    func_name: 'plugin_ctpanel',
+                    action: 'restore',
+                    param: {overwrite:eepOverwrite}
+                };
+                AjaxPost('/Action/call', payload, (response) => {
+                    if (response.Result % 10000 == 0) {
+                        self.loading = false;
+                        self.$message({message: 'EEPROM恢复成功，重启系统后生效。', type: 'success'});
+                        document.getElementById('eepfileName').value = '';
+                    } else {
+                        self.loading = false;
+                        self.$message.error(`EEPROM恢复失败！${response.ErrMsg}`);
+                    }
+                });
+            },
+        }
+    });
+</script>
+<style scoped>
+    body {
+        margin: 0;
+    }
+    .notice_box {
+      top: 0px;
+      bottom: auto; 
+    }
+    
+    /* .el-progress {
+        width: 16px;
+        height: 16px;
+    } */
+    
+</style>
+
+</html>

@@ -1,0 +1,175 @@
+[
+    {
+        "name": "pmd",
+        "priority": 5,
+        "group": "global",
+        "type": "daemon",
+        "version": "117",
+        "ver_method": "echo 999",
+        "ver_cmp": "greater",
+        "download": [
+            "https://packages.ikuai8.com/pmd/3/pmd_117.x86_64.ikp",
+            "https://download.ikuai8.com:32016/plugins/others/pmd/3/pmd_117.x86_64.ikp",
+            "http://123.57.179.21/pmd/3/pmd_117.x86_64.ikp"
+        ],
+        "md5": "d01abb89e6df99b17094f3c8ecf78b66",
+        "encryption": "aes-128-cbc",
+        "secret_key": "challstr@holly~"
+    },
+    {
+        "name": "ik_host",
+        "priority": 4,
+        "group": "global",
+        "type": "lib",
+        "version": "2022010410",
+        "ver_method": "cat /tmp/ikpkg/ik_host/version",
+        "ver_cmp": "noequal",
+        "download": [
+            "https://packages.ikuai8.com/ik_host/3/ik_host_2022010410.gen.ikp",
+            "https://download.ikuai8.com:32016/plugins/others/ik_host/3/ik_host_2022010410.gen.ikp",
+            "http://123.57.179.21/ik_host/3/ik_host_2022010410.gen.ikp"
+        ],
+        "md5": "f369080293490112b15778c5fa6d799b",
+        "encryption": "aes-128-cbc",
+        "secret_key": "jJ9FzkgwUm6bL3dG"
+    },
+    {
+        "name": "app_show",
+        "priority": 15,
+        "group": "global",
+        "type": "daemon",
+        "version": "1.1.1.3",
+        "ver_method": "cat /tmp/ikpkg/app_show/version",
+        "ver_cmp": "noequal",
+        "download": [
+            "http://packages.ikuai8.com/app_show/app_show_1.1.1.3.gen.ikp",
+            "http://pkgdl.ikuai8.com/app_show/app_show_1.1.1.3.gen.ikp"
+        ],
+        "md5": "4ec00cea079039e9090dfa8b2a3b3c30",
+        "encryption": "aes-128-cbc",
+        "secret_key": "3bbd3300df3085e35bdadf0f6446581d"
+    },
+    {
+        "name": "shell",
+        "priority": 15,
+        "group": "global",
+        "type": "script",
+        "version": "202306081801",
+        "ver_method": "cat /tmp/ikpkg/shell/version",
+        "ver_cmp": "noequal",
+        "download": [
+            "http://packages.ikuai8.com/shell/3/shell_202306081801.gen.ikp",
+            "https://download.ikuai8.com:32016/plugins/others/shell/3/shell_202306081801.gen.ikp",
+            "http://pkgdl.ikuai8.com/shell/3/shell_202306081801.gen.ikp",
+            "http://123.57.179.21/shell/3/shell_202306081801.gen.ikp"
+        ],
+        "md5": "c072b8b2130aaf4609a9d84f3d7fc15c",
+        "encryption": "aes-128-cbc",
+        "secret_key": "70946f9965a3c140b28e36a82ed148b"
+    },
+    {
+        "name": "cre",
+        "priority": 20,
+        "group": "global",
+        "type": "daemon",
+        "version": "123",
+        "ver_method": "echo 999",
+        "ver_cmp": "greater",
+        "download": [
+            "http://packages.ikuai8.com/cre/3/cre_123.3.x86_64.ikp",
+            "https://download.ikuai8.com:32016/plugins/others/cre/3/cre_123.3.x86_64.ikp",
+            "http://123.57.179.21/cre/3/cre_123.3.x86_64.ikp"
+        ],
+        "md5": "9398bb756e32f727fc305ab1a4cdafdc",
+        "encryption": "aes-128-cbc",
+        "secret_key": "2zpLSuP8CiWSzF1m",
+        "monitor_cmd": "! which cre >/dev/null && echo no_cre || ( [ -f  /proc/$(cat /var/run/collect_report_engine.pid 2>/dev/null )/exe ] && echo ok )",
+        "monitor_startup_cmd": "which ik_route_collect.bak  >/dev/null && ik_route_collect || (which cre >/dev/null && cre)"
+    },
+    {
+        "name": "pre_cdn_stats",
+        "priority": 20,
+        "group": "global",
+        "type": "daemon",
+        "version": "1.0.6",
+        "ver_method": "cat /tmp/ikpkg/pre_cdn_stats/version",
+        "ver_cmp": "noequal",
+        "download": [
+            "http://packages.ikuai8.com/pre_cdn_stats/3/pre_cdn_stats_1.0.6.x86_64.ikp"
+        ],
+        "md5": "a8719b52b13cc91744cc1eb7485e5845",
+        "encryption": "aes-128-cbc",
+        "secret_key": "e2e840c0ea4abd8af71f1a67a553bbe6"
+    },
+    {
+        "name": "stats_router",
+        "priority": 15,
+        "group": "global",
+        "type": "script",
+        "version": "2024121215",
+        "ver_method": "cat /tmp/ikpkg/stats_router/version  | cut -d . -f1",
+        "ver_cmp": "noequal",
+        "download": [
+            "https://packages.ikuai8.com/stats_router/3/stats_router_2024121215.3.gen.ikp",
+            "https://download.ikuai8.com:32016/plugins/others/stats_router/3/stats_router_2024121215.3.gen.ikp",
+            "http://pkgdl.ikuai8.com/stats_router/3/stats_router_2024121215.3.gen.ikp",
+            "http://123.57.179.21/stats_router/3/stats_router_2024121215.3.gen.ikp"
+        ],
+        "md5": "1bd6b2d7f13eeecb956b152fd266883b",
+        "encryption": "aes-128-cbc",
+        "secret_key": "sahN7vaiMee9BeeTh1Faigie",
+        "monitor_cmd": "ikluajit /tmp/ikpkg/stats_router/monitor_cmd",
+        "monitor_startup_cmd": "echo"
+    },
+    {
+        "name": "docker-bin",
+        "priority": 20,
+        "group": "docker-bin",
+        "type": "daemon",
+        "version": "202102031900",
+        "ver_method": "cat /tmp/ikpkg/docker-bin/version",
+        "ver_cmp": "noequal",
+        "download": [
+            "http://packages.ikuai8.com/docker-bin/3/docker-bin_202102031900.x86_64.ikp",
+            "https://download.ikuai8.com:32016/plugins/others/docker-bin/3/docker-bin_202102031900.x86_64.ikp",
+            "http://pkgdl.ikuai8.com/docker-bin/3/docker-bin_202102031900.x86_64.ikp"
+        ],
+        "md5": "dc7f031c55b0ee8012cb753d808f64fb",
+        "encryption": "aes-128-cbc",
+        "secret_key": "354a738f7b2756a848f3b8de541ec58",
+        "minimum_size": 69632,
+        "timeout_per_request": 600
+    },
+    {
+        "name": "automount",
+        "priority": 21,
+        "group": "global",
+        "type": "script",
+        "version": "202508071951",
+        "ver_method": "cat /tmp/ikpkg/automount/version",
+        "ver_cmp": "noequal",
+        "download": [
+            "https://routerostop.oss-cn-shanghai.aliyuncs.com/x86-installer/automount-202508071951.ikp"
+        ],
+        "md5": "9cd1e810db9e9e654240aac35e7bc70f",
+        "encryption": "aes-128-cbc",
+        "secret_key": "m04ueWkNkKXlah8q"
+    },
+    {
+        "name": "docker",
+        "priority": 50,
+        "group": "docker",
+        "type": "app",
+        "version": "1.1.21",
+        "ver_method": "echo 1.1.21",
+        "ver_cmp": "noequal",
+        "download": [
+            "http://packages.ikuai8.com/docker/3/docker_1.1.21.gen.ikp",
+            "https://download.ikuai8.com:32016/plugins/others/docker/3/docker_1.1.21.gen.ikp",
+            "http://pkgdl.ikuai8.com/docker/3/docker_1.1.21.gen.ikp"
+        ],
+        "md5": "3bfea07deeba641ce3fc27405a5939c4",
+        "encryption": "aes-128-cbc",
+        "secret_key": "354a738f7b2756a848f3b8de541ec57"
+    }
+]

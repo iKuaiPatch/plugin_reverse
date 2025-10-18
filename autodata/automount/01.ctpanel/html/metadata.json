@@ -1,0 +1,10 @@
+{
+    "name": "01.ctpanel",
+    "alias": "控制面板",
+    "manufacturer": "iKuai",
+    "version": "1.3.3",
+    "type": "internal",
+    "compatibility":["all"],
+    "description": "控制面版是系统内置集成插件，提供系统级别的增强设置，目前支持'一键关闭云端远控'及EEPROM相关功能。",
+    "scripts":["service","chrootmgt"]
+}

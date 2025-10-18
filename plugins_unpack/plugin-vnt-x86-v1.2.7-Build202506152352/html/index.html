@@ -1,0 +1,349 @@
+<html>
+    <head>
+        <script src="../../static/js/vue.js"></script>
+        <script src="../../static/js/plugin.js"></script>
+        <script src="../../static/js/element.js"></script>
+        <link rel="stylesheet" href="../../static/css/plugin.css" type="text/css">
+        <link rel="stylesheet" href="../../static/css/element.css">
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    </head>
+    <body>
+        <div id="app" class="wrapper row" v-loading="loading" :element-loading-text="loading_text">
+            <div class="box clearfix">
+                <div class="box_block">
+                    <div class="clearfix margin_phone col-lg-11 col-lg-offset-1 ">
+                        <div  class="line_edit">
+                            <span  class="input_tit">开机自启动：</span> 
+                            <div  class="input_group">
+                                <el-switch @change="set_auto_start" v-model="autostart"  ></el-switch>
+                            </div>
+                        </div>
+                        <div  class="line_edit">
+                            <span  class="input_tit">VNT状态：</span> 
+                            <div  class="input_group">
+                                <span :class="statusClass">{{ statusMessage }}
+                            </div>
+                        </div>
+                        <div  class="line_edit">
+                            <span  class="input_tit">虚拟IP：</span> 
+                            <div  class="input_group">
+                                <span >{{ virtualIp }}
+                            </div>
+                        </div>
+                        <div class="line_edit">
+                            <span class="input_tit">配置模式：</span> 
+                            <div class="input_group">
+                                <el-radio-group v-model="configMode" @input="loadInitData">
+                                    <el-radio label="1" >简单模式</el-radio>
+                                    <el-radio label="2">专家模式</el-radio>
+                                </el-radio-group>
+                            </div>
+                        </div>
+                        <div class="line_edit" v-show="configMode==='1'">
+                            <span  class="input_tit">组网编号 (必填)：</span> 
+                            <div  class="input_group">
+                                <input type="text" class="inptText" v-model="token" > 
+                            </div>
+                        </div>
+                        <div class="line_edit" v-show="configMode==='1'">
+                            <span  class="input_tit">设备名称 (可选)：</span> 
+                            <div  class="input_group">
+                                <div><input type="text" :placeholder="hostname" class="inptText" v-model="name" ></div>
+                                <div v-show="name.length && name != hostname">检测到设备名称与系统设置中不一致，点击<el-button type="text" @click="set_hostname">这里更新</el-button>系统设置中的设备名。</div>
+                            </div>
+                        </div>
+                        <div class="line_edit" v-show="configMode==='1'">
+                            <span  class="input_tit">组网密码 (可选)：</span> 
+                            <div  class="input_group">
+                                <input type="text" class="inptText" v-model="password" > 
+                            </div>
+                        </div>
+                        <div class="line_edit" v-show="configMode==='1'">
+                            <span  class="input_tit">服务器地址 (可选)：</span> 
+                            <div  class="input_group">
+                                <input type="text" placeholder="格式为：vnt.wherewego.top:29872" class="inptText" v-model="serverAddress" > 
+                            </div>
+                        </div>
+                        <div class="line_edit" v-show="configMode==='1'">
+                            <span  class="input_tit">IP地址 (可选)：</span> 
+                            <div  class="input_group">
+                                <input type="text" placeholder="格式为：10.26.0.2" class="inptText" v-model="ipAddress" > 
+                            </div>
+                        </div>
+                        <div class="line_edit" v-show="configMode==='2'">
+                            <span class="input_tit">配置文件：</span> 
+                            <div class="input_group">
+                                <textarea class="inptText w420" v-model="configTxt"></textarea>
+                            </div>
+                        </div>
+                        <div class="line_edit">
+                            <span class="input_tit">开启代理：</span>
+                            <div class="input_group">
+                                <label class="checkbox">
+                                    <input type="checkbox"  v-model="enableProxy"> 
+                                    <span></span>
+                                    作为VNT透明代理，允许内网设备通过本机代理访问VNT网络中的其他设备
+                                </label>
+                            </div>
+                        </div>
+                        <div class="line_edit">
+                            <div class="input_group">
+                                <button type="submit" @click="save" :disabled="this.status === 2" class="btn btn_blue btn_confirm">保存配置</button>
+                                <button type="button" @click="start" :disabled="this.status === 2" class="btn btn_green btn_confirm">启动/重启VNT</button>
+                                <button type="button" @click="stop"  class="btn btn_red btn_confirm margin-l-10">停止VNT</button>
+                            </div>
+                        </div>
+                        <div class="h20"></div>
+                        <div class="readme col-lg-11 col-xs-12">
+                            <span class="note">帮助提示：</span>
+                            <div>1、设备名称留空则为“系统设置”-“基础设置”中设置的设备名。</div>
+                            <div>2、服务器地址格式为：IP或域名:端口号,简单配置模式默认走UDP协议。</div>
+                            <div>3、IP地址留空则为服务器自动分配，否则将尝试获取指定IP地址，请确保不和其他设备冲突。</div>
+                            <div>4、高级设置的详细配置文件格式查看<a target="_blank" href="https://github.com/vnt-dev/vnt/blob/main/vnt-cli/README.md#-f-conf">官方帮助文档 </a>，特别注意冒号(:)后要有空格。</div>
+                            <div>5、VNT支持PC和手机端应用，可访问<a target="_blank" href="https://github.com/vnt-dev/VntApp/releases">官方下载链接</a>下载。</div>
+                        </div>
+                        <div class="h40"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </body>
+    <script type="module">
+        var app = new Vue({
+            el: '#app',
+            data: {
+                autostart:false, 
+                configMode:"1",
+                configTxt:"",
+                token:"123456",
+                name:"ikuai",
+                password:"",
+                serverAddress:"",
+                ipAddress:"",
+                hostname:"",
+                enableProxy:false,
+                status: 1,
+                statusMessage: "",
+                statusClass: "",
+                virtualIp:"未分配",
+                loading:false,
+                loading_text: "",
+            },
+            created() {
+                this.loadInitData();
+            },
+            methods: {
+                loadInitData() {
+                    self = this;
+                    var payload = {
+                        func_name: 'plugin_vnt',
+                        action: 'show',
+                        param: {TYPE: 'configFileStream,config'}
+                    };
+                    AjaxPost('/Action/call', payload, (response) => {
+                        if (response.Result % 10000 == 0 && response.Data) {
+
+                            const data = response.Data;
+                            self.token = data.token.trim();
+                            self.name = data.name.trim();
+                            self.password = data.password.trim();
+                            self.serverAddress = data.serverAddress.trim();
+                            self.ipAddress = data.ipAddress.trim();
+                            self.hostname = data.hostname.trim();
+                            self.enableProxy = data.enableProxy === "true"?true:false;
+                            if (data.config) {
+                                self.configTxt = decodeURIComponent(escape(atob(data.config)));
+                            }
+                            self.status = data.status;
+                            if (data.status === 1) {
+                                self.statusMessage = "已连接";
+                                self.statusClass = "colorG";
+                            } else if (data.status === 2 ) {
+                                self.statusMessage = "正在初始化，请等待...";
+                                self.statusClass = "colorR";
+                                setTimeout(() => {
+                                    self.loadInitData();
+                                }, 2000);
+                            } else {
+                                self.statusMessage = "未连接";
+                                self.statusClass = "colorR";
+                            }
+
+                            if (data.autostart === 1) {
+                                self.autostart = true;
+                            } else {
+                                self.autostart = false;
+                            }
+
+                            if (data.virtualIp) {
+                                self.virtualIp = data.virtualIp;
+                            } else {
+                                self.virtualIp = "未分配";
+                            }
+                        }
+                    });
+                },
+                set_auto_start() {
+                    var payload = {
+                        func_name: 'plugin_vnt',
+                        action: 'set_auto_start',
+                        param: {autostart:this.autostart}
+                    };
+                    AjaxPost('/Action/call', payload, (response) => {
+                        if (response.Result % 10000 == 0) {
+                            this.$message({message: `VNT已${this.autostart ? '设为开机自启动' : '取消开机自启动'}！`,type: 'success'});
+                        } else {
+                            this.autostart = !this.autostart;
+                        }
+                    });
+                },
+                set_hostname(){
+                    self=this;
+                    self.loading = true;
+                    self.loading_text = "正在保存...";
+
+                    if (! self.name ) {
+                        self.loading = false;
+                        self.$message.error('请填写设备名！');
+                        return;
+                    }
+
+                    const regex = /^[a-zA-Z0-9\u4e00-\u9fa5:@\-_.+]*$/;
+                    if (!regex.test(self.name)) {
+                        self.loading = false;
+                        self.$message.error('请填写正确设备名！系统设置中的设备名不支持特殊字符,除(: @ - _ + . )');
+                        return;
+                    }
+
+                    var payload = {
+                        func_name: 'plugin_vnt',
+                        action: 'set_hostname',
+                        param: {name:self.name}
+                    };
+                    AjaxPost('/Action/call', payload, (response) => {
+                        if (response.Result % 10000 == 0) {
+                            self.loading = false;
+                            this.$message({message: "路由器设备名更新成功！",type: 'success'});
+                        } else {
+                            self.loading = false;
+                            self.$message.error(`路由器设备名更新出错！${response.ErrMsg}`);
+                        }
+                    });
+                },
+                save() {
+
+                    self=this;
+                    self.loading = true;
+                    self.loading_text = "正在保存...";
+
+                    if (! this.configTxt && this.configMode == "2") {
+                        self.loading = false;
+                        self.$message.error('配置文件不能为空！');
+                        return;
+                    }
+
+                    if (! this.token.trim() && this.configMode == "1") {
+                        self.loading = false;
+                        self.$message.error('组网编号不能为空！');
+                        return;
+                    }
+
+                    const regexIP = /^(25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9][0-9]?|0)(\.(25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9][0-9]?|0)){3}$/;
+                    if (this.ipAddress.trim() && this.configMode == "1" && !regexIP.test(this.ipAddress.trim())){
+                        self.loading = false;
+                        self.$message.error('请输入正确的IP地址！');
+                        return;
+                    }
+
+                    const regexServerAddress = /^(?:(\d{1,3}\.){3}\d{1,3}|([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,})(:\d{1,5})$/;
+                    if (this.serverAddress.trim() && this.configMode == "1" && !regexServerAddress.test(this.serverAddress.trim())){
+                        self.loading = false;
+                        self.$message.error('请输入正确的服务器地址！');
+                        return;
+                    }
+
+                    var configTxt64 = btoa(unescape(encodeURIComponent(this.configTxt)));
+                    var payload = {
+                        func_name: 'plugin_vnt',
+                        action: 'save',
+                        param: {configMode:self.configMode,config:configTxt64,token:self.token,name:self.name,password:self.password,serverAddress:self.serverAddress,ipAddress:self.ipAddress,enableProxy:self.enableProxy}
+                    };
+                    AjaxPost('/Action/call', payload, (response) => {
+                        if(response.Result % 10000 == 0) {
+                            self.loading = false;
+                            self.$message.success('保存配置成功！');
+                        }
+                        else {
+                            self.loading = false;
+                            self.$message.error(`保存配置出错！${response.ErrMsg}`);
+                        }
+                    });
+                },
+
+                start() {
+                    self=this;
+                    self.loading = true;
+                    self.loading_text = "正在启动...";
+                    var payload = {
+                        func_name: 'plugin_vnt',
+                        action: 'start',
+                        param: {}
+                    };
+                    AjaxPost('/Action/call', payload, (response) => {
+                        if(response.Result % 10000 == 0) {
+                            self.loading = false;
+                            self.statusMessage = "正在运行";
+                            self.statusClass = "colorG";
+                            self.$message.success('VNT已启动！');
+                        }
+                        else {
+                            self.loading = false;
+                            self.$message.error(`启动VNT失败！${response.ErrMsg}`);
+                        }
+                        setTimeout(() => {
+                            self.loadInitData();
+                        }, 500);
+                        
+                    });
+                },
+                stop() {
+
+                    self=this;
+                    self.loading = true;
+                    self.loading_text = "正在停止...";
+
+                    var payload = {
+                        func_name: 'plugin_vnt',
+                        action: 'stop',
+                        param: {}
+                    };
+                    AjaxPost('/Action/call', payload, (response) => {
+                        if(response.Result % 10000 == 0) {
+                            self.loading = false;
+                            self.statusMessage = "已停止运行";
+                            self.statusClass = "colorR";
+                            self.$message.success('VNT已停止运行！');
+                        }
+                        else {
+                            self.loading = false;
+                            self.$message.error(`停止VNT失败！${response.ErrMsg}`);
+                        }
+                        setTimeout(() => {
+                            self.loadInitData();
+                        }, 500);
+                    });
+                }
+            }
+        });
+    </script>
+    <style scoped>
+        button:disabled {
+            color:#C0C4CC;
+            background-color:#EFEFEF;
+            cursor:not-allowed
+        }
+        .el-radio__label {
+            font-size: 12px;
+        }
+    </style>
+</html>

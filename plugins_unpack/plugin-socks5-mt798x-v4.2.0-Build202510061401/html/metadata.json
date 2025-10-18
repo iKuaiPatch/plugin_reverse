@@ -1,0 +1,10 @@
+{
+  "name": "socks5",
+  "alias": "SK5分流",
+  "manufacturer": "iKuai",
+  "version": "4.2.0",
+  "type": "external",
+  "description": "Socks5 插件支持连接远程多个socks5服务器，同时支持本地设备进行分流",
+  "releasenotes": "更新说明：<br>1、底层技术升级，带机量及稳定性极大提升（高级版专属）。<br>2、支持订阅链接导入，全面支持绝大多数流行节点类型。<br>3、新增加DSN防泄露、防污染功能， 提升网络隔离安全性。<br>4、导入规则及节点时自动覆盖已有规则。<br>5、新增一键生成分流规则功能。",
+  "scripts":["service"]
+}

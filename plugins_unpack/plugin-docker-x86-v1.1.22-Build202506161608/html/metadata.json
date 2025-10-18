@@ -1,0 +1,10 @@
+{
+    "name": "docker",
+    "alias": "Docker容器",
+    "manufacturer": "iKuai",
+    "version": "1.1.22",
+    "type": "external",
+    "onlyOfflineInstall": "true",
+    "description": "‌通过Docker功能，用户可以打包应用以及依赖包到一个可移植的镜像中，然后发布到任何流行的 Linux或Windows 机器上，也可以实现虚拟化。容器是完全使用沙箱机制，相互之间不会有任何接口。",
+    "scripts":["docker_server","docker_container","docker_image","docker_network"]
+}

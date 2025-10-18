@@ -1,0 +1,196 @@
+<html>
+    <head>
+        <script src="../../static/js/vue.js"></script>
+        <script src="../../static/js/plugin.js"></script>
+        <script src="../../static/js/element.js"></script>
+        <link rel="stylesheet" href="../../static/css/plugin.css" type="text/css">
+        <link rel="stylesheet" href="../../static/css/element.css">
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+        <style>
+            .status-started {
+                color: green;
+            }
+            .status-stopped {
+                color: red;
+            }
+            .status-unknown {
+                color: gray;
+            }
+            .status-value {
+                color: green;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="app">
+            <div>
+                <!-- 空行 -->
+                <div style="height: 20px;"></div>
+                <div class="status">
+                    KMS状态：<span :class="statusClass">{{ statusMessage }}</span>
+                </div>
+				 <div style="height: 30px;"></div>
+				 <div class="status">
+                    KMS端口：<span :class="statusClass">1688</span>
+                </div>
+				<div style="height: 30px;"></div>
+				<div>KMS配置：<a :href="LocalUrl" target="_blank">访问文件</a></div>
+                <div style="height: 60px;"></div>
+                <button @click="Vlmcsd_start" class="btn btn_green btn_confirm margin-l-10" type="button">
+                    运行KMS
+                </button>
+                <button @click="Vlmcsd_stop" class="btn btn_red btn_confirm margin-l-10" type="button">
+                    停止KMS
+                </button>
+				<div style="height: 30px;"></div>
+				<div class="readme"><span class="note" style="left: 20px;">功能说明：</span>
+				<div>1、运行KMS,默认配置，开机会自启动，停止KMS则关闭，并清理上传配置；</div> 
+				</div>
+				<div style="height: 80px;"></div>
+			<!-- 文件选择和上传按钮 -->
+				<div>
+
+				 <input type="text" id="fileName" readonly style="background-color: white; border: 1px solid blue; padding: 6px; border-radius: 4px;" >
+				<!-- 自定义的选择文件按钮 -->
+				<label for="fileUpload" class="btn btn_blue btn_confirm margin-l-10">
+					选择文件
+				</label>
+				
+				<!-- 隐藏的文件输入框 -->
+				<input type="file" id="fileUpload" style="display: none;" onchange="document.getElementById('fileName').value = this.files[0].name;">
+				
+				<!-- 上传 EEPROM 按钮 -->
+				<button @click="uploadFile" class="btn btn_green btn_confirm margin-l-10" type="button">
+					上传配置
+				</button>
+				<div style="height: 30px;"></div>
+				<div class="readme"><span class="note" style="left: 20px;">功能说明：</span>
+				<div>1、正常默配置就行了，上传请确认您的配置文件可用，上传错误可停止KMS后重传即可；</div> 
+				</div>
+			</div>
+			
+            </div>
+        </div> 
+    </body>
+    <script type="module">
+        var app = new Vue({
+            el: '#app',
+            data: { 
+                result: "",
+                statusMessage: "未知",
+                statusClass: "status-unknown",
+				LocalUrl: "",
+                statusDetails: {}  // 初始化为对象，而不是 null
+            },
+            mounted() {
+                this.Vlmcsd_status();
+				this.setLocalUrl();
+            },
+            methods: {
+                Vlmcsd_start() {
+                    var payload = {
+                        func_name: 'plugin_vlmcsd',
+                        action: 'vlmcsd_start',
+                        param: {}
+                    };
+                    AjaxPost('/Action/call', payload, (response) => {
+                        if(response.Result % 10000 == 0) {
+                            this.statusMessage = "已启动";
+                            this.statusClass = "status-started";
+                            alert('KMS启动成功');
+                            MessageTip("KMS启动成功", "green");
+                        }
+                    });
+                },
+                Vlmcsd_stop() {
+                    var payload = {
+                        func_name: 'plugin_vlmcsd',
+                        action: 'stop',
+                        param: {}
+                    };
+                    AjaxPost('/Action/call', payload, (response) => {
+                        if(response.Result % 10000 == 0) {
+                            this.statusMessage = "已停止";
+                            this.statusClass = "status-stopped";
+                            alert('KMS停止成功');
+                            MessageTip("KMS停止成功", "red");
+                        }
+                    });
+                },
+                Vlmcsd_status() {
+                    var payload = {
+                        func_name: 'plugin_vlmcsd',
+                        action: 'show',
+                        param: {
+                            TYPE: 'status'
+                        }
+                    };
+                    AjaxPost('/Action/call', payload, (response) => {
+                        if (response.Result % 10000 == 0 && response.Data) {
+                            const data = response.Data;
+
+                            if (data.status == 1) {
+                                this.statusMessage = "已启动";
+                                this.statusClass = "status-started";
+                            } else {
+                                this.statusMessage = "已停止";
+                                this.statusClass = "status-stopped";
+                            }
+
+                            // 将 data 存储到 statusDetails 中
+                            this.statusDetails = data;
+                            console.log('KMS 状态信息:', this.statusDetails);
+
+                        } else {
+                            console.error('Status is undefined in the response', response);
+                            this.statusMessage = "状态未知";
+                            this.statusClass = "status-unknown";
+                        }
+                    });
+                },
+		 setLocalUrl() {
+                    var host = window.location.hostname;
+                    this.LocalUrl = `http://${host}/vlmcsd.txt`;
+                },
+			uploadFile() {
+                var fileInput = document.getElementById('fileUpload');
+                var file = fileInput.files[0];
+
+                if (!file) {
+                    alert('请先选择一个文件');
+                    return;
+                }
+
+                var formData = new FormData();
+                formData.append('file', file);
+
+                var xhr = new XMLHttpRequest();
+                xhr.open('POST', '/Action/upload', true);
+                xhr.onload = function () {
+                    if (xhr.status == 200) {
+                        alert('文件上传成功');
+                        app.MKS_config();
+                    } else {
+                        alert('上传失败');
+                    }
+                };
+                xhr.send(formData);
+            },
+		 MKS_config() {
+                var payload = {
+                    func_name: 'plugin_vlmcsd',
+                    action: 'config',
+                    param: {}
+                };
+                AjaxPost('/Action/call', payload, (response) => {
+                    if (response.Result % 10000 == 0) {
+                        alert('MKS 配置成功');
+                    } else {
+                        alert('MKS 配置失败');
+                    }
+                });
+            }
+            }
+        });
+    </script>
+</html>

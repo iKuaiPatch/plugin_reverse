@@ -1,0 +1,283 @@
+<html>
+<head>
+    <script src="../../static/js/vue.js"></script>
+    <script src="../../static/js/plugin.js"></script>
+    <script src="../../static/js/element.js"></script>
+    <link rel="stylesheet" href="../../static/css/plugin.css" type="text/css">
+    <link rel="stylesheet" href="../../static/css/element.css">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <style>
+        .status-started {
+            color: green;
+        }
+        .status-stopped {
+            color: red;
+        }
+        .status-unknown {
+            color: gray;
+        }
+        .status-value {
+            color: green;
+        }
+        .input-box {
+            padding: 6px;
+            margin: 0 5px;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+            width: 150px;
+        }
+        /* 配置表格的边框设置为1像素的绿色 */
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            max-width: 500px;
+        }
+        table, th, td {
+            border: 1px solid green;
+        }
+        th, td {
+            padding: 8px;
+            text-align: left;
+            background-color: white; /* 设置表格内容底色为白色 */
+            font-size: 10px; /* 设置字体为较小 */
+            font-weight: normal; /* 取消加粗 */
+        }
+        th {
+            background-color: white; /* 表头为白色 */
+        }
+        /* 删除按钮为红色字体，没有底色 */
+        .btn_reds {
+            color: red;
+            background-color: transparent;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .btn_red:hover {
+            text-decoration: underline;
+        }
+        /* 添加按钮样式 */
+        .btn_blue {
+            background-color: #007bff;
+            color: white;
+            padding: 6px 12px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .btn_blue:hover {
+            background-color: #0056b3;
+        }
+
+        /* 横排布局的容器 */
+        .form-inline {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px; /* 增加间距 */
+        }
+
+        /* 自定义标题样式，字体小一点，去掉加粗 */
+        .config-title {
+            font-size: 10px;
+            font-weight: normal;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <div>
+            <!-- 空行 -->
+            <div style="height: 20px;"></div>
+            <div class="status">
+                Socat状态：<span :class="statusClass">{{ statusMessage }}</span>
+            </div>
+            <!-- 空行 -->
+            <div style="height: 20px;"></div>
+
+            <!-- 添加配置的部分横排显示 -->
+            <div class="form-inline">
+                <input type="text" v-model="newConfig.externalPort" placeholder="外部端口" class="input-box">
+                <input type="text" v-model="newConfig.internalAddress" placeholder="内部地址" class="input-box">
+                <input type="text" v-model="newConfig.internalPort" placeholder="内部端口" class="input-box">
+                <select v-model="newConfig.protocol" class="input-box">
+                    <option value="TCP">TCP</option>
+                    <option value="UDP">UDP</option>
+                </select>
+                <button @click="addConfig" class="btn btn_blue btn_confirm" type="button">
+                    添加配置
+                </button>
+            </div>
+
+            <!-- 配置列表 -->
+            <div style="margin-top: 20px;">
+                <!-- 使用 p 标签代替 h3 并应用自定义样式 -->
+                <p class="config-title">当前配置</p>
+                <table>
+                    <tr>
+                        <th>ID</th>
+                        <th>外部端口</th>
+                        <th>内部地址</th>
+                        <th>内部端口</th>
+                        <th>协议</th>
+                        <th>操作</th>
+                    </tr>
+                    <tr v-for="config in configs" :key="config.id">
+                        <td>{{ config.id }}</td>
+                        <td>{{ config.externalPort }}</td>
+                        <td>{{ config.internalAddress }}</td>
+                        <td>{{ config.internalPort }}</td>
+                        <td>{{ config.protocol }}</td>
+                        <td>
+                            <button @click="deleteConfig(config.id)" class="btn_reds">删除</button>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+
+            <div style="height: 40px;"></div>
+            <!-- 启动和停止按钮保持原始样式 -->
+            <button @click="startSocat" class="btn btn_green btn_confirm margin-l-10" type="button">
+                启动Socat
+            </button>
+            <button @click="stopSocat" class="btn btn_red btn_confirm margin-l-10" type="button">
+                停止Socat
+            </button>
+        </div>
+        <div style="height: 20px;"></div>  
+    </div>
+</body>
+
+    <script type="module">
+        var app = new Vue({
+            el: '#app',
+            data: { 
+                statusMessage: "未知",
+                statusClass: "status-unknown",
+                configs: [],  // 用于存储后端返回的配置信息
+                newConfig: {
+                    externalPort: "",
+                    internalAddress: "",
+                    internalPort: "",
+                    protocol: "TCP"
+                }
+            },
+            mounted() {
+                this.getSocatStatus();
+            },
+            methods: {
+                startSocat() {
+                    var payload = {
+                        func_name: 'plugin_socat',
+                        action: 'start',
+                        param: {}
+                    };
+                    AjaxPost('/Action/call', payload, (response) => {
+                        if (response.Result % 10000 === 0) {
+                            this.statusMessage = "已启动";
+                            this.statusClass = "status-started";
+                            alert('Socat启动成功');
+                        } else {
+                            alert('Socat启动失败');
+                        }
+                    });
+                },
+				 deleteConfig(id) {
+					var payload = {
+						func_name: 'plugin_socat',
+						action: 'delete_config',
+						param: { id: id }
+					};
+					AjaxPost('/Action/call', payload, (response) => {
+						if (response.Result % 10000 === 0) {
+							alert('删除成功');
+							this.getSocatStatus();  // 刷新配置
+						} else {
+							alert('删除失败');
+						}
+					});
+				},
+                stopSocat() {
+                    var payload = {
+                        func_name: 'plugin_socat',
+                        action: 'stop',
+                        param: {}
+                    };
+                    AjaxPost('/Action/call', payload, (response) => {
+                        if (response.Result % 10000 === 0) {
+                            this.statusMessage = "已停止";
+                            this.statusClass = "status-stopped";
+                            alert('Socat停止成功');
+                        } else {
+                            alert('Socat停止失败');
+                        }
+                    });
+                },
+				getSocatStatus() {
+					var payload = {
+						func_name: 'plugin_socat',
+						action: 'show',
+						param: {
+							TYPE: 'status,configs'
+						}
+					};
+					AjaxPost('/Action/call', payload, (response) => {
+						if (response.Result % 10000 === 0) {
+							const data = response.Data;
+
+							// 解析状态
+							const status = data.status;
+							if (status === 1) {
+								this.statusMessage = "已启动";
+								this.statusClass = "status-started";
+							} else {
+								this.statusMessage = "已停止";
+								this.statusClass = "status-stopped";
+							}
+
+							// 初始化 configs 数组
+							this.configs = [];
+
+							// 遍历 Data 对象中以 "id" 开头的字段，提取配置
+							Object.keys(data).forEach(key => {
+								if (key.startsWith("id")) {
+									this.configs.push(data[key]);
+								}
+							});
+
+						} else {
+							this.statusMessage = "状态未知";
+							this.statusClass = "status-unknown";
+						}
+					});
+				},
+                addConfig() {
+                    if (this.newConfig.externalPort === "" || this.newConfig.internalAddress === "" || this.newConfig.internalPort === "") {
+                        alert("请填写完整的配置");
+                        return;
+                    }
+
+                    var payload = {
+                        func_name: 'plugin_socat',
+                        action: 'add_config',
+                        param: {
+                            protocol: this.newConfig.protocol,
+                            externalPort: this.newConfig.externalPort,
+                            internalAddress: this.newConfig.internalAddress,
+                            internalPort: this.newConfig.internalPort
+                        }
+                    };
+                    AjaxPost('/Action/call', payload, (response) => {
+                        if (response.Result % 10000 === 0) {
+                            alert('配置添加成功');
+                            this.getSocatStatus();  // 重新获取状态和配置
+                        } else {
+                            alert('配置添加失败');
+                        }
+                    });
+                }
+            }
+        });
+    </script>
+</html>

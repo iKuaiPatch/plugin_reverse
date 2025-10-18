@@ -1,0 +1,11 @@
+dns:
+  enable: true
+  listen: :1053
+  use-hosts: false
+  ipv6: false
+  default-nameserver: [114.114.114.114, 223.5.5.5]
+  enhanced-mode: redir-host
+  nameserver: [114.114.114.114, 223.5.5.5]
+  fallback: [1.1.1.1, 8.8.4.4]
+  fallback-filter:
+    geoip: true

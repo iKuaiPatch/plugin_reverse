@@ -1,0 +1,368 @@
+<html>
+    <head>
+        <script src="../../static/js/vue.js"></script>
+        <script src="../../static/js/plugin.js"></script>
+        <script src="../../static/js/element.js"></script>
+        <link rel="stylesheet" href="../../static/css/plugin.css" type="text/css">
+        <link rel="stylesheet" href="../../static/css/element.css">
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    </head>
+    <body>
+        <div id="app" class="wrapper row" v-loading="loading" :element-loading-text="loading_text">
+            <div class="box clearfix">
+                <div class="box_block">
+                    <div class="clearfix margin_phone col-lg-11 col-lg-offset-1 ">
+                        <form>
+                            <div class="h40"></div>
+                            <div  class="line_edit">
+                                <span  class="input_tit">开机自启动：</span> 
+                                <div  class="input_group">
+                                    <el-switch @change="set_auto_start" v-model="autostart"  ></el-switch>
+                                </div>
+                            </div>
+                            <div  class="line_edit">
+                                <span  class="input_tit">Clash状态：</span> 
+                                <div  class="input_group">
+                                    <span :class="statusClass">{{ statusMessage }}
+                                </div>
+                            </div>
+                            <div  class="line_edit">
+                                <span  class="input_tit">内核信息：</span> 
+                                <div  class="input_group">
+                                    <span >{{ coreInfo }}
+                                </div>
+                            </div>
+                            <div class="line_edit">
+                                <span class="input_tit">管理面板：</span> 
+                                <div class="input_group">
+                                    <a :href="managerUrl" target="_blank">{{ managerUrl }}</a>
+                                </div>
+                            </div>
+                            <div class="line_edit">
+                                <span class="input_tit">配置模式：</span> 
+                                <div class="input_group">
+                                    <el-radio-group v-model="configMode">
+                                        <el-radio label="1" >订阅地址</el-radio>
+                                        <el-radio label="2">导入配置</el-radio>
+                                    </el-radio-group>
+                                </div>
+                            </div>
+                            <div class="line_edit" v-show="configMode==='2'">
+                                <span class="input_tit">YAML配置：</span> 
+                                <div class="input_P" v-show="yamlStatus === 1 || jsonStatus === 1"  >
+                                    <span class="colorG">已检测到配置文件，可通过下方按钮更新。 </span>
+                                    <el-button v-show="yamlStatus === 1" type="text" @click="download_yaml" style="padding-top: 0px;">下载YAML文件</el-button>
+                                    <el-button v-show="jsonStatus === 1" type="text" @click="download_json" style="padding-top: 0px;">下载JSON文件</el-button>
+                                </div>
+                                <br class="h5" v-show="yamlStatus === 1 || jsonStatus === 1" >
+                                <div class="input_group">
+                                    <div class="type_file file_W tl margin-r-5 fl">
+                                        <input type="text" id="yamlfileName" class="inptText textfield rounded"> 
+                                        <input name="" type="submit" class="btn btn_blue rounded type_file_button height26 fl" value="选择文件">
+                                        <input type="file" id="yamlfileUploads"  accept=".yaml,.json" class="type_file_file fileField" onchange="document.getElementById('yamlfileName').value = this.files[0].name;">
+                                    </div>
+                                </div>
+                                <div class="input_P" style="padding-top: 0px;">
+                                    <input value="确认上传" @click="upload_yaml"  type="button" class="btn btn_green rounded height26"> 
+                                </div>
+                                
+                            </div>
+                            <div class="line_edit" v-show="configMode==='1'">
+                                <span class="input_tit">订阅地址：</span> 
+                                <div class="input_group">
+                                    <input type="text" class="inptText" v-model="suburl" > 
+                                    <button type="button" @click="update_subUrl" :disabled="this.status === 2" class="btn btn_green rounded height26 w100">更新订阅地址</button>
+                                </div>
+                            </div>
+                            <div class="h20"></div>
+                            <div class="line_edit">
+                                <div class="input_group">
+                                    <button type="button" @click="start" :disabled="this.status === 2" class="btn btn_green btn_confirm">启动Clash</button>
+                                    <button type="button" @click="stop"  :disabled="this.status === 2" class="btn btn_red btn_confirm margin-l-10">停止Clase</button>
+                                    <button type="button" @click="start_ttyd" :disabled="this.status === 2" v-show="supportTtyd" class="btn btn_blue btn_confirm margin-l-10">高级模式</button>
+                                </div>
+                            </div>
+                            <div class="h20"></div>
+                            <div class="readme col-lg-11 col-xs-12">
+                                <span class="note">帮助提示：</span>
+                                <div>1、首次启动可以选择直接导入配置文件，或者设置订阅地址自动生成配置文件。</div>
+                                <div>2、更新订阅地址或启动Clash服务时需要连接网络，请保证网络畅通。</div>
+                                <div>3、首次启动时间会比较长，根据网络状况3-5分钟或更长，请耐心等待。</div>
+                                <div>4、设置订阅地址及开机自启动后，会在每日的8点0分更新订阅并重启服务，手动导入的配置文件会被覆盖。</div>
+                                <div v-show="supportTtyd">5、如果熟悉命令行模式，可点击高级模式，高级模式下可通过6-2-1查看启动日志文件。</div>
+                            </div>
+                            <div class="h40"></div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </body>
+    <script type="module">
+        var app = new Vue({
+            el: '#app',
+            props: ["type"],
+            data: { 
+                autostart: false,
+                supportTtyd: false,
+                configMode: "1",
+                status: 1,
+                statusMessage: "",
+                statusClass: "",
+                yamlStatus: 0,
+                jsonStatus: 0,
+                managerUrl: "",
+                suburl: "",
+                savedSubUrl: "",
+                coreInfo: "",
+                loading: false,
+                loading_text: "正在加载...",
+                
+            },
+            mounted() {},
+            created() {
+                this.loadInitData();
+            },
+            methods: {
+                loadInitData() {
+                    self=this;
+                    var payload = {
+                        func_name: 'plugin_clash',
+                        action: 'show',
+                        param: {TYPE: 'data'}
+                    };
+                    AjaxPost('/Action/call', payload, (response) => {
+                        if (response.Result % 10000 == 0 && response.Data) {
+                            const data = response.Data;
+                            self.suburl = data.Url;
+                            self.savedSubUrl = self.suburl;
+                            self.autostart = data.autostart === 1;
+                            self.supportTtyd = data.supportTtyd === 1;
+                            self.yamlStatus = data.yamlStatus;
+                            self.jsonStatus = data.jsonStatus;
+                            self.coreInfo = data.coreInfo;
+                            self.status = data.status;
+                            if (data.status === 1) {
+                                self.statusMessage = `正在运行, ${data.runningTime}`;
+                                self.statusClass = "colorG";
+                            } else if (data.status === 2 ) {
+                                self.statusMessage = "正在初始化，请等待...";
+                                self.statusClass = "colorR";
+                                setTimeout(() => {
+                                    self.loadInitData();
+                                }, 2000);
+                            } else {
+                                self.statusMessage = "已停止运行";
+                                self.statusClass = "colorR";
+                            }
+                            if (data.hostdir) {
+                                const host = window.location.hostname;
+                                self.managerUrl = `http://${host}${data.hostdir}`;
+                            }
+                        }
+                    });
+                    
+                },
+                set_auto_start() {
+                    var payload = {
+                        func_name: 'plugin_clash',
+                        action: 'set_auto_start',
+                        param: {autostart:this.autostart}
+                    };
+                    AjaxPost('/Action/call', payload, (response) => {
+                        if (response.Result % 10000 == 0) {
+                            this.$message({message: `Clash已${this.autostart ? '设为开机自启动' : '取消开机自启动'}！`,type: 'success'});
+                        } else {
+                            this.autostart = !this.autostart;
+                        }
+                    });
+                },
+                download_yaml(){
+                    self=this;
+                    var payload = {
+                        func_name: 'plugin_clash',
+                        action: 'download_yaml',
+                        param: {}
+                    };
+                    AjaxPost('/Action/call', payload, (response) => {
+                        if (response.Result % 10000 == 0) {
+                            window.location.href = `/Action/download?filename=config.yaml`;
+                        }
+                    });
+                },
+                download_json(){
+                    self=this;
+                    var payload = {
+                        func_name: 'plugin_clash',
+                        action: 'download_json',
+                        param: {}
+                    };
+                    AjaxPost('/Action/call', payload, (response) => {
+                        if (response.Result % 10000 == 0) {
+                            window.location.href = `/Action/download?filename=config.json`;
+                        }
+                    });
+                },
+                upload_yaml() {
+                    var fileInput = document.getElementById('yamlfileUploads');
+                    // var eepOverwrite = this.eepOverwrite
+                    var file = fileInput.files[0];
+
+                    if (!file) {
+                        return;
+                    }
+
+                    var fileType=file.name.toLowerCase().split('.').pop();
+
+                    self=this;
+                    self.loading = true;
+                    self.loading_text = "YAML文件上传中...";
+
+                    var formData = new FormData();
+                    formData.append('file', file);
+
+                    var xhr = new XMLHttpRequest();
+                    xhr.open('POST', '/Action/upload', true);
+                    xhr.onload = function () {
+                        if (xhr.status == 200) {
+                            app.update_yaml(fileType);
+                        } else {
+                            self.loading = false;
+                            self.$message.error('YAML文件上传失败！');
+                        }
+                    };
+                    xhr.send(formData);
+                },
+
+                update_yaml(fileType) {
+                    self=this;
+                    var payload = {
+                        func_name: 'plugin_clash',
+                        action: 'update_yaml',
+                        param: {fileType:fileType}
+                    };
+                    AjaxPost('/Action/call', payload, (response) => {
+                        if (response.Result % 10000 == 0) {
+                            self.loading = false;
+                            self.$message({message: 'YAML配置文件上传成功！', type: 'success'});
+                            document.getElementById('yamlfileName').value = '';
+                        } else {
+                            self.loading = false;
+                            self.$message.error(`YAML配置文件上传失败！${response.ErrMsg}`);
+                        }
+                        this.loadInitData();
+                    });
+                },
+
+                update_subUrl() {
+                    self=this;
+                    
+                    if ( ! self.suburl  ) {
+                        self.$message.error(`订阅地址不能为空！`);
+                        return;
+                    }
+
+                    // if (self.suburl === self.savedSubUrl) {
+                    //     return;
+                    // }
+
+                    self.loading = true;
+                    self.loading_text = "正在更新订阅配置...";
+
+                    var subUrlBase64 = btoa(unescape(encodeURIComponent(self.suburl)));
+                    var payload = {
+                        func_name: 'plugin_clash',
+                        action: 'update_subUrl',
+                        param: {suburl:subUrlBase64}
+                    };
+                    AjaxPost('/Action/call', payload, (response) => {
+                        if (response.Result % 10000 == 0) {
+                            self.savedSubUrl = self.suburl;
+                            self.$message({message: `更新订阅配置成功！`,type: 'success'});
+                        } else {
+                            self.$message.error(`更新订阅配置失败！${response.ErrMsg}`);
+                        }
+                        self.loading = false;
+                    });
+
+                },
+                start(){
+                    self=this;
+                    
+                    // if ( ! self.suburl ) {
+                    //     self.$message.error(`请先设置订阅地址！`);
+                    //     return;
+                    // }
+                    if (self.savedSubUrl != self.suburl) {
+                        self.$message.error(`订阅地址已修改，请先保存更新订阅地址！`);
+                        return;
+                    }
+
+                    self.loading = true;
+                    self.loading_text = "正在启动Clash...";
+
+                    var payload = {
+                        func_name: 'plugin_clash',
+                        action: 'start',
+                        param: {}
+                    };
+                    AjaxPost('/Action/call', payload, (response) => {
+                        if (response.Result % 10000 == 0) {
+                            self.$message({message: `Clash已成功启动！`,type: 'success'});
+                            this.loadInitData();
+                        } else {
+                            self.$message.error(`Clash启动失败！${response.ErrMsg}`);
+                        }
+                        self.loading = false;
+                    });
+                },
+
+                stop() {
+                    self=this;
+                    self.loading = true;
+                    self.loading_text = "正在停止Clash...";
+
+                    var payload = {
+                        func_name: 'plugin_clash',
+                        action: 'stop',
+                        param: {}
+                    };
+                    AjaxPost('/Action/call', payload, (response) => {
+                        if(response.Result % 10000 == 0) {
+                            self.$message({message: 'Clash已停止!',type: 'success'});
+                            self.loadInitData();
+                        }
+                        self.loading = false;
+                    });
+
+                },
+                start_ttyd(){
+                    self=this;
+                    self.loading = true;
+
+                    var payload = {
+                        func_name: 'plugin_clash',
+                        action: 'start_ttyd',
+                        param: {}
+                    };
+                    AjaxPost('/Action/call', payload, (response) => {
+                        if(response.Result % 10000 == 0) {
+                            window.open("http://"+window.location.hostname+":2222/", "_blank");
+                        }
+                        self.loading = false;
+                    });
+                },
+            }
+        });
+    </script>
+    <style scoped>
+        button:disabled {
+            color:#C0C4CC;
+            background-color:#EFEFEF;
+            cursor:not-allowed
+        }
+        .el-radio__label {
+            font-size: 12px;
+        }
+    </style>
+</html>

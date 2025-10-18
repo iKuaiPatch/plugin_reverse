@@ -1,0 +1,9 @@
+{
+  "name": "msd_lite",
+  "alias": "组播转换",
+  "manufacturer": "iKuai",
+  "version": "2.0.0",
+  "type": "external",
+  "description": "msd_lite - 轻量级多流守护进程。 这是一个轻量级的Multi Stream守护进程（msd）程序，用于通过HTTP在网络上组织IP电视流媒体。<br>详情查看：<a>https://github.com/rozhuk-im/msd_lite</a>",
+  "scripts":["service"]
+}

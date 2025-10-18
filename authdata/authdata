@@ -1,0 +1,564 @@
+. /etc/release
+[ $ARCH = "mips" ] && platform="mt7621"
+[ $ARCH = "arm" ] && platform="mt798x"
+[ $ARCH = "x86" ] && platform="x86"
+
+magicCode="66656979756F73"
+
+SALT_KEY="eCycF5fS6hT0cC2j|adePF5fS8et3cCi5"
+PLUGIN_ENC_KEY="zVhJuay70scMhBUb"
+INN_PLUGIN_ENC_KEY="htd37I2swF6nkvDK"
+FIRMWARE_ENC_KEY=""
+REG_SERVER="reg.routeros.top"
+
+if [ $ARCH = "x86" ]; then
+    eep_mtd=/dev/${BOOTHDD}2
+    EMBED_FACTORY_PART_OFFSET=0
+else
+    eep_mtd=/dev/$(cat /proc/mtd | grep "Factory" | cut -d ":" -f 1)
+fi
+
+debug() {
+
+    debuglog=$( [ -s /tmp/debug_on ] && cat /tmp/debug_on || echo -n /tmp/debug.log )
+    if [ "$1" = "clear" ]; then
+        rm -f $debuglog && return
+    fi
+
+    if [ -f /tmp/debug_on ]; then
+        TIME_STAMP=$(date +"%Y%m%d %H:%M:%S")
+        echo "[$TIME_STAMP]: AT> $1" >>$debuglog
+    fi
+}
+
+Command()
+{
+    # 使用方法
+    # authtool command [param1] [param2] ...
+
+    # command list: 
+    # authtool check-code                                   检查激活状态 
+    # authtool check-sign                                   检查激活签名是否有效
+    # authtool check-date                                   检查激活签名是否过期
+    # authtool clear-sign [<reason code>]                   清除激活状态
+    # authtool registe [<captcha>]                          新注册激活或更新激活签名（更新场景不传递captcha参数）
+    # authtool try-pull                                     尝试获取激活签名（兼容老版本之用）
+    # authtool try-renew                                    尝试更新激活过期时间
+    # authtool check-feature <feature id>                   检查指定功能是否授权
+    # authtool decrypt <input file> <output file> [-i]      解密插件包 -i 表示解密内置插件 -f 表示解密固件升级包
+    # authtool version                                      显示版本号 
+
+    if [ ! "$1" ];then
+        return 0
+    fi
+
+    case "$1" in
+        check-code)
+            verify_activation "${@:2}"
+            ;;
+        check-sign)
+            verify_signature "${@:2}"
+            ;;
+        check-date)
+            verify_expire "${@:2}"
+            ;;
+        check-plugin)
+            verify_plugin "${@:2}"
+            ;;
+        clear-sign)
+            clear_activation "${@:2}"
+            ;;
+        check-feature)
+            verify_feature "${@:2}"
+            ;;
+        registe)
+            registe "${@:2}"
+            ;;
+        try-pull)
+            try_get_signature "${@:2}"
+            ;;
+        try-renew)
+            try_renew_signature "${@:2}"
+            ;;
+        decrypt)
+            decrypt "${@:2}"
+            ;;
+        version)
+            show_version "${@:2}"
+            ;;
+        admessage)
+            show_admessage "${@:2}"
+            ;;
+        *)
+            echo "unknown command ()"
+            return 1
+            ;; 
+    esac
+}
+
+show_version() {
+    echo "202508071951"
+    return 0
+}
+
+generate_hex_string() {
+    local len=$1
+    local hex_string=""
+    local i=0
+
+    while [ $i -lt $len ]; do
+        hex_byte=$(printf "%02X" $((RANDOM % 256)))
+        hex_string="${hex_string}${hex_byte}"
+        i=$(expr $i + 2)
+    done
+
+    echo $hex_string
+}
+
+verify_activation() {
+    debug "开始校验激活授权码..."
+
+    if [ -f /tmp/.__inactive ]; then
+        debug "存在未激活标志，跳过校验！"
+        echo "ERR"
+        return 1
+    fi
+
+    if [ $ARCH = "x86" ]; then
+        uuid=$(cat /sys/class/dmi/id/product_uuid | md5sum | tr '[:lower:]' '[:upper:]')
+        mc=$(hexdump -v -s $((0x88)) -n 4 -e '1/1 "%02X"' $eep_mtd)${uuid:5:8}
+        actCode=$(hexdump -v -s $((0x8C)) -n 10 -e '1/1 "%02x"' $eep_mtd)
+    else
+        mc=$(hexdump -v -s $((0x88 + $EMBED_FACTORY_PART_OFFSET)) -n 4 -e '1/1 "%02X"' $eep_mtd)
+        # 修复不同版本混刷及校验逻辑修改等原因导致的机器码没有正确赋值
+        if ! echo "$mc" | grep -q "^FA"; then
+            mc=FA$(generate_hex_string 6)
+            local mtd_block="/dev/mtdblock$(grep 'Factory' /proc/mtd | cut -d ':' -f 1 | tr -cd '0-9')"
+            printf $(echo $mc | sed 's/../\\x&/g') | dd of=$mtd_block bs=$((0x88 + $EMBED_FACTORY_PART_OFFSET)) seek=1 conv=notrunc
+        fi
+
+        actCode=$(hexdump -v -s $((0x8C + $EMBED_FACTORY_PART_OFFSET)) -n 10 -e '1/1 "%02x"' $eep_mtd)
+        
+    fi
+
+    str1=$(echo "$DEVICE_MAC" | tr '[:lower:]' '[:upper:]' | sed 's/://g')
+    str2=$(echo "${GWID:0:12}" | tr '[:lower:]' '[:upper:]')
+    
+    saltKey1=$(echo "$SALT_KEY" | awk -F "|" '{print $1}')
+    saltKey2=$(echo "$SALT_KEY" | awk -F "|" '{print $2}')
+    hashstr1=$(echo -n "$saltKey1$mc$str1$str2" | md5sum | cut -c 1-20)
+    hashstr2=$(echo -n "$saltKey2$mc$str1$str2" | md5sum | cut -c 1-20)
+
+    if [ "$hashstr1" != "$actCode" -a "$hashstr2" != "$actCode" ]; then
+        debug "激活授权码校验失败！$saltKey1,$saltKey2,$mc,$str1,$str2,$actCode"
+        touch /tmp/.__inactive
+        echo "ERR"
+        return 1
+    elif [ "$hashstr1" = "$actCode" ]; then
+        debug "激活授权码校验成功，标准版！"
+        rm -f /tmp/.__inactive
+        echo "STD"
+        return 0
+    elif [ "$hashstr2" = "$actCode" ]; then
+        debug "激活授权码校验成功，高级版！"
+        rm -f /tmp/.__inactive
+        echo "PRO"
+        return 0
+    fi
+}
+
+verify_signature() {
+
+    debug "开始校验激活授权签名..."
+
+    local PUBLIC_KEY='
+-----BEGIN PUBLIC KEY-----
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAwnlZx4PHTLGIWFSJ7jvQ
+X20LkRtRKZuw5MquSqkWOC0itGQX9Ed6VSPG7tx+ZKKY+uEJ2dqwbj4Py2zpyRO3
++fWylLB4IMPmIDYPH8f+JNsxEsxSw+G4tj/bqSzEckI6lfo15vGujUNHqzQtVC6a
+GlAZPZNfjd8Yxn7THtWz+G2CYg5ncx20ZdSX9F8S/N9cnHe/8DrZLu3Svk4CwATX
+2UjCut+bjij+W6SnwOtVWvvhTnVybV9uGecWnEyegXC6XVO9f7z6Gdsn0zkNHA0z
+taED5c4gV21ZKPoxRy7mjgYeNHnkbCYHXuVRA/sahSiSGAaJ0DIAzPd4HFum9Ydb
+lQIDAQAB
+-----END PUBLIC KEY-----
+'
+    local TEMP_KEY=$(mktemp)
+    local TEMP_ACTCODE=$(mktemp)
+    local TEMP_SIGNATURE=$(mktemp)
+    echo "$PUBLIC_KEY" > "$TEMP_KEY"
+
+    if [ $ARCH = "x86" ]; then
+        activationCode=$(hexdump -v -s $((0x8C + $EMBED_FACTORY_PART_OFFSET)) -n 10 -e '1/1 "%02x"' $eep_mtd)
+    else
+        activationCode=$(hexdump -v -s $((0x8C + $EMBED_FACTORY_PART_OFFSET)) -n 10 -e '1/1 "%02x"' $eep_mtd)
+    fi
+
+    
+    expire_hex=$(hexdump -v -s $((0x2008 + 256 + $EMBED_FACTORY_PART_OFFSET)) -n 8 -e '1/1 "%02x"' $eep_mtd)
+    feature_hex=$(hexdump -v -s $((0x2008 + 256 + 8 + $EMBED_FACTORY_PART_OFFSET)) -n 4 -e '1/1 "%02x"' $eep_mtd)
+
+    printf "%s" "$activationCode" > "$TEMP_ACTCODE"
+    printf "%s" "$expire_hex" >> "$TEMP_ACTCODE"
+    if [  "$feature_hex" != "00000000" ] && [  "$feature_hex" != "ffffffff" ]; then
+        printf "%s" "$feature_hex" >> "$TEMP_ACTCODE"
+    fi
+
+    dd if=$eep_mtd bs=1 skip=$((0x2008 + $EMBED_FACTORY_PART_OFFSET)) count=256 of=$TEMP_SIGNATURE >/dev/null 2>&1
+
+    openssl dgst -sha256 -verify "$TEMP_KEY" -signature "$TEMP_SIGNATURE" "$TEMP_ACTCODE" >/dev/null
+    ret=$? 
+
+    rm $TEMP_KEY $TEMP_ACTCODE $TEMP_SIGNATURE
+
+    if [ $ret -ne 0 ]; then
+        debug "激活授权签名校验失败!"
+        echo "ERR"
+        return 1
+    else
+        debug "激活授权签名校验成功！"
+        echo "OK"
+        return 0
+    fi
+}
+
+verify_expire() {
+ 
+    debug "开始检查激活过期时间"
+    expire_hex=$(hexdump -v -s $((0x2008 + 256 + $EMBED_FACTORY_PART_OFFSET)) -n 8 -e '1/1 "%02x"' $eep_mtd)
+    expire_time=$((16#$expire_hex))
+    current_time=$(($(date +%s)*1000))
+    
+    debug " 1、当前时间：$(date -d @$((current_time/1000)) '+%Y-%m-%d %H:%M:%S')"
+    debug " 2、过期时间：$(date -d @$((expire_time/1000)) '+%Y-%m-%d %H:%M:%S')"
+    
+    if [ "$current_time" -gt "$expire_time" ]; then
+        debug "激活授权已过期"
+        echo "ERR"
+        return 1
+    else
+        debug "激活授权未过期"
+        echo "OK"
+        return 0
+    fi
+}
+
+clear_activation()
+{
+    debug "清除激活授权信息"
+    reasonCode="\x${1:-00}"
+
+    cleanCode1="00000000000000000000"
+    cleanCode2="0000000000000000000000000000"
+
+    if [ $ARCH = "x86" ]; then
+        printf "$reasonCode" | dd of=$eep_mtd bs=$((0x86 + $EMBED_FACTORY_PART_OFFSET)) seek=1 conv=notrunc >/dev/null 2>&1
+        printf $(echo "$cleanCode1" | sed 's/../\\x&/g') | dd of=$eep_mtd bs=$((0x8C + $EMBED_FACTORY_PART_OFFSET)) seek=1 conv=notrunc >/dev/null 2>&1
+        printf $(echo "$cleanCode2" | sed 's/../\\x&/g') | dd of=$eep_mtd bs=$((0x2000 + $EMBED_FACTORY_PART_OFFSET)) seek=1 conv=notrunc >/dev/null 2>&1
+        printf $(echo "$cleanCode2" | sed 's/../\\x&/g') | dd of=$eep_mtd bs=$((0x2008 + 256 + $EMBED_FACTORY_PART_OFFSET)) seek=1 conv=notrunc >/dev/null 2>&1
+    else
+        local mtd_block="/dev/mtdblock$(grep 'Factory' /proc/mtd | cut -d ':' -f 1 | tr -cd '0-9')"
+        printf "$reasonCode" | dd of=$mtd_block bs=$((0x86 + $EMBED_FACTORY_PART_OFFSET)) seek=1 conv=notrunc >/dev/null 2>&1
+        printf $(echo "$cleanCode1" | sed 's/../\\x&/g') | dd of=$mtd_block bs=$((0x8C + $EMBED_FACTORY_PART_OFFSET)) seek=1 conv=notrunc >/dev/null 2>&1
+        printf $(echo "$cleanCode2" | sed 's/../\\x&/g') | dd of=$mtd_block bs=$((0x2000 + $EMBED_FACTORY_PART_OFFSET)) seek=1 conv=notrunc >/dev/null 2>&1
+        printf $(echo "$cleanCode2" | sed 's/../\\x&/g') | dd of=$mtd_block bs=$((0x2008 + 256 + $EMBED_FACTORY_PART_OFFSET)) seek=1 conv=notrunc >/dev/null 2>&1
+    fi
+}
+
+registe()
+{
+	captcha=$1
+
+    if [ -z "$captcha" ]; then
+        debug "开始获取(或刷新)已有激活授权信息"
+        magicCaptcha="66656979756F73" # 特殊激活码，已有激活数据的情况下专用
+        retValue=$(verify_activation)
+        if [ $? -eq 0 ]; then
+            captcha=$retValue$magicCaptcha
+        else
+            debug "系统尚未激活，无法获取激活签名"
+            return 1
+        fi
+    else
+        debug "开始新注册激活授权"
+    fi
+
+    # 获取注册地址
+    regaddr=$(curl -s "https://doh.pub/dns-query?name=${REG_SERVER}&type=TXT" | jq -r '.Answer[].data' | sed -E 's/"//g')
+    if [ -z "$regaddr" ]; then
+        regaddr=$(curl -s "https://dns.alidns.com/resolve?name=${REG_SERVER}&type=TXT" | jq -r '.Answer[].data' | sed -E 's/"//g')
+    fi
+    if [ -z "$regaddr" ]; then
+        debug "地址获取失败：${REG_SERVER}"
+        echo "网络连接异常，请确保Wan口已连接并正确配置！"
+        return 1
+    fi
+
+    wget -q $regaddr/api/test || {
+        debug "服务器连接测试异常,退出: $regaddr"
+        echo "服务器连接异常，请确保Wan口已连接并正确配置！"
+        return 1
+    }
+
+    debug "服务器连接测试正常: $regaddr"
+
+    macAddress=$(echo "$DEVICE_MAC" | tr '[:lower:]' '[:upper:]' | sed 's/://g')
+    routerId=$(echo "${GWID:0:12}" | tr '[:lower:]' '[:upper:]')
+    modelType=$(echo "$MODELTYPE" | tr '[:upper:]' '[:lower:]')
+
+    if [ $ARCH = "x86" ]; then
+        uuid=$(cat /sys/class/dmi/id/product_uuid | md5sum | tr '[:lower:]' '[:upper:]')
+        machineCode=$(hexdump -v -s $((0x88)) -n 4 -e '1/1 "%02X"' $eep_mtd)${uuid:5:8}
+    else
+        machineCode=$(hexdump -v -s $((0x88 + $EMBED_FACTORY_PART_OFFSET)) -n 4 -e '1/1 "%02X"' $eep_mtd)
+    fi
+    
+    chkCode=$(hexdump -v -s $((0x2000 + $EMBED_FACTORY_PART_OFFSET)) -n 7 -e '1/1 "%02X"' $eep_mtd)
+    if [ "$chkCode" = "$magicCode" ]; then
+        expire_hex=$(hexdump -v -s $((0x2008 + 256 + $EMBED_FACTORY_PART_OFFSET)) -n 8 -e '1/1 "%02x"' $eep_mtd)
+        expire=$((16#$expire_hex))
+    else
+        expire=0
+    fi
+    
+    local data=""
+    __json_append data macAddress:str
+    __json_append data routerId:str
+    __json_append data machineCode:str
+    __json_append data captcha:str
+    __json_append data modelType:str
+    __json_append data expire:int
+
+    debug "调用激活接口：$data"
+    result=$(curl --location -X POST "$regaddr/api/activate2" \
+        --header "Content-Type: application/json" \
+        --data "$data")
+
+    success=$(echo $result | jq -r '.success')
+
+    if [ "$success" = "true" ]; then
+        debug "激活接口调用成功：$result"
+        modelCode=$(echo $result | jq -r '.modelCode')
+        activationCode=$(echo $result | jq -r '.activationCode')
+        signature=$(echo $result | jq -r '.signature')
+        newExpire=$(echo $result | jq -r '.expire')
+        featureCode=$(echo $result | jq -r '.featureCode')
+        allowRenew=$(echo $result | jq -r '.allowRenew')
+        [[ -z "$newExpire" || "$newExpire" = "null" ]] && newExpire=0
+        [[ -z "$featureCode" || "$featureCode" = "null" ]] && featureCode=0
+         [[ -z "$allowRenew" || "$allowRenew" = "null" ]] && allowRenew=0
+
+        if [ "signature" = "11223344556677889900" ]; then
+            clear_activation "01"
+            debug "发现非法设备，清除激活信息并重启"
+            busybox reboot
+            exit 0
+        fi
+        echo "$allowRenew|$(date -d @$((newExpire/1000)) "+%Y-%m-%d")" > /etc/mnt/plugins/configs/.renew.info
+
+        newExpireHex=$(printf "%016x" "$newExpire")
+        newfeatureCodeHex=$(printf "%08x" "$featureCode")
+        isPro="\x00" && [ "$modelCode" = "${modelType}pro" ] && isPro="\x01"
+
+        if [ $ARCH = "x86" ]; then
+            printf $(echo ${activationCode:0:20} | sed 's/../\\x&/g') | dd of=/dev/${BOOTHDD}2 bs=$((0x8C)) seek=1 conv=notrunc >/dev/null 2>&1
+            printf $(echo "$magicCode" | sed 's/../\\x&/g') | dd of=/dev/${BOOTHDD}2 bs=$((0x2000)) seek=1 conv=notrunc >/dev/null 2>&1
+            printf $isPro | dd of=/dev/${BOOTHDD}2 bs=$((0x2007)) seek=1 conv=notrunc >/dev/null 2>&1
+            printf "$signature" | base64 -d | dd of=/dev/${BOOTHDD}2 bs=$((0x2008)) seek=1 conv=notrunc >/dev/null 2>&1
+            printf $(echo "$newExpireHex" | sed 's/../\\x&/g') | dd of=/dev/${BOOTHDD}2 bs=$((0x2008 + 256)) seek=1 conv=notrunc >/dev/null 2>&1
+            printf $(echo "$newfeatureCodeHex" | sed 's/../\\x&/g') | dd of=/dev/${BOOTHDD}2 bs=$((0x2008 + 256 + 8)) seek=1 conv=notrunc >/dev/null 2>&1
+        else
+            local mtd_block="/dev/mtdblock$(grep 'Factory' /proc/mtd | cut -d ':' -f 1 | tr -cd '0-9')"
+            printf $(echo ${activationCode:0:20} | sed 's/../\\x&/g') | dd of=$mtd_block bs=$((0x8C + $EMBED_FACTORY_PART_OFFSET)) seek=1 conv=notrunc >/dev/null 2>&1
+            printf $(echo "$magicCode" | sed 's/../\\x&/g') | dd of=$mtd_block bs=$((0x2000 + $EMBED_FACTORY_PART_OFFSET)) seek=1 conv=notrunc >/dev/null 2>&1
+            printf $isPro | dd of=$mtd_block bs=$((0x2007 + $EMBED_FACTORY_PART_OFFSET)) seek=1 conv=notrunc >/dev/null 2>&1
+            printf "$signature" | base64 -d | dd of=$mtd_block bs=$((0x2008 + $EMBED_FACTORY_PART_OFFSET))  seek=1 conv=notrunc >/dev/null 2>&1
+            printf $(echo "$newExpireHex" | sed 's/../\\x&/g') | dd of=$mtd_block bs=$((0x2008 + 256 + $EMBED_FACTORY_PART_OFFSET)) seek=1 conv=notrunc >/dev/null 2>&1
+            printf $(echo "$newfeatureCodeHex" | sed 's/../\\x&/g') | dd of=$mtd_block bs=$((0x2008 + 256 + 8 + $EMBED_FACTORY_PART_OFFSET)) seek=1 conv=notrunc >/dev/null 2>&1
+        fi
+
+        rm -f /tmp/.__inactive
+        debug "激活成功！Captcha:$captcha"
+        echo "激活成功！"
+        return 0
+    else
+        message=$(echo $result | jq -r '.message')
+        debug "激活接口调用异常:$message"
+        echo "$message"
+        return 1
+    fi
+}
+
+# 检查是否有签名存在，没有则尝试获取（兼容旧版本的已激活设备）
+try_get_signature() { 
+
+    chkCode=$(hexdump -v -s $((0x2000 + $EMBED_FACTORY_PART_OFFSET)) -n 7 -e '1/1 "%02X"' $eep_mtd)
+
+    if [ "$chkCode" != "$magicCode" ]; then
+        debug "未发现签名信息，尝试获取..."
+        for i in {1..3}; do
+            registe
+            if [ $? -eq 0 ]; then
+                debug "获取签名信息成功！"
+                return 0
+            fi
+        done
+        touch /tmp/.__inactive
+        return 1
+    else
+        debug "签名信息存在，无需联网获取!"
+        return 0
+    fi
+}
+
+# 如果激活签名已到刷新时间则联网刷新取得延期
+try_renew_signature() { 
+
+    expire_hex=$(hexdump -v -s $((0x2008 + 256 + $EMBED_FACTORY_PART_OFFSET)) -n 8 -e '1/1 "%02x"' $eep_mtd)
+    expire_time=$((16#$expire_hex))
+    current_time=$(($(date +%s)*1000))
+    renew_time=$((($expire_time) - 5*24*3600*1000)) # 过期时间默认授权10天，到期前5天开始刷新授权
+    debug "开始检查激活授权是否即将到期..."
+    debug " 1、当前时间：$(date -d @$((current_time/1000)) "+%Y-%m-%d %H:%M:%S")"
+    debug " 2、过期时间：$(date -d @$((expire_time/1000)) "+%Y-%m-%d %H:%M:%S")"
+    debug " 3、刷新时间：$(date -d @$((renew_time/1000)) "+%Y-%m-%d %H:%M:%S")"
+
+    if [ "$current_time" -gt "$renew_time" ]; then
+        debug "激活授权即将过期，尝试更新授权证书..."
+        registe
+        if [ "$?" != "0" ]; then
+            debug "更新激活授权证书失败！"
+            return 1
+        else
+            debug "更新激活授权证书成功！"
+            return 0
+        fi
+    else
+        debug "激活授权未过期，无需更新授权证书！"
+    fi
+    return 0
+}
+
+decrypt() {
+
+    input=$1
+    output=$2
+    type=$3
+
+    if [ "$type" = "-i" ]; then
+        openssl aes-128-cbc -in $input -out $output -k $INN_PLUGIN_ENC_KEY -d
+        ret=$?
+    elif [ "$type" = "-f" ]; then
+        openssl aes-128-cbc -in $input -out $output -k $FIRMWARE_ENC_KEY -d
+        ret=$?
+    else
+        verify_plugin ||  return 1
+        verify_signature ||  return 2
+        verify_expire ||  return 3
+        openssl aes-128-cbc -in $input -out $output -k $PLUGIN_ENC_KEY -d
+        ret=$?
+    fi
+
+    if [ $ret -ne 0 ]; then
+        debug "解密失败！$input"
+        return 4
+    else
+        return 0
+    fi
+}
+
+verify_feature() {
+    featureId=$1
+    verify_signature ||  return 1
+    config_hex=0x$(hexdump -v -s $((0x2008 + 256 + 8 + $EMBED_FACTORY_PART_OFFSET)) -n 4 -e '1/1 "%02x"' $eep_mtd)
+    __verify_feature $config_hex $featureId
+    ret=$? && return $ret
+}
+
+verify_plugin() {
+
+    featureId=${1:-0}
+    retValue=$(verify_activation)
+    ret=$?
+
+
+    if [[ "$ARCH" != "x86" && "$retValue" != "PRO" ]]; then
+        return 1
+    fi
+
+    if [[ "$ARCH" = "x86" && "$ret" != "0" ]]; then
+        return 1
+    fi
+
+    if [ "$featureId" = "0" ]; then
+        return 0
+    fi
+
+    verify_feature $featureId
+    if [[ "$?" != "0" ]]; then
+        return 1
+    else
+        return 0
+    fi
+}
+
+show_admessage() {
+    admessage="" 
+    regaddr=$(curl -s "https://doh.pub/dns-query?name=${REG_SERVER}&type=TXT" | jq -r '.Answer[].data' | sed -E 's/"//g')		
+    if [ -z "$regaddr" ]; then		
+        regaddr=$(curl -s "https://dns.alidns.com/resolve?name=${REG_SERVER}&type=TXT" | jq -r '.Answer[].data' | sed -E 's/"//g')		
+    fi		
+    if [ -n "$regaddr" ]; then		
+        admessage="$(curl -s $regaddr/api/admesg | jq -r '.message' | sed -E 's/"//g')"		
+    fi		
+
+    if [ -z "$admessage" ]; then 		
+        admessage="如需激活可联系闲鱼号：金陵巨蟹座佩奇" 
+    fi
+    echo $admessage
+    return 0
+}
+
+# 解析二进制编码的功能配置值
+__verify_feature() {
+    local config_hex=$1       # 配置值（可以是0x开头的十六进制或十进制）
+    local feature_id=$2       # 功能编号（配置值转化为二进制后判断对应位置是否为1，从0开始）
+
+    # 转换十六进制为十进制（如果输入是十六进制）
+    local config_dec=$((config_hex))
+
+    if (( (config_dec & (1 << feature_id)) != 0 )); then
+        return 0
+    else
+        return 1
+    fi
+}
+
+__json_append()
+{
+	if [ -n "$2" ];then
+		local __json
+		for param in ${@:2} ;do
+			case "${param//*:}" in
+			  int) __json+="${__json:+,}\\\"${param//:*}\\\":\${${param//:*}:-0}" ;;
+			  str) __json+="${__json:+,}\\\"${param//:*}\\\":\\\"\${${param//:*}//\\\"/\\\\\\\"}\\\"" ;;
+			 json) __json+="${__json:+,}\\\"${param//:*}\\\":\${${param//:*}:-\{\}}" ;;
+			 join) __json+="\${${param//:*}:+,\$${param//:*}}" ;;
+			esac
+		done
+		eval eval \$1="{\'\${$1:1:\${#$1}-2}\'\${$1:+,}\${__json}}"
+	fi
+}
+
+# 构造功能开关十六进制值
+# build_feature_config() {
+#     local features=("$@")  # 所有开启的功能位（bit位编号）
+#     local config=0
+
+#     for feature_id in "${features[@]}"; do
+#         (( config |= (1 << feature_id) ))
+#     done
+
+#     # 输出十六进制格式
+#     printf "0x%X\n" "$config"
+# }
+

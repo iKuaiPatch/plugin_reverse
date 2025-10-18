@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <script src="../../static/js/vue.js"></script>
+    <script src="../../static/js/plugin.js"></script>
+    <script src="../../static/js/element.js"></script>
+    <link rel="stylesheet" href="../../static/css/plugin.css" type="text/css">
+    <link rel="stylesheet" href="../../static/css/element.css">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+</head>
+<body>
+    <div id="app" class="wrapper row" v-loading="loading" :element-loading-text="loading_text">
+        <div class="box clearfix">
+            <div class="box_block">
+                <div class="clearfix margin_phone col-lg-11 col-lg-offset-1 ">
+                    <div  class="line_edit">
+                        <span  class="input_tit">定期开启云端：</span> 
+                        <div  class="input_group">
+                            <el-switch @change="set_autocloud" v-model="autocloud"  ></el-switch>
+                        </div>
+                    </div>
+                    <div class="line_edit" >
+                        <span class="input_tit">配置地址：</span> 
+                        <div class="input_group">
+                            <input type="text" class="inptText" v-model="configurl" > 
+                            <button type="button" @click="save_configUrl" class="btn btn_green rounded height26 w100">更新配置地址</button>
+                        </div>
+                    </div>
+                    <div class="h20"></div>
+                    <div class="readme col-lg-11 col-xs-12">
+                        <span class="note">帮助提示：</span>
+                        <div>1、根据远程配置文件定义每月预期执行次数，设为0则不执行。</div>
+                        <div>2、每天仅在凌晨1点-7点之间根据概率决定当天是否执行，长期统计上执行情况和远程设置匹配。</div>
+                        <div>3、<span class="colorR">关闭远控需要重启路由，重启后将保持云端开启一段时间后关闭云端并再次重启。</span></div>
+                        <div>4、云端保持开启时间由远程配置决定，若未配置则默认10分钟。示例配置如下：</div>
+                        <div>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;MONTHLY_EXEC_TIMES=1</div>
+                        <div>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;TURNON_MAX_DELAY=21600</div>
+                        <div>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;TURNOFF_DELAY=600</div>
+                    </div>
+                    <div class="h40"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+            
+    <script type="module">
+        var app = new Vue({
+            el: '#app',
+            data: { 
+                autocloud:false,
+                configurl : "",
+                loading:false,
+                loading_text: "", 
+            },
+            created() {
+                this.loadInitData();
+            },
+            methods: {
+                loadInitData() {
+                    self=this;
+                    var payload = {
+                        func_name: 'plugin_autotask',
+                        action: 'show',
+                        param: {
+                            TYPE: 'data'
+                        }
+                    };
+                    AjaxPost('/Action/call', payload, (response) => {
+                        if (response.Result % 10000 == 0 && response.Data) {
+                            const data = response.Data;
+
+                            if (data.autocloud === 1) {
+                                self.autocloud = true;
+                            } else {
+                                self.autocloud = false;
+                            }
+
+							self.token = data.token;
+							self.configurl = data.configurl;
+                        } else {
+                            self.$message.error(`初始化出错，${response.ErrMsg}`);
+                        }
+                    });
+                },
+                set_autocloud() {
+                    self=this;
+                    
+                    if ( ! self.configurl  ) {
+                        self.$message.error(`配置地址不能为空！`);
+                        self.autocloud = !self.autocloud;
+                        return;
+                    }
+
+                    var payload = {
+                        func_name: 'plugin_autotask',
+                        action: 'set_autocloud',
+                        param: {autocloud:this.autocloud}
+                    };
+                    AjaxPost('/Action/call', payload, (response) => {
+                        if (response.Result % 10000 == 0) {
+                            self.$message({message: `自动任务已${this.autocloud ? '启用' : '禁用'}！`,type: 'success'});
+                        } else {
+                            self.autocloud = !self.autocloud;
+                        }
+                    });
+                },
+				save_configUrl() {
+                    var self = this;
+                    self.loading = true;
+                    self.loading_text = "正在保存...";
+
+					var payload = {
+						func_name: 'plugin_autotask',
+						action: 'save_configUrl',
+						param: {
+							configurl: this.configurl
+						}
+					};
+					AjaxPost('/Action/call', payload, (response) => {
+						if (response && response.Result % 10000 == 0) {
+                            self.loading = false;
+                            self.$message.success('保存成功！');
+						} else {
+                            self.loading = false;
+							self.$message.error(`保存出错！${response.ErrMsg}`);
+						}
+					});
+				},
+            }
+        });
+    </script>
+</body>
+</html>

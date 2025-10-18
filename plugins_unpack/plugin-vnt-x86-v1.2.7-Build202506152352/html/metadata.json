@@ -1,0 +1,10 @@
+{
+    "name": "vnt",
+    "alias": "VNT客户端",
+    "manufacturer": "iKuai",
+    "version": "1.2.7",
+    "type": "external",
+    "description": "VNT是一个简便高效的异地组网、内网穿透工具。<br>详情访问：<a>https://rustvnt.com/</a>",
+    "releasenotes": "更新说明：<br>1、新增允许内网设备通过路由代理访问VNT网络功能。<br>2、本次更新为保留配置更新，可安全更新。",
+    "scripts":["service"]
+}

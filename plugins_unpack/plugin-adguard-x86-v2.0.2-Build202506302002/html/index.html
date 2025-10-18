@@ -1,0 +1,215 @@
+<html>
+    <head>
+        <script src="../../static/js/vue.js"></script>
+        <script src="../../static/js/plugin.js"></script>
+        <script src="../../static/js/element.js"></script>
+        <link rel="stylesheet" href="../../static/css/plugin.css" type="text/css">
+        <link rel="stylesheet" href="../../static/css/element.css">
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    </head>
+    <body>
+        <div id="app" class="wrapper row" v-loading="loading" :element-loading-text="loading_text">
+            <div class="box clearfix">
+                <div class="box_block">
+                    <div class="clearfix margin_phone col-lg-11 col-lg-offset-1 ">
+                        <form>
+                            <div class="h40"></div>
+                            <div  class="line_edit">
+                                <span  class="input_tit">开机自启动：</span> 
+                                <div  class="input_group">
+                                    <el-switch @change="set_auto_start" v-model="autostart"  ></el-switch>
+                                </div>
+                            </div>
+                            <div  class="line_edit">
+                                <span  class="input_tit">运行状态：</span> 
+                                <div  class="input_group">
+                                    <span :class="statusClass">{{ statusMessage }}
+                                </div>
+                            </div>
+                            <div  class="line_edit">
+                                <span  class="input_tit">DNS监听端口：</span> 
+                                <div  class="input_group">
+                                    <span class="colorG">{{ listenPort }}</span>
+                                    <span v-show="dnshijacking" class="colorR">（同时在53端口劫持所有DNS请求）</span>
+                                </div>
+                            </div>
+                            <div  class="line_edit">
+                                <span  class="input_tit">劫持DNS请求：</span> 
+                                <div  class="input_group">
+                                    
+                                    <el-switch @change="set_dns_hijacking" v-model="dnshijacking"  ></el-switch>
+                                    <!-- <span class="colorG">如本机安装了ShellClash插件请关闭此开关。 </span> -->
+                                    <!-- <p>如本机安装了ShellClash插件请关闭此开关。 </p> -->
+                                </div>
+                            </div>
+                            <div class="line_edit">
+                                <span class="input_tit">管理面板：</span> 
+                                <div class="input_group">
+                                    <a :href="managerUrl" target="_blank">{{ managerUrl }}</a>
+                                </div>
+                            </div>
+                            <div class="h20"></div>
+                            <div class="line_edit">
+                                <div class="input_group">
+                                    <button type="button" @click="start" :disabled="this.status === 2" class="btn btn_green btn_confirm">启动服务</button>
+                                    <button type="button" @click="stop"  :disabled="this.status === 2" class="btn btn_red btn_confirm margin-l-10">停止运行</button>
+                                </div>
+                            </div>
+                            <div class="h20"></div>
+                            <div class="readme col-lg-11 col-xs-12">
+                                <span class="note">帮助提示：</span>
+                                <div>1、管理页面登录默认用户名和密码为admin/password。</div>
+                                <div>2、同时运行小猫咪和AdGuardHome，默认情况下会自动将AD设为小猫咪的上游DNS。</div>
+                                <div>3、单独运行AdGuardHome需打开“劫持DNS请求”开关，开启后<span class="colorR">需关闭网络设置>DNS设置中的DNS加速服务</span>。</div>
+                                <div>4、开启“劫持DNS请求”后将其他客户机或路由器DNS设置为本机IP地址即可使AdGuardHome生效。</div>
+                            </div>
+                            <div class="h40"></div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </body>
+    <script type="module">
+        var app = new Vue({
+            el: '#app',
+            props: ["type"],
+            data: { 
+                autostart: false,
+                status: 1,
+                webPort:0,
+                listenPort:0,
+                dnshijacking:false,
+                statusMessage: "",
+                statusClass: "",
+                managerUrl: "",
+                loading: false,
+                loading_text: "正在加载...",
+                
+            },
+            mounted() {},
+            created() {
+                this.loadInitData();
+                
+            },
+            methods: {
+                loadInitData() {
+                    self=this;
+                    var payload = {
+                        func_name: 'plugin_adguard',
+                        action: 'show',
+                        param: {TYPE: 'data'}
+                    };
+                    AjaxPost('/Action/call', payload, (response) => {
+                        if (response.Result % 10000 == 0 && response.Data) {
+                            const data = response.Data;
+                            self.autostart = data.autostart === 1;
+                            self.status = data.status;
+                            self.webPort = data.webPort;
+                            self.listenPort = data.listenPort;
+                            self.dnshijacking = data.dnshijacking === 1;
+                            if (data.status === 1) {
+                                self.statusMessage = `正在运行, ${data.runningTime}`;
+                                self.statusClass = "colorG";
+                            } else if (data.status === 2 ) {
+                                self.statusMessage = "正在初始化，请等待...";
+                                self.statusClass = "colorR";
+                                setTimeout(() => {
+                                    self.loadInitData();
+                                }, 2000);
+                            } else {
+                                self.statusMessage = "已停止运行";
+                                self.statusClass = "colorR";
+                            }
+                            const host = window.location.hostname;
+                            self.managerUrl = `http://${window.location.hostname}:${data.webPort}`;
+                        }
+                    });
+                    
+                },
+                set_dns_hijacking(){
+                    var payload = {
+                        func_name: 'plugin_adguard',
+                        action: 'set_dns_hijacking',
+                        param: {dnshijacking:this.dnshijacking}
+                    };
+                    AjaxPost('/Action/call', payload, (response) => {
+                        if (response.Result % 10000 == 0) {
+                            this.$message({message: `DNS请求劫持已${this.dnshijacking ? '启用' : '禁用'}！`,type: 'success'});
+                        } else {
+                            self.$message.error(`操作失败！${response.ErrMsg}`);
+                            this.dnshijacking = !this.dnshijacking;
+                        }
+                    });
+
+                },
+                set_auto_start() {
+                    var payload = {
+                        func_name: 'plugin_adguard',
+                        action: 'set_auto_start',
+                        param: {autostart:this.autostart}
+                    };
+                    AjaxPost('/Action/call', payload, (response) => {
+                        if (response.Result % 10000 == 0) {
+                            this.$message({message: `AdGuardHome已${this.autostart ? '设为开机自启动' : '取消开机自启动'}！`,type: 'success'});
+                        } else {
+                            self.$message.error(`操作失败！${response.ErrMsg}`);
+                            this.autostart = !this.autostart;
+                        }
+                    });
+                },
+                
+                start(){
+                    self=this;
+                    
+                    self.loading = true;
+                    self.loading_text = "正在启动AdGuardHome...";
+
+                    var payload = {
+                        func_name: 'plugin_adguard',
+                        action: 'start',
+                        param: {}
+                    };
+                    AjaxPost('/Action/call', payload, (response) => {
+                        if (response.Result % 10000 == 0) {
+                            self.$message({message: `AdGuardHome已成功启动！`,type: 'success'});
+                            this.loadInitData();
+                        } else {
+                            self.$message.error(`AdGuardHome启动失败！${response.ErrMsg}`);
+                        }
+                        self.loading = false;
+                    });
+                },
+
+                stop() {
+                    self=this;
+                    self.loading = true;
+                    self.loading_text = "正在停止AdGuardHome...";
+
+                    var payload = {
+                        func_name: 'plugin_adguard',
+                        action: 'stop',
+                        param: {}
+                    };
+                    AjaxPost('/Action/call', payload, (response) => {
+                        if(response.Result % 10000 == 0) {
+                            self.$message({message: 'AdGuardHome已停止!',type: 'success'});
+                            self.loadInitData();
+                        }
+                        self.loading = false;
+                    });
+                },
+            }
+        });
+    </script>
+    <style scoped>
+        button:disabled {
+            color:#C0C4CC;
+            background-color:#EFEFEF;
+            cursor:not-allowed
+        }
+        .el-radio__label {
+            font-size: 12px;
+        }
+    </style>
+</html>

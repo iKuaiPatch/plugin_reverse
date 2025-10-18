@@ -1,0 +1,66 @@
+#!/usr/bin/luajit
+local ffi = require "ffi"
+local socket  = require "iklua.ffi.socket"
+
+local pathfile  = "/tmp/app_show"
+local iktimerc_file = "/dev/iktimerd"
+local timeout = 3
+local sqlcmd
+local socket_type
+local fd
+
+local sql_tab = {
+	["show"] = {".show;","app_show"}
+}
+
+function sock_read()
+	local buf      = ffi.new("char[4096]")
+	local nbuf     = ffi.sizeof(buf)
+	local exit_status = 0
+	local check_head = false
+	while 1 do
+		local data, err = socket.Read(fd, buf, nbuf)
+		if not data and err == "Resource temporarily unavailable" then
+			exit_status = 1
+			return "timeout"
+		elseif not data or #data == 0 then
+			return "empty"
+		else
+			if not check_head then
+				check_head = true
+				if data:sub(1,6) == "Error:" then
+					exit_status = 1
+				end
+			end
+			return data
+		end
+	end
+end
+
+
+function sock_client_init()
+	fd = socket.UNIXS()
+	local path
+	if fd < 0 then
+		print("create tcp failure")
+		os.exit(1)
+	end
+	if socket_type == "iktimerc" then
+		path = iktimerc_file
+	else
+		path = pathfile
+	end
+	local res = socket.Connect(fd, path)
+	assert(res == 0)
+
+	local res, err = socket.SetTimeout(fd, timeout)
+	assert(res == 0, err)
+	local res, err = socket.Send(fd, sqlcmd)
+	assert(res, err)
+
+end
+
+sqlcmd = sql_tab[arg[1]][1]
+socket_type = sql_tab[arg[1]][2]
+sock_client_init()
+print(sock_read())

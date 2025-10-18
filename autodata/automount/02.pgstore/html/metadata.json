@@ -1,0 +1,10 @@
+{
+    "name": "02.pgstore",
+    "alias": "插件市场",
+    "manufacturer": "iKuai",
+    "version": "2.0.5",
+    "type": "internal",
+    "compatibility":["all"],
+    "description": "插件市场是系统内置集成插件，支持其他插件的查看、安装、删除、更新等相关操作。",
+    "scripts":["service"]
+}

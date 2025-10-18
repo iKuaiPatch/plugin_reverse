@@ -1,0 +1,11 @@
+{
+    "name": "clash",
+    "alias": "小猫咪",
+    "manufacturer": "iKuai",
+    "version": "2.1.1",
+    "type": "external",
+    "upgradetype": "reinstall",
+    "description": "懂得都懂的ShellClash插件。<br>Github地址：<a>https://github.com/juewuy/ShellCrash</a>",
+    "releasenotes": "更新说明：<br>1、升级到最新1.9.2beta3版，同步升级内核为mihome1.19.3。<br>2、默认开启域名嗅探和禁用QUIC流量。",
+    "scripts":["service"]
+}

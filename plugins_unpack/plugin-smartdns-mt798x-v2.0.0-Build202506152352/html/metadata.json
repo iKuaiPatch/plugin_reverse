@@ -1,0 +1,9 @@
+{
+  "name": "smartdns",
+  "alias": "SmartDNS",
+  "manufacturer": "iKuai",
+  "version": "2.0.0",
+  "type": "external",
+  "description": "smartdns - 一个本地DNS服务器，获取最快的网站IP，获得最佳上网体验，支持DoH，DoT。<br>详情查看:<a>https://github.com/pymumu/smartdns</a>",
+  "scripts":["service"]
+}

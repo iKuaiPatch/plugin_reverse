@@ -1,0 +1,8 @@
+payload:
+  - DOMAIN-SUFFIX,google.com
+  - DOMAIN-SUFFIX,douyincdn.com   #抖音的内容分发域名，用于视频加载
+  - DOMAIN-SUFFIX,douyinvod.com   #抖音的视频点播服务器（VOD：Video on Demand）
+  - DOMAIN-SUFFIX,yximgs.com      #多个平台，快手、映客等（尤其是短视频类）使用的 CDN 资源域名，用于加载图像或视频。
+  - DOMAIN-SUFFIX,xhscdn.com      #小红书使用的内容分发 CDN 域名，用于加载图片、视频。
+  - DOMAIN-SUFFIX,hdslb.com       #B站用于视频内容分发的域名
+  - DOMAIN-SUFFIX,bilivideo.com   #B站的视频加速分发域名，常用于播放器的视频资源请求。

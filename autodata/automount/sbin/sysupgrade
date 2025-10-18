@@ -1,0 +1,508 @@
+#!/bin/bash
+. /etc/release
+FILE=$1
+RAM_ROOT=/tmp/ikroot
+
+check_exist_hdd()
+{
+	local res
+	res=$(fdisk -l |awk -v hdd="/dev/${BOOTHDD}1" '{ if($1==hdd) { print 1;exit} }')
+
+	if [ "$res" != "1" ];then
+		echo "Error: system disk (${BOOTHDD}) lose"
+		exit 1
+	fi
+}
+
+check_file_size()
+{
+	. /etc/partition
+	local binsize=$(ls -l $1 |awk '{print $5}')
+	local maxsize=$((Partition1 * 1024 *1024))
+
+	if [ "$binsize" != "$maxsize" ];then
+		echo "Error: firmware size wrong, $binsize != $maxsize"
+		return 1
+	fi
+
+	return 0
+}
+if [ ! -f /usr/bin/ldd ] ;then
+ldd() { LD_TRACE_LOADED_OBJECTS=1 $*; }
+fi
+
+libs() { ldd $* | awk '{print $3}'; }
+
+disable_watchdog() {
+	if [ -e /proc/sys/kernel/watchdog ];then
+		echo 0 > /proc/sys/kernel/watchdog
+	fi
+	for i in 1 2 3 4 5 ;do
+		killall -q watchdog && sleep 1 || break
+	done
+	
+	if killall -q watchdog ;then
+		echo 'Could not disable watchdog' >/dev/kmsg
+	        exit 1
+	fi
+}
+
+# <file1> <file2> ..... 
+install_file() {
+	for file in "$@"; do
+		dest="$RAM_ROOT/$file"
+		[ -f $file -a ! -f $dest ] && {
+			dir="$(dirname $dest)"
+			mkdir -p "$dir"
+			cp $file $dest
+		}
+	done
+}
+
+# <file> <file2> ... 
+install_bin() {
+	for src in "$@"; do {
+		real=$(readlink -f $src)
+		[ ! "$real" ] && continue
+
+		if [ "$real" != "$src" ];then
+			if [ ! -x "$RAM_ROOT/$real" ];then
+				files="$real $(libs $real)"
+				install_file $files
+			fi
+
+			dir="$(dirname $src)"
+			mkdir -p "$RAM_ROOT/$dir"
+			ln -sf $real $RAM_ROOT/$src
+		else
+			files="$src $(libs $src)"
+			install_file $files
+		fi
+	}; done
+}
+
+supivot() {
+	mount | grep "on $1 type" 2>&- 1>&- || mount -o bind $1 $1
+	mount -o noatime,move /proc $1/proc && \
+	pivot_root $1 $1$2 || {
+		umount -l $1 $1
+		return 1
+	}
+
+	mount -o noatime,move $2/sys /sys
+	mount -o noatime,move $2/dev /dev
+	mount -o noatime,move $2/tmp /tmp
+	mount -o noatime,move $2/overlay /overlay 2>&-
+	return 0
+}
+
+install_rootfs()
+{
+	rm -rf $RAM_ROOT
+	mkdir -p $RAM_ROOT
+
+	install_bin /bin/busybox \
+		/bin/ash /bin/sh /bin/bash /bin/mount /bin/umount \
+		/sbin/pivot_root /sbin/reboot /bin/sync /bin/dd   \
+		/bin/grep /bin/cp /bin/mv /usr/bin/md5sum "/usr/bin/[" \
+		/bin/vi /bin/ls /bin/cat /usr/bin/awk /usr/bin/hexdump \
+		/bin/sleep /usr/bin/printf /usr/bin/wc /bin/stat \
+		/bin/rm /usr/bin/free /usr/bin/awk /bin/ps /bin/ln /bin/mkdir \
+		/bin/tar /bin/df /bin/kill /usr/bin/killall /bin/mknod \
+		/sbin/mount_root /sbin/mtd /sbin/nandwrite /sbin/nanddump /sbin/flash_erase
+
+	install_file /etc/TZ /etc/fstab /etc/mtab /etc/profile \
+		/etc/protocols /etc/rc.common /etc/rc.local /etc/resolv.conf /etc/shells \
+		/etc/shadow /etc/services /etc/passwd /etc/hosts /etc/group /etc/dropbear
+
+	mkdir -p $RAM_ROOT/usr/sbin $RAM_ROOT/mnt $RAM_ROOT/proc $RAM_ROOT/sys $RAM_ROOT/dev $RAM_ROOT/tmp $RAM_ROOT/overlay $RAM_ROOT/old_root
+	cp /sbin/ubi* $RAM_ROOT/sbin
+	cp /usr/sbin/ubi* $RAM_ROOT/usr/sbin
+
+	if ! supivot $RAM_ROOT /old_root ;then
+		echo "supivot fail, want restart system"
+		reboot
+		exit 1
+	fi
+}
+
+kill_remaining()
+{
+	for i in 1 2 ;do
+		for stat in /proc/[0-9]*/stat; do
+			[ -f "$stat" ] || continue
+
+			local pid name state ppid rest
+			read pid name state ppid rest < $stat
+			name="${name#(}"; name="${name%)}"
+
+			local cmdline
+			read cmdline < /proc/$pid/cmdline
+
+			# Skip kernel threads
+			[ -n "$cmdline" ] || continue
+
+			case "$name" in
+				# Skip essential services
+				rc|*procd*|*ash*|*init*|*watchdog*|*ssh*|*dropbear*|*telnet*|*login*|*iksh*) : ;;
+
+				# Killable process
+				*)
+					if [ $pid -ne $$ ] && [ $ppid -ne $$ ]; then
+						echo -n "$name "
+						kill -9 $pid 2>/dev/null
+					fi
+				;;
+			esac
+		done
+		sleep 1
+	done
+	echo ""
+
+	for i in 1 2 3 ;do
+		sync
+		sleep 1
+	done
+
+	mount -o remount,ro /old_root
+	umount -l /old_root
+	grep /overlay /proc/mounts > /dev/null && {
+		mount -o noatime,remount,ro /overlay
+		umount -l /overlay
+	}
+
+	echo 3 > /proc/sys/vm/drop_caches
+	sleep 2
+}
+
+nand_write()
+{
+	local mtddev=$1 firm=$2
+
+	# is Kernel == 4.x
+	if [ "${KERNEL_PATCHVER//.*}" = "4" ];then
+		flash_erase -N /dev/$mtddev 0 0
+		nandwrite -a -m /dev/$mtddev $firm
+	elif [ "${KERNEL_PATCHVER//.*}" -ge "5" ];then
+		local max_try_count=5
+		local size=$(stat -c %s $firm)
+		if [ "${size:-0}" = 0 ];then
+			echo "nand_write: invalid size"
+			exit 1
+		fi
+
+		local orig_md5=$(md5sum $firm)
+		if [ ! "$orig_md5" ];then
+			echo "nand_write: md5sum $firm failure"
+			exit 1
+		fi
+
+		while [ $max_try_count -ge 1 ];do
+			flash_erase -N /dev/$mtddev 0 0
+			nandwrite -a -m /dev/$mtddev $firm
+
+			local mtd_md5=$(nanddump -q -a -l $size /dev/$mtddev |md5sum)
+			if [ "${mtd_md5:0:32}" = "${orig_md5:0:32}" ];then
+				echo -e "nand_write: write $firm to /dev/$mtddev is complete.\n\n"
+				return 0
+			else
+				echo -e "nand_write: write $firm to /dev/$mtddev check md5sum failure.\n\n"
+			fi
+			max_try_count=$((max_try_count-1))
+		done
+		
+		#After try many failures
+		flash_erase -N /dev/$mtddev 0 0
+		nandwrite -a -m /dev/$mtddev $firm
+	else
+		flash_erase -N /dev/$mtddev 0 0
+		nandwrite -N -a -m /dev/$mtddev $firm
+		nandwrite -N -a -m /dev/$mtddev $firm
+		nandwrite -N -a -m /dev/$mtddev $firm
+	fi
+}
+
+ubi_write()
+{
+	local firmware=$1
+	local magic=$(hexdump -n 4 -v -e '/1 "%02X"' $firmware)
+
+	# 55424923 == UBI#
+	if [ "$magic" = "55424923" ];then
+		local mtd_num="mtd$(cat /sys/class/ubi/ubi0/mtd_num)"
+		ubidetach /dev/ubi_ctrl -f -d 0
+		ubiformat /dev/$mtd_num -y -f $firmware
+	else
+		krsize=$(tar -xOf $firmware sysupgrade-tar/krsize)
+		if [ ! "krsize" ];then
+			echo "Cannot get krsize"
+			return 1
+		fi
+		kernel_size=${krsize// *}
+		rootfs_size=${krsize//* }
+
+		vols=$(cat /sys/class/ubi/ubi0/volumes_count)
+		for ((i=0;i<$vols;i++)) ;do
+			ubiblock -r /dev/ubi0_$i >/dev/null 2>&1
+			ubirmvol /dev/ubi0 -n $i  >/dev/null 2>&1
+		done
+
+		ubimkvol /dev/ubi0 -s $kernel_size -N kernel
+		ubimkvol /dev/ubi0 -s $rootfs_size -N rootfs
+
+		for i in 0 1 ;do
+			if [ ! -e /dev/ubi0_$i ];then
+				. /sys/class/ubi/ubi0_$i/uevent
+				mknod /dev/$DEVNAME c $MAJOR $MINOR
+			fi
+		done
+
+		tar -xOf $firmware sysupgrade-tar/kernel | ubiupdatevol /dev/ubi0_0 -s $kernel_size -
+		tar -xOf $firmware sysupgrade-tar/root   | ubiupdatevol /dev/ubi0_1 -s $rootfs_size -
+	fi
+}
+
+mtd_write()
+{
+	local firmware=$1 isubifs
+	rm -rf /old_root/overlay/*
+	mtd_firmware=$(get_mtd_num firmware)
+
+	if [ -e /dev/ubi0 ];then
+		local ubi_pname0=$(cat /sys/class/ubi/ubi0_0/name)
+		local ubi_pname1=$(cat /sys/class/ubi/ubi0_1/name)
+		if [ "$ubi_pname0" = "kernel" -a "$ubi_pname1" = "rootfs" -o "$ubi_pname1" = "ubi_rootfs" ] ;then
+			isubifs=1
+		fi
+	fi
+
+	if [ "$mtd_firmware" ];then
+		mtd_firmware=$(get_mtd_num firmware)
+		mtd_type=$(cat /sys/class/mtd/$mtd_firmware/type)
+
+		sleep 1
+		if [ "$mtd_type" = "nand" ];then
+			mtd_ikuai_firm=$(get_mtd_num ikuai_firm)
+			if [ "$mtd_ikuai_firm" ];then
+				nand_write $mtd_ikuai_firm $firmware
+			fi
+			if [ "$mtd_firmware" ];then
+				nand_write $mtd_firmware $firmware
+			fi
+
+			#No callbcak
+			reboot -f
+		else
+			if ! mtd -r write $firmware firmware ;then
+				mtd -r write $firmware firmware
+			fi
+		fi
+	elif [ "$isubifs" ];then
+		ubi_write $firmware
+		reboot -f
+	fi
+}
+
+
+get_mtd_num() {
+	awk '$NF=="\"'$1'\""{gsub(":","");gsub(":","");print $1;exit}' /proc/mtd
+}
+
+__check_part_isvfat()
+{
+	local ret=$(blkid $1 |awk '$0~/TYPE="vfat"/{print 0}')
+	return ${ret:-1}
+}
+
+__do_upgrade_hdd_vfat()
+{
+	. /etc/partition
+	mkdir /tmp/mnt_firmware /tmp/mnt_system
+	if ! mount /dev/${BOOTHDD}1 /tmp/mnt_system >/dev/null 2>&1 ;then
+		echo "Error: mount /dev/${BOOTHDD}1 fail"
+		return 1
+	fi
+
+	if ! mount /tmp/sysupgrade.bin.$$ /tmp/mnt_firmware >/dev/null 2>&1 ;then
+		echo "Error: mount sysupgrade firmware fail"
+		umount /tmp/mnt_system
+		rm -rf /tmp/mnt_firmware /tmp/mnt_system
+		return 1
+	fi
+	if ! rm -rf /tmp/mnt_system/boot ;then
+		echo "Error: remove dir /tmp/mnt_system/boot fail"
+		umount /tmp/mnt_system
+		umount /tmp/mnt_firmware
+		rm -rf /tmp/mnt_firmware /tmp/mnt_system
+		return 1
+	fi
+
+	if ! cp -rpf /tmp/mnt_firmware/boot /tmp/mnt_system ;then
+		echo "Error: copy /tmp/mnt_firmware/boot to /tmp/mnt_system fail"
+		umount /tmp/mnt_system
+		umount /tmp/mnt_firmware
+		rm -rf /tmp/mnt_firmware /tmp/mnt_system
+		return 1
+	fi
+
+    #INS-SYSUPGRADE-CHECK
+        local firmware_mounted=$([ -d /tmp/mnt_firmware ] && echo 1 || echo 0 )
+        local system_mounted=$([ -d /tmp/mnt_system ] && echo 1 || echo 0 )
+        if [ "$firmware_mounted" = "0" ]; then 
+            mkdir -p /tmp/mnt_firmware
+            if ! mount /tmp/sysupgrade.bin.$$ /tmp/mnt_firmware >/dev/null 2>&1 ;then
+                rm -rf /tmp/mnt_firmware
+                return 1
+            fi
+        fi
+
+        if [ "$system_mounted" = "0"  ]; then 
+            mkdir -p /tmp/mnt_system
+            if ! mount /dev/${BOOTHDD}1 /tmp/mnt_system >/dev/null 2>&1 ;then
+                return 1
+            fi
+        fi
+
+        local rootfs_md5=$(md5sum /tmp/mnt_firmware/boot/rootfs | awk -F " " '{print $1}')
+        local md5key=`echo -n $rootfs_md5"ikuaiwbd"|md5sum |awk -F " " '{print $1}'`
+
+        echo "#"$md5key >> /tmp/mnt_system/boot/grub/grub.cfg
+
+        if [ "$firmware_mounted" = "0" ]; then
+            unmount /tmp/mnt_firmware 
+            rm -rf /tmp/mnt_firmware 
+        fi
+
+        if [ "$system_mounted" = "0"  ]; then 
+            unmount /tmp/mnt_system 
+        fi
+        	if [ "$GRUB_MENU_ID" != "0" ];then
+		sed -i "s/set default=.*/set default=$GRUB_MENU_ID/" /tmp/mnt_system/boot/grub/grub.cfg  >/dev/null 2>&1
+	fi
+
+	umount /tmp/mnt_system
+	umount /tmp/mnt_firmware
+	rm -rf /tmp/mnt_firmware /tmp/mnt_system
+
+	echo "Successfully"
+	return 0
+}
+
+__do_upgrade_hdd_ext4()
+{
+	if errlog=$(dd if=/tmp/sysupgrade.bin.$$ of=/dev/${BOOTHDD}1 bs=1M 2>&1) ;then
+    #INS-SYSUPGRADE-CHECK
+        local firmware_mounted=$([ -d /tmp/mnt_firmware ] && echo 1 || echo 0 )
+        local system_mounted=$([ -d /tmp/mnt_system ] && echo 1 || echo 0 )
+        if [ "$firmware_mounted" = "0" ]; then 
+            mkdir -p /tmp/mnt_firmware
+            if ! mount /tmp/sysupgrade.bin.$$ /tmp/mnt_firmware >/dev/null 2>&1 ;then
+                rm -rf /tmp/mnt_firmware
+                return 1
+            fi
+        fi
+
+        if [ "$system_mounted" = "0"  ]; then 
+            mkdir -p /tmp/mnt_system
+            if ! mount /dev/${BOOTHDD}1 /tmp/mnt_system >/dev/null 2>&1 ;then
+                return 1
+            fi
+        fi
+
+        local rootfs_md5=$(md5sum /tmp/mnt_firmware/boot/rootfs | awk -F " " '{print $1}')
+        local md5key=`echo -n $rootfs_md5"ikuaiwbd"|md5sum |awk -F " " '{print $1}'`
+
+        echo "#"$md5key >> /tmp/mnt_system/boot/grub/grub.cfg
+
+        if [ "$firmware_mounted" = "0" ]; then
+            unmount /tmp/mnt_firmware 
+            rm -rf /tmp/mnt_firmware 
+        fi
+
+        if [ "$system_mounted" = "0"  ]; then 
+            unmount /tmp/mnt_system 
+        fi
+        		if [ "$ARCH" = "x86" -a "$GRUB_MENU_ID" != "0" ];then
+			mkdir -p /tmp/mnt_sysupgrade
+			if mount -t ext4 /dev/${BOOTHDD}1 /tmp/mnt_sysupgrade >/dev/null 2>&1 ;then
+				sed -i "s/set default=.*/set default=$GRUB_MENU_ID/" /tmp/mnt_sysupgrade/boot/grub/grub.cfg  >/dev/null 2>&1
+				umount /tmp/mnt_sysupgrade
+			fi
+		fi
+		if [ -f /etc/mnt/ik_core.ko ];then
+			echo "remove /etc/mnt/ik_core.ko"
+			rm -f /etc/mnt/ik_core.ko
+		fi
+		echo "Successfully"
+		return 0
+	else
+		echo "Error: firmware write to /dev/${BOOTHDD}1 fail"
+		return 1
+	fi
+}
+
+do_upgrade_hdd()
+{
+	check_exist_hdd
+	if errlog=$(gunzip < $FILE > /tmp/sysupgrade.bin.$$ 2>&1) ;then
+		if check_file_size /tmp/sysupgrade.bin.$$ ;then
+			if __check_part_isvfat /dev/${BOOTHDD}1 ;then
+				__do_upgrade_hdd_vfat
+			else
+				__do_upgrade_hdd_ext4
+			fi
+		fi
+
+		rm -f /tmp/sysupgrade.bin.$$
+		exit 0
+	else
+		echo "Error: gunzip fail"
+		exit 1
+	fi
+}
+
+do_upgrade_flash()
+{
+	local tty=$(tty)
+	local firmware_file
+	if [ "$FIRMWARE_SSL" = "true" ];then
+		if ! openssl aes-128-cbc -in $FILE -out $FILE.tmp -k "2016.ikuai8.com.!" -d  >/dev/null 2>/dev/null ;then
+			rm -f $FILE $FILE.tmp
+			echo "error: sysupgrade package check fail"
+			exit 1
+		fi
+		rm -f $FILE
+		firmware_file=$FILE.tmp
+	else
+		firmware_file=$FILE
+	fi
+
+	if [ -f /etc/mnt/ik_core.ko ];then
+		echo "remove /etc/mnt/ik_core.ko"
+		rm -f /etc/mnt/ik_core.ko
+	fi
+
+	[ -x /usr/ikuai/script/utils/led.sh ] && /usr/ikuai/script/utils/led.sh sysupgrade
+	[ -x  /usr/ikuai/script/wifi.sh ] &&  /usr/ikuai/script/wifi.sh sysupgrade
+	disable_watchdog
+	install_rootfs
+	kill_remaining
+
+
+	if [ "/dev/ttyS0" = "$tty" -o "/dev/ttyMSM0" = "$tty" ];then
+		mtd_write $firmware_file
+	else
+		echo "Starting write to mtd device."
+		mtd_write $firmware_file >/dev/null 2>&1 &
+	fi
+}
+
+if [ "$FILE" ];then
+	if [ "$BOOTGUIDE" = "flash" -o "$ARCH" = "mips" ];then
+		do_upgrade_flash
+	else
+		do_upgrade_hdd
+	fi
+fi
+
+exit ${exit_status:-0}

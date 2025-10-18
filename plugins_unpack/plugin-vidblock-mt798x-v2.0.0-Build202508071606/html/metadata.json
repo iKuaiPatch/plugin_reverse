@@ -1,0 +1,9 @@
+{
+    "name": "vidblock",
+    "alias": "视频拦截",
+    "manufacturer": "iKuai",
+    "version": "2.0.0",
+    "type": "external",
+    "description": "本插件可以实现屏蔽视频类网站或APP的视频流量而不影响点赞、评论、收藏等操作。",
+    "scripts":["service"]
+}

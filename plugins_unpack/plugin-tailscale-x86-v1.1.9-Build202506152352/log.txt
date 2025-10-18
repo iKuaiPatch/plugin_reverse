@@ -1,0 +1,18 @@
+/usr/sbin/tailscaled --port 41641 --state /etc/tailscale/tailscaled.state
+
+tailscale logout
+
+
+tailscale up --reset --accept-routes --advertise-routes=192.168.10.0/24,192.168.108.0/24
+tailscale up --accept-routes --advertise-routes=192.168.10.0/24,192.168.108.0/24 --accept-dns=false
+
+./tailscale status --json
+
+
+
+ "AuthURL": "https://login.tailscale.com/a/1e03751201a917",
+
+
+iptables -I FORWARD -i tailscale0 -j ACCEPT
+iptables -I FORWARD -o tailscale0 -j ACCEPT
+iptables -t nat -I POSTROUTING -o tailscale0 -j MASQUERADE

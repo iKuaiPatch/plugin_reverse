@@ -1,0 +1,9 @@
+{
+  "name": "socat",
+  "alias": "IPV6转发",
+  "manufacturer": "iKuai",
+  "version": "1.1.9",
+  "type": "external",
+  "description": "Socat (Socket CAT) 是一个功能强大的网络工具，它可以在不同类型的套接字（sockets）之间进行数据转发和代理。本插件可以实现将IPV6的端口转发到IPV4的端口。",
+  "scripts":["socat"]
+}

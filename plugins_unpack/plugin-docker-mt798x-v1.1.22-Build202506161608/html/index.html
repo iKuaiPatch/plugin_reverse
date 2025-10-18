@@ -1,0 +1,2850 @@
+<html>
+    <head>
+        <script src="../../static/js/vue.js"></script>
+        <script src="js/docter.js"></script>
+        <link rel="stylesheet" href="css/docker.css" type="text/css">
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    </head>
+    <body>
+        <div id="app" class="initstyle">
+            <div class="box clearfix" v-if="containerstatus">
+                <div class="h10"></div>
+                <span class="fl">{{ Language.Docker_service[LanguageIndex] }}</span>
+                <label class="fl rounded checkbox_power margin-5">
+                    <input type="checkbox" @change="dockerServeStart" value="" v-model="enabled">
+                    <div class="switch">
+                        <p class="ons">ON</p>
+                        <span class="rounded"><em></em></span>
+                        <p class="offs">OFF</p>
+                    </div>
+                </label>
+                <span class="fl colorG margin-l-10" v-if="serverstatus">{{ Language.Service_normal[LanguageIndex] }}</span>
+                <span class="fl colorR margin-l-10" v-if="!serverstatus">{{ Language.Service_notstarted[LanguageIndex] }}</span>
+                <a style="cursor: pointer;text-decoration: none;" class="fl margin-l-10"  @click="ServeSettings">{{ Language.Service_settings[LanguageIndex] }}</a>
+                <div class="h10"></div>
+                <div v-if="serverstatus">
+                    <div class="clearfix">
+                        <div class="menu seitchHF_radio">
+                            <label @click="dockerTab('dockerlist')" :class="{active: dockerStatus=='dockerlist'}" class="radio_hidden">
+                                <input name="dc1" checked="checked" type="radio"> {{ Language.Docker_list[LanguageIndex] }}
+                            </label>
+                            <label @click="dockerTab('image')" :class="{active: dockerStatus=='image'}" class="radio_hidden">
+                                <input name="dc1" type="radio">{{ Language.Image_management[LanguageIndex] }}
+                            </label>
+                            <label @click="dockerTab('interface')" :class="{active: dockerStatus=='interface'}" class="radio_hidden radio_l_border">
+                                <input name="dc1" type="radio">{{ Language.Interface_management[LanguageIndex] }}
+                            </label>
+                        </div>
+                    </div>
+                    <div v-if="dockerStatus == 'dockerlist'">
+                        <div v-if="dockerdetails == 'showList'">
+                            <!--内容宽-->
+                            <div class="wrapper row">
+                                <div class="table_box clearfix" >
+                                    <div class="table_refresh fr">
+                                        <a class="btn table_btn fr" @click="deleteTip('','','DeleteDockerlist')">{{ Language.delete[LanguageIndex] }}</a> 
+                                    </div>
+                                    <div class="table_refresh fr">
+                                        <a class="btn btn_green" @click="newTableRow()">{{ Language.Add[LanguageIndex] }}</a>
+                                    </div>
+                                    <table class="table table_w checkbox_checked"   width="100%" cellspacing="0" cellpadding="0" border="0">
+                                        <tbody >
+                                        <tr>
+                                            <th>{{ Language.name[LanguageIndex] }}</th>
+                                            <th>{{ Language.Mirror[LanguageIndex] }}</th>
+                                            <th>{{ Language.CPU_usage[LanguageIndex] }}</th>
+                                            <th>{{ Language.Memory_footprint[LanguageIndex] }}</th>
+                                            <th>{{ Language.Network_Interface[LanguageIndex] }}</th>
+                                            <th>IP</th>
+                                            <!-- <th>{{ Language.Running_time[LanguageIndex] }}</th> -->
+                                            <th>{{ Language.Self_start[LanguageIndex] }}</th>
+                                            <th>{{ Language.status[LanguageIndex] }}</th>
+                                            <th>{{ Language.operating[LanguageIndex] }}</th>
+                                            <th class="td_check tc tm">
+                                                <label class="checkbox input_opera" >
+                                                    <input type="checkbox" value=""  id="check" class="chk_all" @click="dockerChecked()"/>
+                                                    <span></span>
+                                                </label>
+                                            </th>
+                                        </tr>
+                                        <tr v-for="(item,index) in dockerList">
+                                            <td>{{item.name}}</td>
+                                            <td>{{item.image}}</td>
+                                            <td>{{item.cpu_used}}</td>
+                                            <td>{{formatBytes(item.memused)}}/{{formatBytes(item.memory)}}</td>
+                                            <td>{{item.interface}}</td>
+                                            <td>{{item.ipaddr}}</td>
+                                            <!-- <td>{{item.status}}</td> -->
+                                            <td>{{item.auto_start  == 1? Language.open[LanguageIndex]:Language.close[LanguageIndex]}}</td>
+                                            <td>
+                                                <span v-if="item.state == 'running'" style="color:#59CBA0"> {{ Language.activated[LanguageIndex] }} </span>
+                                                <span v-if="item.state == 'exited'" style="color:#FE6F73"> {{ Language.terminated[LanguageIndex] }} </span>
+                                                <span v-if="item.state == 'created'">{{ Language.Created[LanguageIndex] }}</span>
+                                            </td>
+                                            <td>
+                                                <a v-if="item.state == 'running'" @click="ConsoleIump(item)"> {{ Language.Console[LanguageIndex] }} </a> 
+                                                <a v-if="item.state != 'running'" @click="enableContainer(item)"> {{ Language.Enable[LanguageIndex] }} </a>
+                                                <a v-if="item.state == 'running'" @click="disableContainer(item)"> {{ Language.Deactivate[LanguageIndex] }} </a> 
+                                                <a v-if="item.state != 'running'" @click="dockerSubmit(item)"> {{ Language.submit[LanguageIndex] }} </a> 
+                                                <a @click="containerEdit(item)"> {{ Language.Update[LanguageIndex] }} </a> 
+                                                <a  @click="dockerLog(item)"> {{ Language.Log[LanguageIndex] }} </a> 
+                                                <a v-if="item.state != 'running'" @click="deleteTip(item,index,'DeleteDockerlist')"> {{ Language.delete[LanguageIndex] }} </a> 
+                                            </td>
+                                            <td class="tc tm">
+                                                <label class="checkbox input_opera">
+                                                    <input type="checkbox" value="" name="user" class="chk_list" @click="dockerSinglechoice(item,index)"/>
+                                                    <span></span>
+                                                </label>
+                                            </td>
+                                        </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <div class="h20"></div>
+                                <div class="readme">
+                                    <span class="note">{{ Language.Help_tip[LanguageIndex] }}：</span>
+                                    <div>{{ Language.Help_content[LanguageIndex] }}</div>
+                                </div>
+                            </div>
+                            <!--内容宽-end-->  
+                        </div>
+                    </div>
+                    <div v-if="dockerStatus == 'image'">
+                        <div class="wrapper row" v-if="imageShow">
+                            <div class="table_box clearfix" >
+                                <div class="table_refresh fr">
+                                    <a class="btn" style="margin-bottom: 10px;" @click="deleteTip('','','deleteImage')">{{ Language.delete[LanguageIndex] }}</a>
+                                </div>
+                                <div class="table_refresh fr">
+                                    <a class="btn btn_green" style="margin-bottom: 10px;" @click="uploadFileDialog">{{ Language.Add[LanguageIndex] }}</a>
+                                </div>
+                                <table class="table table_w checkbox_checked"   width="100%" cellspacing="0" cellpadding="0" border="0">
+                                    <tbody >
+                                        <tr>
+                                            <th>{{ Language.Image_name[LanguageIndex] }}</th>
+                                            <th>{{ Language.Image_size[LanguageIndex] }}</th>
+                                            <th>{{ Language.Change_time[LanguageIndex] }}</th>
+                                            <th>{{ Language.operating[LanguageIndex] }}</th>
+                                            <th class="td_check tc tm">
+                                                <label class="checkbox input_opera" >
+                                                    <input type="checkbox" value=""  id="check" class="chk_all" @click="dockerChecked()"/>
+                                                    <span></span>
+                                                </label>
+                                            </th>
+                                        </tr>
+                                        <tr v-for="(item,index) in ImageManagementList">
+                                            <td>{{item.name}}</td>
+                                            <td>{{item.size}}</td>
+                                            <td>{{item.create}}</td>
+                                            <td> 
+                                                <a  @click="deleteTip(item,index,'deleteImage')"> {{ Language.delete[LanguageIndex] }} </a> 
+                                                <a  @click="exportMirror(item)"> {{ Language.Export[LanguageIndex] }} </a> 
+                                                <a  @click="detailRow(item)"> {{ Language.Details[LanguageIndex] }} </a> 
+                                            </td>
+                                            <td class="tc tm">
+                                                <label class="checkbox input_opera">
+                                                    <input type="checkbox" value="" name="user" class="chk_list" @click="dockerSinglechoice(item,index)"/>
+                                                    <span></span>
+                                                </label>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="h20"></div>
+                            <div class="readme">
+                                <span class="note">{{ Language.Help_tip[LanguageIndex] }}：</span>
+                                <!-- <div>{{ Language.tip12[LanguageIndex] }}.</div> -->
+                                <div>
+                                    {{ Language.tip13[LanguageIndex] }}
+                                    <a :href="bindYunUrl" target="_blank">{{ Language.Goto_binding[LanguageIndex] }}</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div v-if="dockerStatus == 'interface'">
+                        <div class="wrapper row">
+                            <div class="table_box clearfix" >
+                                <div class="table_refresh fr">
+                                    <a class="btn btn_green" style="margin-bottom: 10px;" @click="InterfaceAdd">{{ Language.Add[LanguageIndex] }}</a>
+                                </div>
+                                    <table class="table table_w checkbox_checked"   width="100%" cellspacing="0" cellpadding="0" border="0">
+                                        <tbody >
+                                            <tr>
+                                                <th>{{ Language.Interface_name[LanguageIndex] }}</th>
+                                                <th>{{ Language.network_segment[LanguageIndex] }}</th>
+                                                <th>{{ Language.Gateway[LanguageIndex] }}</th>
+                                                <th>{{ Language.operating[LanguageIndex] }}</th>
+                                            </tr>
+                                            <tr v-for="(item,index) in InterfaceManagementList">
+                                                <td><input type="text" v-model="item.name" disabled="true" style='width:100%;background-color:transparent;border:1px solid;border-color:transparent;'></td>
+                                                <td><input type="text" v-model="item.subnet" disabled="true" style='width:100%;background-color:transparent;border:1px solid;border-color:transparent;'></td>
+                                                <td><input type="text" v-model="item.gateway" disabled="true" style='width:100%;background-color:transparent;border:1px solid;border-color:transparent;'></td>
+                                                <td>
+                                                    <span>
+                                                        <a @click="dockerEdit(item,index)">{{ Language.edit[LanguageIndex] }}</a> 
+                                                        <a @click="deleteTip(item,index,'deleteInterface')">{{ Language.delete[LanguageIndex] }}</a>
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                            </div>
+                            <div class="h20"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- 添加弹窗 -->
+            <div  v-show="addmirrorstatus">
+                <div class="jqmOverlay" style="height: 100%; width: 100%; position: fixed; left: 0px; top: 0px; z-index: 2999; opacity: 0.5;"></div>
+                <div class="jqmWindow showdiv400">
+                    <div class="jqmWindowTit">
+                        <p class="fl">{{ Language.Set_path[LanguageIndex] }}</p>
+                    </div>
+                    <div class="jqmWindow_box" style="padding:30px 85px;font-size: 14px;">                   
+                        {{ Language.tip10[LanguageIndex] }}  
+                        <div class="h20"></div>
+                    </div>
+                    <div class="jqmWindow_foot tc" style="border:0">
+                        <button @click="addMirrorConfirm" class="btn btn_green btn_confirm margin-l-10" type="button">
+                            {{ Language.Goto_settings[LanguageIndex] }}
+                        </button>
+                        <button @click="addmirrorstatus=!addmirrorstatus" class="btn btn_cancel margin-l-10" type="button">
+                            {{ Language.cancel[LanguageIndex] }}
+                        </button>
+                    </div>
+                </div>
+            </div> 
+            <!-- 镜像详情 -->
+            <div class="wrapper row" v-if="!imageShow">
+                <div id="detailImage" style="white-space: pre;">{{josnData}}</div>
+            </div>
+            <!-- docker添加 -->
+            <div  v-if="dockerdetails == 'details'">
+                <div  class="switch row"> 
+                    <div class="h20"></div>
+                    <div class="h20"></div>
+                    <form @submit.prevent="saveForm">
+                        <div class="wrapper row">
+                            <div class="box clearfix">
+                                <div class="margin_phone clearfix col-lg-11 col-lg-offset-1">
+                                    <div class="box_block">
+                                        <div class="clearfix margin_phone">
+                                            <div class="line_edit">
+                                                <span class="input_tit">{{ Language.Container_name[LanguageIndex] }}：</span>
+                                                <div class="input_group">
+                                                    <input class="inptText" v-model="dform.name" name="name" type="text" 
+                                                    @blur="mirrornamespecial = !filterSpecialChar3Validator(dform.name),
+                                                    mirrornamestrbetween = !strLenBetweenValidator(dform.name,[1,64])
+                                                    " :style="{border:mirrornamespecial || mirrornamestrbetween ? '1px solid red':''}"
+                                                    :disabled="dockereditstatus">
+                                                    <em>*</em>
+                                                </div>
+                                                <div class="input_P">
+                                                    <div class="input_P">
+                                                        <p class="error_tip" v-if="mirrornamespecial">{{ Language.tip[LanguageIndex] }}</p>
+                                                        <p class="error_tip" v-if="mirrornamestrbetween">{{ Language.tip2[LanguageIndex] }}</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <!-- <div class="line_edit">
+                                                <span class="input_tit">{{ Language.CPU_usage[LanguageIndex] }}：</span>
+                                                <div class="input_group">
+                                                    <input class="inptText" v-model="dform.cpuused" name="cpuused"  type="text" autocomplete="off"
+                                                    @blur="cpuusagebetween = betweenValidator(dform.cpuused,[1,100])">
+                                                    <em>*</em>
+                                                    <span class="remark margin-l-10">{{ Language.tip3[LanguageIndex] }}</span>
+                                                </div>
+                                                <div class="input_P">
+                                                    <p class="error_tip" v-if="cpuusagebetween">{{ Language.tip4[LanguageIndex] }}</p>
+                                                </div>
+                                            </div> -->
+                                            <div class="line_edit">
+                                                <span class="input_tit">{{ Language.Memory_footprint[LanguageIndex] }}：</span>
+                                                <div class="input_group">
+                                                    <input class="inptText" v-model="dform.memory" name="memory" type="text" autocomplete="off" 
+                                                    @blur="memusagebetween = betweenValidator(dform.memory,[64, maxNum])"
+                                                    :style="{border:memusagebetween ? '1px solid red':''}">
+                                                    <em>*</em>
+                                                    <span class="remark margin-l-10">{{ Language.tip5[LanguageIndex] }}</span>
+                                                </div>
+                                                <div class="input_P">
+                                                    <p class="error_tip" v-if="memusagebetween">{{ Language.tip6[LanguageIndex] }}{{maxNum}}{{ Language.tip7[LanguageIndex] }}.</p>
+                                                    <!-- <p class="error_tip" v-if="memusagebetween && maxNum < 64">{{ Language.tiop43[LanguageIndex] }}.</p> -->
+                                                </div>
+                                            </div>
+                                            <div class="line_edit">
+                                                <span class="input_tit">{{ Language.Select_imagefile[LanguageIndex] }}：</span>
+                                                <div class="input_group">
+                                                    <select class="selects" v-model="dform.image" name="image" @change="imageValidate = RequiredValidator(dform.image)" :style="{border:imageValidate ? '1px solid red':''}" :disabled="dockereditstatus">
+                                                        <option v-for="item in ImageList" :value="item">{{item}}</option>
+                                                    </select>
+                                                    <em>*</em>
+                                                    <div class="input_P">
+                                                        <p class="error_tip" v-if="imageValidate">{{ Language.Select_imagefile[LanguageIndex] }} {{ Language.required[LanguageIndex] }}</p>
+                                                    </div>
+                                                    <!-- <div class="input_P">
+                                                        <p class="error_tip" v-if="errors.has('image')">{{ errors.first('image') }}</p>
+                                                    </div> -->
+                                                    <!-- <button class="btn margin-l-10" type="button" @click="JumpImagemanagement">
+                                                        {{$t('service.docker-content.image_management')}}
+                                                    </button> -->
+                                                </div>
+                                            </div>
+                                            <!-- <div class="line_edit">
+                                                <span class="input_tit">{{ Language.Network_mode[LanguageIndex] }}：</span>
+                                                <div class="input_group">
+                                                    <select class="selects" v-model="dform.networkmode">
+                                                        <option value="bridge">{{ Language.bridging[LanguageIndex] }}</option>
+                                                        <option value="host">{{ Language.Host[LanguageIndex] }}</option>
+                                                        <option value="selfdef">{{ Language.customize[LanguageIndex] }}</option>
+                                                    </select>
+                                                </div>
+                                            </div> -->
+                                            <div class="line_edit">
+                                                <span class="input_tit">{{ Language.Select_networkinterface[LanguageIndex] }}：</span>
+                                                <div class="input_group">
+                                                    <select class="selects" v-model="dform.interface"  @change="interfaceValidate = RequiredValidator(dform.interface);interfaceIP(dform.interface)"name="interface"
+                                                    :style="{border:interfaceValidate ? '1px solid red':''}">
+                                                        <option v-for="item in interfaceList" :value="item">{{item}}</option>
+                                                    </select>
+                                                    <em>*</em>
+                                                    <span class="remark margin-l-10">{{ Language.tip8[LanguageIndex] }}</span>
+                                                </div>
+                                                <div class="input_P">
+                                                    <p class="error_tip" v-if="interfaceValidate">{{ Language.Select_networkinterface[LanguageIndex] }} {{ Language.required[LanguageIndex] }}</p>
+                                                </div>
+                                            </div>
+                                            <div class="line_edit">
+                                                <span class="input_tit">{{ Language.IPv4[LanguageIndex] }}：</span>
+                                                <div class="input_group">
+                                                    <input class="inptText" v-model="dform.ipaddr" name="ipaddr" type="text" autocomplete="off"
+                                                    @blur="IPValdator = !IPorIPMaskValidator(dform.ipaddr);
+                                                    IPrangeValdator = !IPValdator && IPrangeValidator(dform.ipaddr,ipvalue);
+                                                    IPconflictValdator = !IPValdator && !IPrangeValdator && IPConflictValdator(dform.ipaddr,gateway)"
+                                                    :style="{border:IPValdator || IPrangeValdator || IPconflictValdator ? '1px solid red':''}">
+                                                    <span class="remark margin-l-10">{{ Language.Optional[LanguageIndex] }}</span>
+                                                </div>
+                                                <div class="input_P">
+                                                    <p class="error_tip" v-if="IPValdator">{{ Language.tip34[LanguageIndex] }}</p>
+                                                    <p class="error_tip" v-if="IPrangeValdator">{{ Language.tip35[LanguageIndex] }}</p>
+                                                    <p class="error_tip" v-if="IPconflictValdator">{{ Language.tip36[LanguageIndex] }}</p>
+                                                </div>
+                                            </div>
+                                            <div class="line_edit">
+                                                <span class="input_tit">{{ Language.IPv6[LanguageIndex] }}：</span>
+                                                <div class="input_group">
+                                                    <input class="inptText" v-model="dform.ip6addr" name="ip6addr" type="text" autocomplete="off"
+                                                    @blur="IPV6Validator = !IPV6GatewayValidator(dform.ip6addr,1)"
+                                                    :style="{border:IPV6Validator ? '1px solid red':''}">
+                                                    <span class="remark margin-l-10">{{ Language.Optional[LanguageIndex] }}</span>
+                                                </div>
+                                                <div class="input_P">
+                                                    <p class="error_tip" v-if="IPV6Validator">{{ Language.tip44[LanguageIndex] }}</p>
+                                                </div>
+                                            </div>
+                                            <div class="line_edit">
+                                                <div class="input_tit">{{ Language.Self_start[LanguageIndex] }}：</div>
+                                                <div class="input_group">
+                                                    <!--动画开关-->
+                                                    <!-- <d-switch v-model="dform.auto_start" :opt="{'on': 1, 'off': 0}"></d-switch> -->
+                                                    <!--动画开关-end-->
+                                                    
+                                                    <label class="checkbox " >
+                                                        <input type="checkbox" value="" v-model="dform.auto_start" :disabled="dockereditstatus"/>
+                                                        <span></span>
+                                                    </label>
+                                                </div>
+                                            </div>
+                                        </div> 
+                                    </div>
+                                </div>  
+                            </div>
+                            <div class="box clearfix">
+                                <div class="h5"></div>
+                                <div class="title_h4 clearfix title_hover">
+                                    <div @click="advancedSetting = !advancedSetting">
+                                        <h4>{{ Language.advanced_settings[LanguageIndex] }}</h4>
+                                        <em class="box_switch" :class="advancedSetting ? 'on' : 'off'"></em>
+                                    </div>
+                                    <div class="h5"></div>
+                                    <div class="box_block" v-show='advancedSetting'>
+                                        <div class="clearfix margin_phone col-lg-11 col-lg-offset-1">
+                                            <div class="h10"></div>
+                                            <div class="line_edit">
+                                                <span class="input_tit">{{ Language.Mount_directory[LanguageIndex] }}：</span>
+                                                <div class="input_group">
+                                                    <div class="w420 table_box">
+                                                        <div class="fr table_refresh">
+                                                            <a class="btn" @click="fileManagement" style="margin-bottom: 10px;" :style="{ 'pointer-events' : dockereditstatus ? 'none':'auto'}">{{ Language.File_management[LanguageIndex] }}</a>
+                                                        </div>
+                                                        <div class="fr table_refresh">
+                                                            <a class="btn btn_green" @click="addPortmapping('Mount_directory')" style="margin-bottom: 10px;" :style="{ 'pointer-events' : dockereditstatus ? 'none':'auto'}">{{ Language.Add[LanguageIndex] }}</a>
+                                                        </div>
+                                                        <table class="table table_w checkbox_checked"   width="100%" cellspacing="0" cellpadding="0" border="0">
+                                                            <tbody>
+                                                                <tr>
+                                                                    <th>{{ Language.Source_path[LanguageIndex] }}</th>
+                                                                    <th>{{ Language.Target_path[LanguageIndex] }}</th>
+                                                                    <th>{{ Language.operating[LanguageIndex] }}</th>
+                                                                </tr>
+                                                                <tr v-for="(item,index) in DirectoryList">
+                                                                    <td><input type="text"  v-model="item.source_path"  :disabled="item.id != Directoryid" :style="{'border': item.id != Directoryid ?'0px':''}"></td>
+                                                                    <td><input type="text"  v-model="item.target_path"  :disabled="item.id != Directoryid" :style="{'border': item.id != Directoryid ?'0px':''}"></td>
+                                                                    <td> 
+                                                                        <span v-if="item.id != Directoryid">
+                                                                            <a @click="portmappingEdit(item,'Mount_directory')" :style="{ 'pointer-events' : dockereditstatus ? 'none':'auto'}">{{ Language.edit[LanguageIndex] }}</a> 
+                                                                            <a @click="deleteRowinterface(item)" :style="{ 'pointer-events' : dockereditstatus ? 'none':'auto'}">{{ Language.delete[LanguageIndex] }}</a> 
+                                                                        </span>
+                                                                        <span v-if="item.id == Directoryid">
+                                                                            <a @click="portmappingConfirm(item,'Mount_directory')" :style="{ 'pointer-events' : dockereditstatus ? 'none':'auto'}">{{ Language.confirm[LanguageIndex] }}</a> 
+                                                                            <a @click="portmappingCancel(item,'Mount_directory')" :style="{ 'pointer-events' : dockereditstatus ? 'none':'auto'}">{{ Language.cancel[LanguageIndex] }}</a>
+                                                                        </span>
+                                                                    </td>
+                                                                </tr>
+                                                            </tbody>
+                                                        </table>
+                                                        <div class="h20"></div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="h10"></div>
+                                            <div class="line_edit">
+                                                <span class="input_tit">{{ Language.Environment_variable[LanguageIndex] }}：</span>
+                                                <div class="input_group">
+                                                    <div class="w420 table_box">
+                                                        <div class="fr table_refresh">
+                                                            <a class="btn btn_green" @click="addPortmapping('Environment_variable')" style="margin-bottom: 10px;" :style="{ 'pointer-events' : dockereditstatus ? 'none':'auto'}">{{ Language.Add[LanguageIndex] }}</a>
+                                                        </div>
+                                                        <table class="table table_w checkbox_checked"    width="100%" cellspacing="0" cellpadding="0" border="0">
+                                                            <tbody>
+                                                                <tr>
+                                                                    <th>{{ Language.variable_name[LanguageIndex] }}</th>
+                                                                    <th>{{ Language.Value[LanguageIndex] }}</th>
+                                                                    <th>{{ Language.operating[LanguageIndex] }}</th>
+                                                                </tr>
+                                                                <tr v-for="(item,index) in environmentVariable">
+                                                                    <td><input type="text"  v-model="item.variable_name" :style="{'border': item.id != environmentid ?'0px':''}" :disabled="item.id != environmentid"></td>
+                                                                    <td><input type="text"  v-model="item.variable_value" :style="{'border': item.id != environmentid ?'0px':''}" :disabled="item.id != environmentid"></td>
+                                                                    <td> 
+                                                                        <span v-if="item.id != environmentid">
+                                                                            <a @click="portmappingEdit(item,'Environment_variable')" :style="{ 'pointer-events' : dockereditstatus ? 'none':'auto'}">{{ Language.edit[LanguageIndex] }}</a> 
+                                                                            <a @click="deleteRowVariable(item)" :style="{ 'pointer-events' : dockereditstatus ? 'none':'auto'}">{{ Language.delete[LanguageIndex] }}</a> 
+                                                                        </span>
+                                                                        <span v-if="item.id == environmentid">
+                                                                            <a @click="portmappingConfirm(item,'Environment_variable')" :style="{ 'pointer-events' : dockereditstatus ? 'none':'auto'}">{{ Language.confirm[LanguageIndex] }}</a> 
+                                                                            <a @click="portmappingCancel(item,'Environment_variable')" :style="{ 'pointer-events' : dockereditstatus ? 'none':'auto'}">{{ Language.cancel[LanguageIndex] }}</a>
+                                                                        </span>
+                                                                    </td>
+                                                                </tr>
+                                                            </tbody>
+                                                        </table>
+                                                        <div class="h20"></div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="line_edit">
+                                                <span class="input_tit">{{ Language.Start_command[LanguageIndex] }}：</span>
+                                                <div class="input_group">
+                                                    <input class="inptText" v-model="dform.cmd" name="cmd" type="text" :disabled="dockereditstatus">
+                                                </div>
+                                                <!-- @blur="startcmdValidator = !DockerStartcmdValidator(dform.cmd)" :style="{border:startcmdValidator ? '1px solid red':''}"-->
+                                                <!-- <div class="input_P">
+                                                    <p class="error_tip" v-if="startcmdValidator">{{ Language.tip9[LanguageIndex] }}</p>
+                                                </div> -->
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>   
+                            <div class="h20"></div>
+                            <div class="box clearfix" style=" margin-top:0;">
+                                <div class="box_block">
+                                    <div class="clearfix margin_phone col-lg-11 col-lg-offset-1 ">
+                                        <div class="line_edit">
+                                            <div class="input_group">
+                                                <button type="submit" class="btn btn_green btn_confirm">
+                                                    {{ Language.save[LanguageIndex] }}
+                                                </button>
+                                                <button type="reset" class="btn btn_confirm" @click="closeDockeradd">
+                                                    {{ Language.cancel[LanguageIndex] }}
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>  
+                        </div>
+                    </form>
+                </div>
+            </div>
+            <!-- 提交弹窗 -->
+            <div v-if="Submitdialog">
+                <div class="jqmOverlay" style="height: 100%; width: 100%; position: fixed; left: 0px; top: 0px; z-index: 2999; opacity: 0.5;"></div>
+                <div class="jqmWindow showdiv600">
+                    <div class="jqmWindowTit">
+                        <p class="fl">{{ Language.Submit_mirror[LanguageIndex] }}</p>
+                    </div>
+                    <div class="jqmWindow_box" style="padding:30px 85px;">
+                        <div class="line_edit">
+                            <div class="input_tit">{{ Language.Image_name[LanguageIndex] }}：</div>
+                            <div class="input_group">
+                                <input class="inptText" type="text"  name="imageName" v-model="imageName"
+                                    @blur="mirrornamespecial = !filterSpecialChar3Validator(imageName),
+                                    mirrornamestrbetween = !strLenBetweenValidator(imageName,[1,64]),
+                                    imageName=imageName.replace(/[\u4e00-\u9fa5]/ig,'')"
+                                    :style="{border:mirrornamespecial || mirrornamestrbetween ? '1px solid red':''}">
+                                <em>*</em>
+                            </div>
+                            <div class="input_P">
+                                <p class="error_tip" v-if="mirrornamespecial">{{ Language.tip[LanguageIndex] }}</p>
+                                <p class="error_tip" v-if="mirrornamestrbetween">{{ Language.tip2[LanguageIndex] }}</p>
+                                <!-- <p class="error_tip" v-if="requiredVal">{{ Language.tip24[LanguageIndex] }}</p> -->
+                            </div>
+                            </br>
+                        </div>
+                        <div class="line_edit">
+                            <div class="input_tit">TAG：</div>
+                            <div class="input_group">
+                                <input class="inptText" type="text"  name="tag" v-model="tag" value="" @blur="tagmirrornamespecial = !filterSpecialChar3Validator(tag),
+                                tagmirrornamestrbetween = !strLenBetweenValidator(tag,[0,64]),tag=tag.replace(/[\u4e00-\u9fa5]/ig,'')"
+                                :style="{border:tagmirrornamespecial || tagmirrornamestrbetween ? '1px solid red':''}">
+                            </div>
+                            <div class="input_P">
+                                <p class="error_tip" v-if="tagmirrornamespecial">{{ Language.tip[LanguageIndex] }}</p>
+                                <p class="error_tip" v-if="tagmirrornamestrbetween">{{ Language.tip37[LanguageIndex] }}</p>
+                            </div>
+                        </div>
+                        <div class="h20"></div>
+                        <p class="remark">{{ Language.tip11[LanguageIndex] }}</p>
+                    </div>
+                    <div class="jqmWindow_foot tc" style="border:0">
+                        <button @click="submitImageConfirm" class="btn btn_green btn_confirm margin-l-10" type="button">
+                            {{ Language.confirm[LanguageIndex] }}
+                        </button>
+                        <button @click="closeSubmitdialog" class="btn btn_cancel margin-l-10" type="button">
+                            {{ Language.cancel[LanguageIndex] }}
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <!-- 镜像添加 -->
+            <div v-if="uploadfilestate">
+                <div class="h40"></div>
+                <div class="clearfix">
+                    <div class="box margin_phone clearfix">
+                        <div class="box_block">
+                            <div class="clearfix margin_phone col-lg-9 col-lg-offset-3 ">
+                                <div class="line_edit">
+                                    <div class="input_tit">{{ Language.Upload_method[LanguageIndex] }}：</div>
+                                    <div class="input_group">
+                                        <label class="radio margin-l-20">
+                                            <input value="1" name="1" class="block_type" type="radio" v-model="uploadMethod">
+                                            <span></span>{{ Language.Reference_mirror[LanguageIndex] }}
+                                        </label>
+                                        <label class="radio margin-l-20">
+                                            <input value="2" name="1" class="block_type" type="radio" v-model="uploadMethod">
+                                            <span></span>{{ Language.image_download[LanguageIndex] }}
+                                        </label>
+                                        <label class="radio margin-l-20">
+                                            <input value="3" name="1" class="block_type" type="radio" v-model="uploadMethod">
+                                            <span></span>{{ Language.custom_download[LanguageIndex] }}
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="line_edit" v-if="uploadMethod == '1'">
+                                    <div class="input_tit">{{ Language.Mirror_path[LanguageIndex] }}：</div>
+                                    <div class="input_group">
+                                        <div class="tl margin-r-5 inline_blcok" style="margin-bottom: 10px;">
+                                            <input v-model="uploadpath" type="text" name="" :placeholder= Language.tip15[LanguageIndex] class="inptText textfield rounded"/>
+                                        </div>
+                                        <button class="btn margin-l-10" type="button" @click="JumpFilemanagement">
+                                            {{ Language.File_management[LanguageIndex] }}
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="box clearfix" style=" margin-top:0;" v-if="uploadMethod == '1'">
+                                    <div class="box_block">
+                                        <div class="line_edit">
+                                            <div class="input_group">
+                                                <button @click="uploadFile" class="btn btn_green btn_confirm" type="button" >
+                                                    {{ Language.confirm[LanguageIndex] }}
+                                                </button>
+                                                <button @click="closeUpload"  class="btn btn_cancel margin-l-10" type="button" >
+                                                    {{ Language.cancel[LanguageIndex] }}
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div> 
+                                <div class="line_edit" v-if="uploadMethod == '3'">
+                                    <div class="input_tit">{{ Language.Image_name[LanguageIndex] }}：</div>
+                                    <div class="input_group">
+                                        <input class="inptText" type="text"  name="imageName" v-model="upload_method3_file" :placeholder= Language.tip14[LanguageIndex]
+                                        @blur="upload_method3_file=upload_method3_file.replace(/[\u4e00-\u9fa5]/ig,'')"
+                                        >
+                                        <em>*</em>
+                                    </div>
+                                </div>
+                                <div class="line_edit" v-if="uploadMethod == '3'">
+                                    <div class="input_tit">{{ Language.TAG_name[LanguageIndex] }}：</div>
+                                    <div class="input_group">
+                                        <div class="tl margin-r-5 inline_blcok" style="margin-bottom: 10px;">
+                                            <input v-model="upload_method3_tag" type="text" name="" :placeholder= Language.tip48[LanguageIndex] class="inptText textfield rounded"/>
+                                            <span class="remark"> {{ Language.tip49[LanguageIndex] }}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="box clearfix" style=" margin-top:0;" v-if="uploadMethod == '3'">
+                                    <div class="h20"></div>
+                                    <div class="box_block">
+                                        <div class="line_edit">
+                                            <div class="input_group">
+                                                <button @click="downloadDocker3()" class="btn btn_green btn_confirm" type="button" >
+                                                    {{ Language.download[LanguageIndex] }}
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div> 
+                                <div class="line_edit" v-if="uploadMethod == '2'">
+                                    <div class="input_tit">{{ Language.seach_image[LanguageIndex] }}：</div>
+                                    <div class="input_group">
+                                        <div class="tl margin-r-5 inline_blcok" style="margin-bottom: 10px;">
+                                            <input v-model="keywords" type="text" name="" :placeholder= Language.tip14[LanguageIndex]  class="inptText textfield rounded"/>
+                                        </div>
+                                        <button class="btn margin-l-10" type="button" @click="searchImage" v-if="!loadingstatus">
+                                            {{ Language.search[LanguageIndex] }}
+                                        </button>
+                                        <button class="btn margin-l-10" type="button" v-if="loadingstatus">
+                                            {{ Language.searching[LanguageIndex] }}<span class="dotting"></span>
+                                        </button>
+                                    </div>
+                                </div>  
+                            </div>
+                            <div class="row" v-if="uploadMethod == '2'">
+                                <div class="box clearfix">
+                                    <div class="h10"></div>
+                                    <div  class="title_h4"><h4 >{{ Language.search_results[LanguageIndex] }}</h4></div>
+                                    <div class="h10"></div>
+                                    <div class="table_box clearfix" >
+                                        <a href="#" @click="backBtn"> {{ Language.return[LanguageIndex] }} </a> <a href="#" @click="backBtn">| {{keywords}} </a>  <a style="text-decoration:none;">{{searchtablestatus?'': ' > '}}</a><a>{{searchtablestatus?'':downloadpage.name}}</a>
+                                        <div class="fr">
+                                            <span class="fl margin-r-10 colorT" style="line-height: 25px;">{{ Language.tip19[LanguageIndex] }}</span>
+                                            <!-- <button class="fr btn btn_blue">{{ Language.Mirro_settings[LanguageIndex] }}</button> -->
+                                        </div><div class="h10"></div>
+                                        <div v-if="searchtablestatus">    
+                                            <table class="table table_w checkbox_checked"   width="100%" cellspacing="0" cellpadding="0" border="0">
+                                                <tbody >
+                                                <tr>
+                                                    <th>{{ Language.Image_name[LanguageIndex] }}</th>
+                                                    <th>{{ Language.description[LanguageIndex] }}</th>
+                                                    <th>{{ Language.Attributes[LanguageIndex] }}</th>
+                                                    <th>{{ Language.Star_rating[LanguageIndex] }}</th>
+                                                    <th>{{ Language.operating[LanguageIndex] }}</th>
+                                                </tr>
+                                                <tr v-for="(item,index) in MirrorseachList">
+                                                    <td>{{item.name}}</td>
+                                                    <td>{{item.description}}</td>
+                                                    <td>{{item.is_official == true? Language.official[LanguageIndex]:Language.unofficial[LanguageIndex]}}</td>
+                                                    <td>{{item.star_count}}</td>
+                                                    <td>
+                                                        <a @click="downloadTip=true;upload_method2_tag='latest';upload_method2_file=item.name;"
+                                                            style="margin-right: 10px;">
+                                                            {{ Language.download[LanguageIndex] }}</a>
+                                                        <a @click="EnterDownload(item)">{{ Language.Enter_downloadpage[LanguageIndex] }}</a>
+                                                    </td>
+                                                </tr>
+                                                </tbody>
+                                            </table>
+                                            <div class="pager">
+                                                <div class="fl">
+                                                        {{ Language.Total[LanguageIndex] }} {{ MirrorlibraryList.length }} {{ Language.Article[LanguageIndex] }}  
+                                                        <!-- {{ Language.Current_display[LanguageIndex] }} {{ MirrorlibraryList.length > 0 ? '1-' + cur * seachPerPage: 0}} {{ Language.Article[LanguageIndex] }} -->
+                                                </div>
+                                                <div class="page_div fr">
+                                                    <div class="fl pager_select pager_divs">
+                                                        {{ Language.Per_page[LanguageIndex] }}
+                                                        <select class="selects" @change="changeseachPerPage" v-model="seachPerPage">
+                                                            <option value="10">10</option>
+                                                            <option value="20">20</option>
+                                                            <option value="50">50</option>
+                                                        </select>
+                                                        {{ Language.Article[LanguageIndex] }}
+                                                    </div>
+                                                    <a class="firstpage fl pager_divs"  @click="seachPage(1)"> << </a>
+                                                    <a class="fpage_l fl pager_divs" v-if="cur > 1" @click="seachback()"> < </a>
+                                                    <a class="fpage_l fl pager_divs" v-if="cur == 1"> < </a>
+                                                    <a class="page_a fl pager_divs" v-for="item in pagenum" :class="{'cur':item == cur}" @click="seachPage(item)">{{item}}</a>
+                                                    <a class="fpage_r fl pager_divs" v-if="cur != all" @click="seachnext()"> > </a>
+                                                    <a class="fpage_r fl pager_divs" v-if="cur == all"> > </a>
+                                                    <a class="lastpage fl pager_divs" @click="seachPage(all)"> >> </a>
+                
+                                                    <input type="text" class="num_pager fl" v-model="seachnum" :disabled="all <= 1"/>
+                                                    <p class="fl pager_l">/{{all}} {{ Language.page[LanguageIndex] }}</p>
+                                                    <input type="button" :value="Language.Jump[LanguageIndex]" class="jump_go" @click="seachJump" :disabled="all <= 1" />
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div v-if="!searchtablestatus">
+                                            <table class="table table_w checkbox_checked"   width="100%" cellspacing="0" cellpadding="0" border="0">
+                                                    <tbody >
+                                                    <tr>
+                                                        <th>TAG</th>
+                                                        <th>{{ Language.Check_code[LanguageIndex] }}</th>
+                                                        <th>{{ Language.System[LanguageIndex] }}</th>
+                                                        <th>{{ Language.File_size[LanguageIndex] }}</th>
+                                                        <th>{{ Language.operating[LanguageIndex] }}</th>
+                                                    </tr>
+                                                    <tr v-for="(item,index) in PluginDownloadList">
+                                                        <td>{{item.name}}</td>
+                                                        <td>
+                                                            <span v-for="w in item.images">
+                                                                <a>{{ w.digest ? w.digest.substring(0,12) : '' }}</a><br/>
+                                                            </span>
+                                                        </td>
+                                                        <td>
+                                                            <span v-for="t in item.images">
+                                                                {{t.os}}/{{t.architecture}}{{ t.features !=''? '/' + t.features:''}}<br/>
+                                                            </span>
+                                                        </td>
+                                                        <td>{{ formatBytes(item.full_size) }}</td>
+                                                        <td> 
+                                                            <a v-if="downloadStatus(item.images)" @click="downloadDocker(item,index)" class="imageId">{{Language.download[LanguageIndex]}}</a>
+                                                            <span v-if="!downloadStatus(item.images)" class="colorR">{{Language.tip20[LanguageIndex]}}</span>
+                                                        </td>
+                                                    </tr>
+                                                    </tbody>
+                                            </table>
+                                            <div class="tc colorT" style="width: 100%; margin: 20px 0;" v-if="tableLoading">{{Language.Loading[LanguageIndex]}}<span class="dotting"></span></div>
+                                            <div class="pager">
+                                                <div class="fl">
+                                                        {{ Language.Total[LanguageIndex] }} {{ totalpiece }} {{ Language.Article[LanguageIndex] }}  
+                                                        <!-- {{ Language.Current_display[LanguageIndex] }} {{ totalpiece > 0 ? '1-' + pagenow * rowsPerPage : 0}} {{ Language.Article[LanguageIndex] }} -->
+                                                </div>
+                                                <div class="page_div fr">
+                                                    <div class="fl pager_select pager_divs">
+                                                        {{ Language.Per_page[LanguageIndex] }}
+                                                        <select class="selects" @change="changeRowsPerPage" v-model="rowsPerPage">
+                                                            <option value="10">10</option>
+                                                            <option value="20">20</option>
+                                                            <option value="50">50</option>
+                                                        </select>
+                                                        {{ Language.Article[LanguageIndex] }}
+                                                    </div>
+                                                    <a class="firstpage fl pager_divs" @click="jumpPage(1)"> << </a>
+                                                    <a class="fpage_l fl pager_divs" v-if="pagenow > 1" @click="banckpage"> < </a>
+                                                    <a class="fpage_l fl pager_divs" v-if="pagenow == 1"> < </a>
+                                                    <a class="page_a fl pager_divs" v-for="w in indexs" :class="{'cur': w == pagenow}">
+                                                        <span @click="jumpPage(w)">{{ w }}</span>
+                                                    </a>
+                                                    <a class="fpage_r fl pager_divs" v-if="pagenow != totalPage" @click="nextpage"> > </a>
+                                                    <a class="fpage_r fl pager_divs" v-if="pagenow == totalPage"> > </a>
+                                                    <a class="lastpage fl pager_divs" @click="jumpPage(totalPage)"> >> </a>
+                
+                                                    <input type="text" class="num_pager fl" v-model="jumpNum" :disabled="totalPage <= 1"/>
+                                                    <p class="fl pager_l">/{{totalPage}} {{ Language.page[LanguageIndex] }}</p>
+                                                    <input type="button" :value="Language.Jump[LanguageIndex]" class="jump_go" @click="jumpGo()" :disabled="totalPage <= 1"/>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="h20"></div>
+                                    </div>
+                                    <div class="h20"></div>
+                                </div>
+                            </div>
+      
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- 服务设置 -->
+            <div v-if="Mirrosetstatus">
+                <div class="h40"></div>
+                <div class="h40"></div>
+                <div class="clearfix" >
+                    <div class="box margin_phone clearfix">
+                        <div class="box_block">
+                            <div class="clearfix margin_phone col-lg-9 col-lg-offset-3 ">
+                                <div class="line_edit">
+                                    <span class="input_tit">{{ Language.Storagepartition_settings[LanguageIndex] }}：</span>
+                                    <div class="input_group">
+                                        <select class="selects" v-model="storagePath">
+                                            <option v-for="item in PartitionmanagementList" :value="item.f_name">{{item.f_name}}</option>
+                                        </select>
+                                    </div>
+                                    <div class="input_P">
+                                        <p class="error_tip" v-if="requiredVal">{{ Language.tip24[LanguageIndex] }}</p>
+                                    </div>
+                                </div>
+                                <div class="line_edit">
+                                    <span class="input_tit">{{ Language.MirrorURL[LanguageIndex] }}：</span>
+                                    <div class="input_group">
+                                        <input class="inptText" v-model="mirrors" name="mirrors" :placeholder="Language.MirrorP[LanguageIndex]" type="text" autocomplete="off">
+                                    </div>
+                                </div>
+                                <div class="h20"></div>
+                                <div class="box clearfix" style=" margin-top:0;">
+                                    <div class="box_block">
+                                        <div class="clearfix margin_phone col-lg-11 ">
+                                            <div class="line_edit">
+                                                <div class="input_group">
+                                                    <button type="submit" class="btn btn_green btn_confirm" @click="setupConfirm">
+                                                        {{ Language.confirm[LanguageIndex] }}
+                                                    </button>
+                                                    <button type="reset" class="btn btn_confirm" @click="closeServiceset">
+                                                        {{ Language.cancel[LanguageIndex] }}
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="h40"></div>
+                            <div class="h40"></div>
+                            <div class="readme">
+                                <span class="note">{{ Language.Help_tip[LanguageIndex] }}：</span>
+                                <div>{{ Language.tip31[LanguageIndex] }}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- 导出弹框 -->
+            <div v-if="exportMirrorstatus">
+                <div class="jqmOverlay" style="height: 100%; width: 100%; position: fixed; left: 0px; top: 0px; z-index: 2999; opacity: 0.5;"></div>
+                <div class="jqmWindow showdiv600">
+                    <div class="jqmWindowTit">
+                        <p class="fl">{{ Language.Export_image[LanguageIndex] }}</p>
+                            <!-- <a class="jqmWindowClose jqmClose fr" title="关闭">×</a> -->
+                    </div>
+                    <div class="jqmWindow_box" style="padding:30px 85px;">
+                        <div class="line_edit">
+                            <div class="input_tit">{{ Language.Export_imagename[LanguageIndex] }}：</div>
+                            <div class="input_group">
+                                <input class="inptText" type="text"  name="mirrorname" v-model="mirrorname"
+                                    @blur="mirrornamespecial = !filterSpecialChar3Validator(mirrorname),
+                                    mirrornamestrbetween = !strLenBetweenValidator(mirrorname,[1,64])"
+                                    :style="{border:mirrornamespecial || mirrornamestrbetween ? '1px solid red':''}"
+                                >
+                                <em>*</em>
+                            </div>
+                            <div class="input_P">
+                                <p class="error_tip" v-if="mirrornamespecial">{{ Language.tip[LanguageIndex] }}</p>
+                                <p class="error_tip" v-if="mirrornamestrbetween">{{ Language.tip2[LanguageIndex] }}</p>
+                            </div>
+                            </br>
+                        </div>
+                        <div class="line_edit">
+                            <span class="input_tit">{{ Language.Select_storagepartition[LanguageIndex] }}：</span>
+                            <div class="input_group">
+                                <select class="selects" v-model="mirrorpath">
+                                    <option v-for="item in StoragepartitionList" :value="item.f_name">{{item.f_name}}</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="h20"></div>
+                        <p class="remark">{{ Language.tip18[LanguageIndex] }}</p>
+                    </div>
+                    <div class="jqmWindow_foot tc" style="border:0">
+                        <button @click="exportMirrorConfirm" class="btn btn_green btn_confirm margin-l-10" type="button">
+                            {{ Language.confirm[LanguageIndex] }}
+                        </button>
+                        <button @click="exportMirrorstatus=!exportMirrorstatus" class="btn btn_cancel margin-l-10" type="button">
+                            {{ Language.cancel[LanguageIndex] }}
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div v-if="setupPathTip">
+                <div class="jqmOverlay" style="height: 100%; width: 100%; position: fixed; left: 0px; top: 0px; z-index: 2999; opacity: 0.5;"></div>
+                <div class="jqmWindow rounded-box showdiv400 error_div" >
+                    <div class="jqmWindowTit">
+                        <p class="fl">{{ Language.prompt[LanguageIndex] }}</p>
+                    </div>
+                    <div class="jqmWindow_box" style=" overflow:hidden;">
+                        <div class="h20"></div>
+                        <div class="tc">
+                            <div class="info_detail" >{{ Language.tip23[LanguageIndex] }}</div>
+                            <div class="h20"></div>
+                            <input class="btn btn_green bnt_h32 jqmClose" @click="setupPathconfirm" type="button" :value= Language.confirm[LanguageIndex]>
+                            <input class="btn  bnt_h32 jqmClose" type="button" :value= Language.cancel[LanguageIndex]  @click="setupPathTip = !setupPathTip">
+                            <div class="h20"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div v-show="setupPathconfim">
+                <div class="jqmOverlay" style="height: 100%; width: 100%; position: fixed; left: 0px; top: 0px; z-index: 2999; opacity: 0.5;"></div>
+                <div  class="jqmWindow showdiv400">
+                    <div v-show="uploadConf.isUpload">
+                        <div class="jqmWindowTit">
+                            <p class="fl">{{ Language.Path_set[LanguageIndex] }}</p>
+                        </div>
+                        <div class="jqmWindow_box" style=" overflow:hidden; height:200px;">
+                            <p class="tc margin_b_15 margin-t-10"><span class="loading120"></span></p>
+                            <p class="tc">{{ Language.tip17[LanguageIndex] }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- 提示弹窗-->
+            <div v-show="messageNotice"> 
+                <div class="msgboxFade">
+                    <em :class="tipclassName"></em>
+                    <span class="vellipsis">{{Message}}</span>
+                    <a style=" float: revert;"  v-if="tiptype" @click="alert(Message)">详情</a>
+                </div>
+            </div>
+            <!-- 删除提示 -->
+            <div v-if="deletestatus">
+                <div class="jqmOverlay" style="height: 100%; width: 100%; position: fixed; left: 0px; top: 0px; z-index: 2999; opacity: 0.5;"></div>
+                <div class="jqmWindow rounded-box showdiv400 error_div" >
+                    <div class="jqmWindowTit">
+                        <p class="fl">{{ Language.prompt[LanguageIndex] }}</p>
+                    </div>
+                    <div class="jqmWindow_box" style=" overflow:hidden;">
+                        <div class="h20"></div>
+                        <div class="tc">
+                            <div class="info_detail" >{{ Language.deletetip1[LanguageIndex] }}</div>
+                            <div class="h20"></div>
+                            <input class="btn btn_green bnt_h32 jqmClose" @click="deleteConfirm" type="button" :value= Language.confirm[LanguageIndex]>
+                            <input class="btn  bnt_h32 jqmClose" type="button" :value= Language.cancel[LanguageIndex]  @click="deletestatus = !deletestatus">
+                            <div class="h20"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- 下载进度 -->
+            <div v-show="downloadstatus">
+                <div class="jqmOverlay" style="height: 100%; width: 100%; position: fixed; left: 0px; top: 0px; z-index: 2999; opacity: 0.5;"></div>
+                <div class="jqmWindow rounded-box showdiv500 error_div" id="downloadPopups">
+                    <div class="jqmWindowTit">
+                        <p class="fl">{{ Language.Download_progress[LanguageIndex] }}</p>
+                    </div>
+                    <div class="jqmWindow_box" >
+                        <div class="h20"></div>
+                        <div class="fl" id="scrollbar" style=" overflow-x: hidden; max-height: 170px; width: 100%;">
+                            <div class="clearfix" v-for="item in progressList">
+                                <p style="line-height: 20px; word-wrap: break-word; white-space: normal; word-break: break-all;"> {{item}}
+                                    <span class="dotting" v-if="item.indexOf('Downloading') >= 0"></span>
+                                    <span v-if="item.indexOf('Downloading') >= 0">{{percentageNum}}</span>
+                                </p>
+                            </div>
+                        </div>
+                            
+                        <div class="tc" style=" clear: both;" v-if="downloadSeccess">
+                            <div class="h20"></div>
+                            <input class="btn  bnt_h32 btn_green jqmClose" type="button" :value= Language.confirm[LanguageIndex]  @click="downloadstatus = false">
+                        </div>
+                        <div class="h20"></div>
+                    </div>
+                </div>
+            </div>
+            <!-- 镜像文件加载 -->
+            <div v-show="imageFilestatus">
+                <div class="jqmOverlay" style="height: 100%; width: 100%; position: fixed; left: 0px; top: 0px; z-index: 2999; opacity: 0.5;"></div>
+                <div class="jqmWindow rounded-box showdiv500 error_div" >
+                    <div class="jqmWindowTit">
+                        <p class="fl">{{ Language.prompt[LanguageIndex] }}</p>
+                    </div>
+                    <div class="jqmWindow_box" style="text-align: center">
+                        <div class="h20"></div>
+                        <span class="loading120 margin-l-20"></span>
+                        <div class="h20"></div>
+                        <p>{{ Language.tip33[LanguageIndex] }}</p>
+                    </div>
+                    <div class="h40"></div>
+                </div>
+            </div>
+            <!-- 日志 -->
+            <div v-if="dockerlogstatus">
+                <!--内容宽-->
+                <div class="wrapper row">
+                    <div class="table_box clearfix" >
+                        <table class="table table_w checkbox_checked"   width="100%" cellspacing="0" cellpadding="0" border="0">
+                            <tbody >
+                                <tr>
+                                    <!-- <th>{{ Language.time[LanguageIndex] }}</th>
+                                    <th>{{ Language.event[LanguageIndex] }}</th> -->
+                                    <th>{{ Language.log_detail[LanguageIndex] }}</th>
+                                </tr>
+                                <tr v-for="(item,index) in dockerlogList">
+                                    <td>{{item}}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="pager">
+                        <div class="fl">
+                            {{ Language.Total[LanguageIndex] }} {{ logtotalpiece }} {{ Language.Article[LanguageIndex] }}   
+                        </div>
+                        <div class="page_div fr">
+                            <div class="fl pager_select pager_divs">
+                                {{ Language.Per_page[LanguageIndex] }}
+                                <select class="selects" @change="seachlogPerPage" v-model="logPerPage">
+                                    <option value="10">10</option>
+                                    <option value="20">20</option>
+                                    <option value="50">50</option>
+                                </select>
+                                {{ Language.Article[LanguageIndex] }}
+                            </div>
+                            <a class="firstpage fl pager_divs"  @click="logFirst(1)"> << </a>
+                            <a class="fpage_l fl pager_divs" v-if="logcur > 1" @click="logback()"> < </a>
+                            <a class="fpage_l fl pager_divs" v-if="logcur == 1"> < </a>
+                            <a class="page_a fl pager_divs" v-for="item in logpagenum" :class="{'logcur':item == logcur}" @click="logFirst(item)">{{item}}</a>
+                            <a class="fpage_r fl pager_divs" v-if="logcur != logtotal" @click="lognext()"> > </a>
+                            <a class="fpage_r fl pager_divs" v-if="logcur == logtotal"> > </a>
+                            <a class="lastpage fl pager_divs" @click="logFirst(logtotal)"> >> </a>
+
+                            <input type="text" class="num_pager fl" v-model="seachlognum" :disabled="logtotal <= 1"/>
+                            <p class="fl pager_l">/{{logtotal}} {{ Language.page[LanguageIndex] }}</p>
+                            <input type="button" :value="Language.Jump[LanguageIndex]" class="jump_go" @click="seachlogJump" :disabled="logtotal <= 1" />
+                        </div>
+                    </div>
+                    <div class="h20"></div>
+                </div>
+                <!--内容宽-end-->  
+            </div>
+            <!-- 接口添加 -->
+            <div v-if="interfaceaddstatus">
+                <div  class="switch row"> 
+                    <div class="h20"></div>
+                    <div class="h20"></div>
+                    <form @submit.prevent="interfaceSaveForm">
+                        <div class="wrapper row">
+                            <div class="box clearfix">
+                                <div class="margin_phone clearfix col-lg-11 col-lg-offset-1">
+                                    <div class="box_block">
+                                        <div class="clearfix margin_phone">
+                                            <div class="line_edit">
+                                                <span class="input_tit">{{ Language.Interface_name[LanguageIndex] }}：</span>
+                                                <div class="input_group">
+                                                    <input class="inptText" v-model="interfaceobj.name" name="name" type="text" 
+                                                    @blur="interfaceobj.name=interfaceobj.name.replace(/[^\w]/ig,'');strlenValidator = !strLenBetweenValidator(interfaceobj.name,[1,11])"
+                                                    :style="{border:strlenValidator ? '1px solid red':''}">
+                                                    <em>*</em>
+                                                </div>
+                                                <div class="input_P">
+                                                    <div class="input_P">
+                                                        <p class="error_tip" v-if="strlenValidator">{{ Language.tip39[LanguageIndex] }}</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="line_edit">
+                                                <span class="input_tit">{{ Language.IPv4[LanguageIndex] }}：</span>
+                                                <div class="input_group">
+                                                    <input class="inptText" v-model="interfaceobj.subnet" name="subnet" type="text" autocomplete="off"
+                                                    @keyup="subnetValidator = !IPMaskValidator(interfaceobj.subnet)"
+                                                    :style="{border:subnetValidator ? '1px solid red':''}">
+                                                    <em>*</em>
+                                                    <br/>
+                                                    <span style="color: #ccc;">{{ Language.format[LanguageIndex] }} ：192.168.10.0/24</span>
+                                                </div>
+                                                <div class="input_P">
+                                                    <div class="input_P">
+                                                        <p class="error_tip" v-if="subnetValidator">{{ Language.tip40[LanguageIndex] }}</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="line_edit">
+                                                <span class="input_tit">{{ Language.IPv4_Gateway[LanguageIndex] }}：</span>
+                                                <div class="input_group">
+                                                    <input class="inptText" v-model="interfaceobj.gateway" name="gateway" type="text"  autocomplete="off"
+                                                    @keyup="gatewayValdator = !IPorIPMaskValidator(interfaceobj.gateway)"
+                                                    :style="{border:gatewayValdator ? '1px solid red':''}">
+                                                    <em>*</em>
+                                                    <span></span>
+                                                </div>
+                                                <br/>
+                                                <div class="input_P">
+                                                    <div class="input_P">
+                                                        <p class="error_tip" v-if="gatewayValdator">{{ Language.tip41[LanguageIndex] }}</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div v-show="false">
+                                                <div class="line_edit">
+                                                    <div class="input_tit">IPv6：</div>
+                                                    <div class="input_group">
+                                                        <label class="checkbox">
+                                                            <input type="checkbox" v-model="interfaceobj.turn_on"/>
+                                                            <span></span>{{ Language.Turn_on[LanguageIndex] }}
+                                                        </label>
+                                                    </div>
+                                                </div>
+                                                <div class="line_edit" v-show="interfaceobj.turn_on">
+                                                    <span class="input_tit">{{ Language.IPv6[LanguageIndex] }}：</span>
+                                                    <div class="input_group">
+                                                        <input class="inptText" v-model="interfaceobj.subnet6" name="subnet6" type="text" autocomplete="off"
+                                                            @blur="IPV6Validator = !IPV6Validators(interfaceobj.subnet6,1)"
+                                                            :style="{border:IPV6Validator ? '1px solid red':''}">
+                                                        <br/>
+                                                        <span style="color: #ccc;">{{ Language.format[LanguageIndex] }}：2001:1001:8000:e6f4::/64</span>
+                                                    </div>
+                                                    <div class="input_P">
+                                                        <p class="error_tip" v-if="IPV6Validator">{{ Language.tip38[LanguageIndex] }}</p>
+                                                    </div>
+                                                </div>
+                                                <div class="line_edit" v-show="interfaceobj.turn_on">
+                                                    <span class="input_tit">{{ Language.IPv6_Gateway[LanguageIndex] }}：</span>
+                                                    <div class="input_group">
+                                                        <input class="inptText" v-model="interfaceobj.gateway6" name="gateway6" type="text" autocomplete="off"
+                                                            @blur="IPV6gatewayValidator = !IPV6GatewayValidator(interfaceobj.gateway6,1)"
+                                                            :style="{border:IPV6gatewayValidator ? '1px solid red':''}">
+                                                    </div>
+                                                    <div class="input_P">
+                                                        <p class="error_tip" v-if="IPV6gatewayValidator">{{ Language.tip42[LanguageIndex] }}</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div> 
+                                    </div>
+                                </div>  
+                            </div>   
+                            <div class="h20"></div>
+                            <div class="box clearfix" style=" margin-top:0;">
+                                <div class="box_block">
+                                    <div class="clearfix margin_phone col-lg-11 col-lg-offset-1 ">
+                                        <div class="line_edit">
+                                            <div class="input_group">
+                                                <button type="submit" class="btn btn_green btn_confirm">
+                                                    {{ Language.save[LanguageIndex] }}
+                                                </button>
+                                                <button type="reset" class="btn btn_confirm" @click="closeInterfaceadd(interfaceobj)">
+                                                    {{ Language.cancel[LanguageIndex] }}
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>  
+                        </div>
+                    </form>
+                </div>
+            </div>
+            <!-- 内存不足提示 -->
+            <div v-if="memorystatus">
+                <div class="jqmOverlay" style="height: 100%; width: 100%; position: fixed; left: 0px; top: 0px; z-index: 2999; opacity: 0.5;"></div>
+                <div class="jqmWindow rounded-box showdiv400 error_div" >
+                    <div class="jqmWindowTit">
+                        <p class="fl">{{ Language.prompt[LanguageIndex] }}</p>
+                    </div>
+                    <div class="jqmWindow_box" style=" overflow:hidden;">
+                        <div class="h20"></div>
+                        <div class="tc">
+                            <div class="info_detail" >{{ Language.tip45[LanguageIndex] }}</div>
+                            <div class="h20"></div>
+                            <input class="btn btn_green bnt_h32 jqmClose" @click="memorystatus = !memorystatus" type="button" :value= Language.confirm[LanguageIndex]>
+                            <div class="h20"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div v-if="downloadTip">
+                <div class="jqmOverlay" style="height: 100%; width: 100%; position: fixed; left: 0px; top: 0px; z-index: 2999; opacity: 0.5;"></div>
+                <div class="jqmWindow rounded-box showdiv400 error_div" >
+                    <div class="jqmWindowTit">
+                        <p class="fl">{{ Language.prompt[LanguageIndex] }}</p>
+                    </div>
+                    <div class="jqmWindow_box" style=" overflow:hidden;">
+                        <div class="h20"></div>
+                        <div class="tc">
+                            <div class="info_detail">
+                                <span style="font-size:12px;">TAG名称：</span>
+                                <input type="text" class="inptText" v-model="upload_method2_tag">
+                            </div>
+                            <div class="h20"></div>
+                            <input class="btn btn_green bnt_h32 jqmClose" @click="downloadTip=false;downloadDocker2()" 
+                                type="button" :value= Language.confirm[LanguageIndex]>
+                            <input class="btn bnt_h32 jqmClose" type="button" :value= Language.cancel[LanguageIndex]  @click="downloadTip = false">
+                            <div class="h20"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div> 
+    </body>
+    <script type="module">
+        var app = new Vue({
+            el: '#app',
+            props: ["type"],
+            data: {
+                LanguageIndex:0,
+                Language:{},
+                dockeserve:[],
+                enabled: 0,
+                serverstatus:false,
+                dockerStatus:'dockerlist',
+                containerstatus:true,
+                PartitionmanagementList:[],
+                loadingstatus:false,
+                tableLoading:false,
+                mirrors:'',
+                iframeheight:'',
+                deletestatus:false,
+                deletetype:'',
+                deleteIndex:0,
+                /******************container*************************/
+                dockerdetails:'showList',
+                dockerList:[],
+                imageName :'',
+                tag:'',
+                submitdata:[],
+                deldockerlist:[],
+                addmirrorstatus:false,
+                Submitdialog:false,
+                submitType:'0',
+                dform:{
+                    "name":'' ,
+                    "interface":'',
+                    "image":'',
+                    "memory":0,
+                    "auto_start":false,
+                    "mounts": '',
+                    "cmd" :'',
+                    "env":'',
+                    "ip6addr":"",
+                    "ipaddr":""
+                },
+                maxNum:512,
+                ImageList:[],
+                DirectoryList:[],
+                dockerdetailList:{},
+                environmentVariable:[],
+                advancedSetting:false,
+                MountdirectoryId:0,
+                EnvironmentvariableId:0,
+                Directoryid:'add',
+                environmentid:'add',
+                MountDirectorytype:'',
+                environmenttype:'',
+                ipvalue:'',
+                gateway:'',
+                dockereditstatus: false,
+                dockerlogstatus:false,
+                dockerlogList:[],
+                dockerlogArry:[],
+                memorystatus:false,
+                /******************image***********************/
+                setupPathTip:false,
+                setupPathconfim:false,
+                uploadfilestate:false,
+                ImageManagementList:[],
+                storagePath:'',
+                uploadConf:{
+                    isUpload:false,
+                    total:0,
+                    loaded:0,
+                    Percentage: '0%',
+                },
+                keywords:'',
+                uploadpath:"",
+                uploadMethod:'1',
+                // msgcolor:["#45B363","#D43F3A","#eabc16"],
+                tipclassName:'tipn_correct',
+                tiptype: false,
+                imageShow:true,
+                exportMirrorstatus:false,
+                exportRow:'',
+                mirrorname:'',
+                mirrorpath:'',
+                MirrorlibraryList:[],
+                MirrorseachList:[],
+                PluginDownloadList:[],
+                searchtablestatus:true,
+                StoragepartitionList:[],
+                downloadpage:'',
+                downloadstatus:false,
+                progressList:[],
+                percentageNum: "0%",
+                downloadSeccess:false,
+                imageFilestatus:false,
+                /*******分页***********/
+                rowsPerPage:'10',
+                pagenow:'1',
+                jumpNum:'1',
+                totalPage:1,
+                totalpiece:0,
+
+                all: 1, //总页数
+                cur: 1,//当前页码
+                numPage: 10,//每页条数,
+                seachPerPage:'10',
+                seachnum:'1',
+                arch:'',
+
+                logtotal: 1,//总页数
+                logcur: 1,//当前页数
+                seachlognum: "1",
+                logPerPage: '10',
+                logtotalpiece: 1,//总条数
+                /***************interface**********************/
+                InterfaceManagementList:[],
+                interfacetype:'add',
+                InterfaceList:{},
+                Message: '',
+                messageNotice:false,
+                subnetValidator:false,
+                gatewayValdator:false,
+                strlenValidator:false,
+                interfaceaddstatus:false,
+                interfaceobj:{
+                    name:"",
+                    gateway:"",
+                    subnet:"",
+                    turn_on:false,
+                    subnet6:"",
+                    gateway6:""
+                },
+                /***************Mirrosettings**********************/
+                Mirrosetstatus:false,
+                /***********验证TIP*****************/
+                mirrornamestrbetween:false,
+                mirrornamespecial:false,
+                cpuusagebetween:false,
+                memusagebetween:false,
+                startcmdValidator:false,
+                requiredVal:false,
+                interfaceValidate:false,
+                imageValidate:false,
+                IPValdator:false,
+                IPrangeValdator: false,
+                IPconflictValdator:false,
+                tagmirrornamespecial:false,
+                tagmirrornamestrbetween:false,
+                IPV6Validator:false,
+                IPV6gatewayValidator:false,
+                /*******************************************/
+
+                josnData:"",
+                bindYunUrl: "",
+
+                // 镜像库下载列表的直接下载相关变量
+                downloadTip: false,
+                upload_method2_tag: "latest",
+                upload_method2_file: "",
+                // 自定义下载相关变量
+                upload_method3_tag:"latest",
+                upload_method3_file:""
+            },
+            computed: {
+                //分页
+                indexs: function(){
+                    var left = 1;
+                    var right = this.totalPage;
+                    var ar = [];
+                    if(this.totalPage>= 5){
+                        if(this.pagenow > 3 && this.pagenow < this.totalPage-2){
+                            left = this.pagenow - 2
+                            right = this.pagenow + 2
+                        }else{
+                            if(this.pagenow<=3){
+                                left = 1
+                                right = 5
+                            }else{
+                                right = this.totalPage
+                                left = this.totalPage -4
+                            }
+                        }
+                    }
+                    while (left <= right){
+                        ar.push(left)
+                        left ++
+                    }
+                    return ar
+                },
+                pagenum: function(){
+                    var left = 1;
+                    var right = this.all;
+                    var arr = [];
+                    if(this.all>= 5){
+                        if(this.cur > 3 && this.cur < this.all-2){
+                            left = this.cur - 2
+                            right = this.cur + 2
+                        }else{
+                            if(this.cur<=3){
+                                left = 1
+                                right = 5
+                            }else{
+                                right = this.all
+                                left = this.all -4
+                            }
+                        }
+                    }
+                    while (left <= right){
+                        arr.push(left)
+                        left ++
+                    }
+                    return arr
+                },
+                logpagenum: function(){
+                    var left = 1;
+                    var right = this.logtotal;
+                    var arr = [];
+                    if(this.logtotal>= 5){
+                        if(this.logcur  > 3 && this.logcur < this.logtotal-2){
+                            left = this.logcur - 2
+                            right = this.logcur + 2
+                        }else{
+                            if(this.logcur<=3){
+                                left = 1
+                                right = 5
+                            }else{
+                                right = this.logtotal
+                                left = this.logtotal -4
+                            }
+                        }
+                    }
+                    while (left <= right){
+                        arr.push(left)
+                        left ++
+                    }
+                    return arr
+                },
+            },
+            mounted() {
+                window.addEventListener("message", this.handleMessageFromParent) 
+            },
+            created: function () {
+                sessionStorage.setItem('pluginMgt', 'docker');
+                let language = window.localStorage.getItem('language');
+                this.Language = Language;
+                if(language == 'zh-CN') {
+                    this.LanguageIndex = 0;
+                }else if(language == 'zh-TW'){
+                    this.LanguageIndex = 1;
+                }else if(language == 'en-US') {
+                    this.LanguageIndex = 2;
+                }
+                this.showDockerServe();
+                var initstyle = document.getElementsByClassName('initstyle')
+                initstyle[0].style.display = 'block';
+
+                this.bindYunUrl = window.location.origin + "/#/system-setting/service-account";
+            },
+            methods:{
+                showDockerServe() {
+                    var payload = {
+                        func_name: 'docker_server',
+                        action: 'show',
+                        param: {
+                            TYPE: 'data,status,disks'
+                        }
+                    };
+                    AjaxPost('/Action/call',payload,(response)=>{
+                        this.dockeserve = response.Data.data[0];
+                        this.dockeserve.workdisk = this.dockeserve.workdisk == '' ? response.Data.disks[0].f_name : this.dockeserve.workdisk;
+                        this.storagePath = this.dockeserve.workdisk;
+                        this.mirrors = this.dockeserve.mirrors;
+                        this.PartitionmanagementList = response.Data.disks;
+                        this.enabled = this.dockeserve.enabled == 'yes'?true:false;
+                        if(response.Data.status == 1){
+                            this.serverstatus = true;
+                            this.showDockerList();
+                        }else{
+                            this.serverstatus = false;
+                        }
+                    })
+                },
+                dockerServeStart() {
+                    if(this.dockeserve.workdisk == ''){
+                        this.addmirrorstatus = true;
+                        this.enabled = false;
+                    }else {
+                        var payload = {
+                            func_name: 'docker_server',
+                            action: 'save',
+                            param: {
+                                'enabled': this.enabled == true?'yes':'no',
+                                'workdisk':this.dockeserve.workdisk,
+                                'mirrors':this.dockeserve.mirrors
+                            },
+                        };
+                        AjaxPost('/Action/call',payload,(response)=>{
+                            if(response.Result % 10000 == 0) {
+                                this.serverstatus = this.enabled == true? true : false;
+                                if(this.serverstatus){
+                                   this.showDockerList(); 
+                                } 
+                            }
+                        })
+                    } 
+                },
+                dockerTab(type){
+                    var checkson = document.getElementsByName("user");
+                    for(var i = 0; i < checkson.length ;i++){
+                        checkson[i].checked = false;
+                    }
+                    this.deldockerlist = [];
+                    this.ImageManagementList = [];
+                    this.dockerList = [];
+                    this.InterfaceManagementList = [];
+                    if(type == 'dockerlist'){
+                        this.dockerStatus = 'dockerlist';
+                        this.showDockerList();
+                    }else if(type == 'image') {
+                        this.dockerStatus = 'image';
+                        this.showImageManagement();
+                    }else if(type == 'interface') {
+                        this.dockerStatus = 'interface';
+                        this.showInterfaceManagement();
+                    }
+                },
+                /**
+                 * container
+                 * 容器接口
+                **/
+                showDockerList() {/*docker列表*/
+                    AjaxPost('/Action/call',{
+                        action: "show",
+                        func_name: "docker_container",
+                        param: {
+                            "TYPE":'data,network,image,cpuused,memavailable,sysbit'
+                        },
+                    },(res)=>{
+                        this.dockerList = [];
+                        this.interfaceList = [];
+                        this.ImageList = [];
+                        this.dockerList =  copyAry('decode', res.Data.data);
+                        this.interfaceList = res.Data.network;
+                        this.ImageList = res.Data.image;
+                        if(res.Data.sysbit == 'x32'){
+                            this.maxNum = parseInt((res.Data.memavailable / 1024)-256) > 0 ? parseInt((res.Data.memavailable / 1024)-256) : this.maxNum ;
+                        }else {
+                            this.maxNum = parseInt((res.Data.memavailable / 1024)-1024) > 0 ? parseInt((res.Data.memavailable / 1024)-1024) : this.maxNum ;
+                        }
+                    })
+                },
+                dockerChecked() {/*全选*/
+                    var checked = document.getElementById("check").checked;
+                    var checkson = document.getElementsByName("user");
+                    this.deldockerlist = [];
+                    var ary = [];
+                    if(this.dockerStatus == 'dockerlist'){
+                        ary = this.dockerList;
+                    }else if(this.dockerStatus == 'image') {
+                        ary = this.ImageManagementList;
+                    }
+                    if(checked){
+                        for(var i = 0; i < checkson.length ;i++){
+                            checkson[i].checked = true;
+                        }
+                        var len = ary.length;
+                        for(var j=0;j<len;j++){
+                            this.deldockerlist.push(ary[j].id)
+                        }
+                    }else{
+                        for(var i = 0; i < checkson.length ;i++){
+                            checkson[i].checked = false;
+                            this.deldockerlist = [];
+                        }
+                    }
+                    
+                },
+                dockerSinglechoice(item,index){//单选
+                    var checkson = document.getElementsByName("user")[index].checked;
+                    if(checkson){
+                        this.deldockerlist.push(item.id);
+                    }else {
+                        for(var j=0;j<this.deldockerlist.length;j++){
+                            if(this.deldockerlist[j] == item.id) {
+                                this.deldockerlist.splice(j,1)
+                            }
+                        }
+                    }  
+                    this.isAllchecked();
+                },
+                isAllchecked() {
+                    var checkson = document.getElementsByName("user");
+                    var t = 0;
+                    for(var i=0;i<checkson.length;i++) {
+                        if(checkson[i].checked) {
+                            t++;
+                        }
+                    }
+                    document.getElementById("check").checked = t == checkson.length;
+                },
+                DeleteDockerlist(row,index) {//删除
+                    if(this.deldockerlist.length == 0 && row.id == undefined){
+                        alert(this.Language.deletetip[this.LanguageIndex]);
+                        return false;
+                    }
+                    // var r = confirm(this.Language.deletetip1[this.LanguageIndex]);
+                    // if(r) {
+                        AjaxPost('/Action/call',{
+                            action: "del",
+                            func_name: "docker_container",
+                            param: {
+                                "id":row.id != undefined?row.id:this.deldockerlist.join(',')
+                            },
+                        },(res)=>{
+                            if(res.Result % 10000 == 0){
+                                var checkson = document.getElementsByName("user");
+                                for(let q=0;q<checkson.length;q++) {
+                                    checkson[q].checked = false;
+                                }
+                                // for(var j=0;j<this.deldockerlist.length;j++){
+                                //     if(this.deldockerlist[j] == row.id) {
+                                //         this.deldockerlist.splice(j,1)
+                                //     }
+                                // }
+                                this.deldockerlist = [];
+                            }
+                            setTimeout(()=>{
+                                this.showDockerList();
+                            },1000)
+                        })
+                    // }
+                },
+                enableContainer(row) {//启用
+                    AjaxPost('/Action/call',{
+                        action: "up",
+                        func_name: "docker_container",
+                        param: {
+                            "id":row.id
+                        },
+                    },(res)=>{
+                        if(res.Result % 10000 == 0){
+                            setTimeout(()=>{
+                                this.showDockerList();
+                            },1000)
+                        }else {
+                            if (res.ErrMsg.indexOf("network") > -1 && res.ErrMsg.indexOf("not found") > -1) {
+                                this.MessageTip(this.Language.tip47[this.LanguageIndex],'tipn_error',false);
+                            } else {
+                                this.MessageTip(res.ErrMsg,'tipn_error',true); 
+                            }
+                        }
+                    })
+                },
+                disableContainer(row) { //停用
+                    var that = this;
+                    AjaxPost('/Action/call',{
+                        action: "down",
+                        func_name: "docker_container",
+                        param: {
+                            "id":row.id
+                        },
+                    },(res)=>{
+                        if(res.Result % 10000 == 0){
+                            // setTimeout(()=>{
+                                that.showDockerList();
+                            // },8000)
+                        }else {
+                            this.MessageTip(res.ErrMsg,'tipn_error',true); 
+                        }
+                    })
+                },
+                ConsoleIump(row) {//控制台跳转
+                    window.open(location.protocol+"//"+location.host+"/plugins/docker/console/?id=" + row.id );
+                },
+                newTableRow:function() {//添加
+                    // if(this.dockerList.length > 20){
+                    //     this.MessageTip(this.Language.tip29[this.LanguageIndex],'tipn_point',false); 
+                    // }else{
+                        if(this.maxNum < 64){
+                            this.memorystatus = true;
+                            return false;
+                        }else{
+                            this.memorystatus = false;
+                        }
+                        this.postMessage('dockeradd');
+                        this.mirrornamespecial = false ;
+                        this.mirrornamestrbetween = false  ;
+                        this.memusagebetween = false ;
+                        this.interfaceValidate = false ;
+                        this.IPValdator = false;
+                        this.IPrangeValdator = false;
+                        this.IPconflictValdator = false;
+                        this.IPV6Validator = false;
+                        this.imageValidate = false;
+                        this.startcmdValidator = false;
+                        this.dockerdetails = 'details';
+                        this.containerstatus = false; 
+                        this.dockereditstatus = false;
+                        this.showInterfaceManagement();
+                    // }
+                    
+                },
+                closeDockeradd() {
+                    this.dockerdetails = 'showList';
+                    this.containerstatus = true; 
+                    this.dockereditstatus = false;
+                    this.inintDockerlist();
+                    this.showDockerList();
+                    this.postMessage('docker')
+                },
+                addMirrorConfirm() {
+                    this.addmirrorstatus = false;
+                    window.open('/#/system-setting/diskpartition', '_parent');
+                },
+                dockerSubmit(data) {
+                    this.mirrornamespecial = false;
+                    this.mirrornamestrbetween  = false;
+                    this.tagmirrornamespecial = false;
+                    this.tagmirrornamestrbetween = false;
+                    this.Submitdialog = true;
+                    this.submitdata = data;
+                },
+                submitImageConfirm() {
+                    if(this.imageName == '') {
+                        this.mirrornamestrbetween  = true;
+                        return false;
+                    }
+                    if(this.mirrornamespecial == true || this.mirrornamestrbetween  == true || this.tagmirrornamespecial == true || this.tagmirrornamestrbetween == true) {
+                        return false;
+                    }
+                    AjaxPost('/Action/call',{
+                        action: "commit",
+                        func_name: "docker_container",
+                        param: {
+                            'id':this.submitdata.id,
+                            'name':this.imageName,
+                            'tag':this.tag
+                        },
+                    },(res)=>{
+                        if(res.Result % 10000 == 0){
+                            this.Submitdialog = false;
+                            this.imageName = '';
+                            this.tag = '';     
+                            this.MessageTip(this.Language.success[this.LanguageIndex],'tipn_correct',false); 
+                        }
+                    })
+                },
+                closeSubmitdialog() {
+                    this.Submitdialog = false;
+                    this.imageName = '';
+                    this.tag = ''; 
+                },
+                fileManagement () {
+                    window.open('/#/system-setting/filemanagement', '_blank');
+                },
+                deleteRowinterface(data) {
+                    this.DirectoryList = this.DirectoryList.filter((element) => {
+                        return element.id != data.id;
+                    })
+                    // directory表格数据
+                },
+                deleteRowVariable(data){
+                    this.environmentVariable = this.environmentVariable.filter((element) => {
+                        return element.id != data.id;
+                    })
+                    // Variable表格数据
+                },
+                
+                closeDaocker(){
+                    if(this.dockerdetails = 'details'){
+                        this.showDockerList()
+                    }
+                    if(this.interfaceaddstatus){
+                        this.showInterfaceManagement();
+                    }
+                    this.dockerdetails = 'showList';
+                    this.containerstatus = true;
+                    this.Mirrosetstatus = false;
+                    this.uploadfilestate = false;
+                    this.interfaceaddstatus = false;
+                    this.dockerlogstatus = false;
+                    this.imageShow = true;
+                    this.postMessage('docker')
+                    this.inintDockerlist();
+                    this.inintImage(); 
+                },
+                inintDockerlist() {
+                    this.dform = {
+                        "name":'' ,
+                        "interface":'',
+                        "image":'',
+                        "memory":0,
+                        "auto_start":false,
+                        "mounts": '',
+                        "cmd" :'',
+                        "env":'',
+                        "ip6addr":"",
+                        "ipaddr":""
+                    };
+                    this.advancedSetting = false;
+                    this.DirectoryList = [];
+                    this.environmentVariable = [];
+                    this.MountDirectorytype = '';
+                    this.MountdirectoryId = 0;
+                    this.environmenttype = '';
+                    this.EnvironmentvariableId = 0;
+                    this.Directoryid = 'add';
+                    this.environmentid = 'add';
+                },
+                saveForm() {
+                    var  that = this;
+                    var directoryarr = that.DirectoryList;
+                    var variable = that.environmentVariable;
+                    var directorylist = [];
+                    var variablelist = [];
+                    var data = [];
+                    if(directoryarr.length>0){
+                        for(var i=0;i<directoryarr.length;i++){
+                            var s = '';
+                            s = directoryarr[i].source_path+':'+ directoryarr[i].target_path;
+                            directorylist.push(s);
+                        }
+                        that.dform.mounts = directorylist.join(',');
+                    }else{
+                        that.dform.mounts = '';
+                    }
+                    if(variable.length>0){
+                        for(var i=0;i<variable.length;i++){
+                            var q = '';
+                            q = variable[i].variable_name+'='+ variable[i].variable_value;
+                            variablelist.push(q);
+                        }
+                        that.dform.env = variablelist.join(',');
+                    }else {
+                        that.dform.env = '';
+                    }
+                    
+                    
+                    if(that.dform.name == '') {
+                        that.mirrornamestrbetween = true;
+                        return false;
+                    }
+                    if(that.dform.memory == '') {
+                        that.memusagebetween = true;
+                        return false;
+                    }
+                    if(that.dform.image == ''){
+                        that.imageValidate = true;
+                        return false;
+                    }
+                    if(that.dform.interface == ''){
+                        that.interfaceValidate = true;
+                        return false;
+                    }
+                    if(that.dform.cmd == '') {
+                        this.startcmdValidator = false;
+                    }
+                    if(that.dform.ipaddr == '') {
+                        that.IPValdator = false ;
+                        that.IPrangeValdator = false;
+                        that.IPconflictValdator = false;
+                    }
+                    if(that.dform.ip6addr == '') {
+                        this.IPV6Validator = false;
+                    }
+                    if(that.mirrornamespecial == true || that.mirrornamestrbetween == true  || that.memusagebetween == true || that.interfaceValidate == true || 
+                    that.imageValidate == true || that.startcmdValidator == true || that.IPValdator == true || that.IPrangeValdator == true || 
+                    that.IPconflictValdator == true || that.IPV6Validator == true) {
+                        return false;
+                    }
+                    that.dform.auto_start = that.dform.auto_start == true?1:0;
+                    data = JSON.parse(JSON.stringify(that.dform));
+                    data.memory =  data.memory * 1024 * 1024;
+                    if(that.dockereditstatus) {
+                        data.status = '';
+                    }
+                    if(!that.dockereditstatus) {
+                        for(let x=0;x<this.dockerList.length;x++) {
+                            if(data.name == this.dockerList[x].name) {
+                                that.MessageTip(that.Language.tip46[that.LanguageIndex],'tipn_error',true); 
+                                return false;
+                            }
+                        }
+                    }
+                    
+                    var payload = {
+                        func_name: "docker_container",
+                        action: that.dockereditstatus ? "update" :"add",
+                        param: data
+                    };
+                    AjaxPost('/Action/call', copyObj('encode', payload),(response)=>{
+                        if(response.Result % 10000 == 0){
+                            this.showDockerList();
+                            this.inintDockerlist();
+                            setTimeout(()=> {
+                                that.dockerdetails = 'showList';
+                                that.containerstatus = true;
+                                that.dockereditstatus = false;
+                                that.MessageTip(that.Language.tip27[that.LanguageIndex],'tipn_correct',false); 
+                            },1000) 
+                        }else {
+                            that.MessageTip(response.ErrMsg,'tipn_error',true); 
+                        }
+                    })
+                },
+                portmappingEdit(item,type) {
+                    if(type == "Mount_directory"){
+                        for(var i=0;i<this.DirectoryList.length;i++){
+                            if(this.DirectoryList[i].source_path == '' || this.DirectoryList[i].target_path == '' || this.DirectoryList[i].type == 'add'){
+                                this.DirectoryList = this.DirectoryList.filter((element) => {
+                                    return element.id != this.DirectoryList[i].id;
+                                })
+                            }else if(this.DirectoryList[i].type == 'edit'){
+                                this.DirectoryList[i].source_path = this.dockerdetailList.source_path;
+                                this.DirectoryList[i].target_path = this.dockerdetailList.target_path;
+                                this.DirectoryList[i].type = '';
+                            }
+                        }
+                        item.type = 'edit';
+                        this.dockerdetailList = {};
+                        this.dockerdetailList = JSON.parse(JSON.stringify(item));
+                        this.Directoryid = item.id;
+                        this.MountDirectorytype = '';
+                    }else if(type == "Environment_variable"){
+                        for(var i=0;i<this.environmentVariable.length;i++){
+                            if(this.environmentVariable[i].variable_name == '' || this.environmentVariable[i].variable_value == '' || this.environmentVariable[i].type == 'add'){
+                                this.environmentVariable = this.environmentVariable.filter((element) => {
+                                    return element.id != this.environmentVariable[i].id;
+                                })
+                            }else if(this.environmentVariable[i].type == 'edit') {
+                                this.environmentVariable[i].variable_name = this.dockerdetailList.variable_name;
+                                this.environmentVariable[i].variable_value = this.dockerdetailList.variable_value;
+                                this.environmentVariable[i].type = '';
+                            }
+                        }
+                        item.type = 'edit';
+                        this.dockerdetailList = {};
+                        this.dockerdetailList = JSON.parse(JSON.stringify(item));
+                        this.environmentid = item.id;
+                        this.environmenttype = '';
+                    }
+                },
+                portmappingConfirm(item,type){
+                    if(type == 'Mount_directory') {
+                        if(item.source_path == '\\'){
+                            this.MessageTip(this.Language.tip32[this.LanguageIndex],'tipn_error',true); 
+                            return false;
+                        }
+                        if(item.source_path.indexOf('..') >= 0 ){
+                            this.MessageTip(this.Language.tip32[this.LanguageIndex],'tipn_error',true); 
+                            return false;
+                        }
+                        for(var i=0;i<this.DirectoryList.length;i++){
+                            if(this.DirectoryList[i].source_path == '' || this.DirectoryList[i].target_path == ''){
+                                this.DirectoryList = this.DirectoryList.filter((element) => {
+                                    return element.id != this.DirectoryList[i].id;
+                                })
+                            }else if(this.DirectoryList[i].type == 'add' && this.DirectoryList[i].id == this.MountdirectoryId){
+                                this.DirectoryList[i].type = '';
+                            }else if(this.DirectoryList[i].type == 'edit'){
+                                this.DirectoryList[i].type = '';
+                            }
+                        }
+                        this.Directoryid = 'add';
+                        this.MountDirectorytype = '';
+                    }else if(type == "Environment_variable"){
+                        for(var j=0;j<this.environmentVariable.length;j++){
+                            if(this.environmentVariable[j].variable_name == '' || this.environmentVariable[j].variable_value == ''){
+                                this.environmentVariable = this.environmentVariable.filter((element) => {
+                                    return element.id != this.environmentVariable[j].id;
+                                })
+                            }else if(this.environmentVariable[j].type == 'add' && this.environmentVariable[j].id == this.EnvironmentvariableId){
+                                this.environmentVariable[j].type = '';
+                            }else if(this.environmentVariable[j].type == 'edit'){
+                                this.environmentVariable[j].type = '';
+                            }
+                        }
+                        this.environmentid = 'add';
+                        this.environmenttype = '';
+                    }
+                },
+                portmappingCancel(item,type){
+                    if(type == "Mount_directory") {
+                        if(Object.keys(this.dockerdetailList).length != 0){
+                            item.source_path = this.dockerdetailList.source_path;
+                            item.target_path = this.dockerdetailList.target_path;
+                            item.type = '';
+                            this.Directoryid = 'add';
+                        }else {
+                            this.DirectoryList = this.DirectoryList.filter((element) => {
+                                return element.id != item.id;
+                            })
+                            this.Directoryid = 'add';
+                        }
+                        this.MountDirectorytype = '';
+                    }else if(type == "Environment_variable") {
+                        if(Object.keys(this.dockerdetailList).length != 0){
+                            item.variable_name = this.dockerdetailList.variable_name;
+                            item.variable_value = this.dockerdetailList.variable_value;
+                            item.type = '';
+                            this.environmentid = 'add';
+                        }else {
+                            this.environmentVariable = this.environmentVariable.filter((element) => {
+                                return element.id != item.id;
+                            })
+                            this.environmentid = 'add';
+                        }
+                        this.environmenttype = '';
+                    }
+                },
+                addPortmapping(type) {
+                    this.dockerdetailList = {}
+                    if(type == 'Mount_directory') {
+                        for(var i=0;i<this.DirectoryList.length;i++){
+                            if(this.DirectoryList[i].source_path == '' || this.DirectoryList[i].target_path == '' || this.DirectoryList[i].type == 'edit'){
+                                return false;
+                                break;
+                            }else if(this.MountDirectorytype != ''){
+                                return false;
+                                break;
+                            }
+                        }
+                        this.MountDirectorytype = 'add';
+                        this.MountdirectoryId +=1;
+                        var data= {
+                            id:this.MountdirectoryId,
+                            source_path:'',
+                            target_path:'',
+                            type:'add'
+                        }
+                        this.DirectoryList.push(data);
+                        this.Directoryid = this.MountdirectoryId;
+                    }else if(type == 'Environment_variable'){
+                        for(var i=0;i<this.environmentVariable.length;i++){
+                            if(this.environmentVariable[i].variable_name == '' || this.environmentVariable[i].variable_value == '' || this.environmentVariable[i].type == 'edit'){
+                                return false;
+                                break;
+                            }else if(this.environmenttype != ''){
+                                return false;
+                                break;
+                            }
+                        }
+                        this.environmenttype = 'add';
+                        this.EnvironmentvariableId +=1;
+                        var data= {
+                            id:this.EnvironmentvariableId,
+                            variable_name:'',
+                            variable_value:'',
+                            type:'add'
+                        }
+                        this.environmentVariable.push(data);
+                        this.environmentid = this.EnvironmentvariableId;
+                    }
+                },
+                interfaceIP() {
+                    this.dform.ipaddr = '';
+                    this.dform.ip6addr = '';
+                    this.IPrangeValdator = false;    
+                    this.IPValdator = false;
+                    this.IPconflictValdator = false;
+                    this.IPV6Validator = false;
+                    for(let i=0;i<this.InterfaceManagementList.length;i++) {
+                        if(this.InterfaceManagementList[i].name == this.dform.interface) {
+                            this.ipvalue = this.InterfaceManagementList[i].subnet;
+                            this.gateway = this.InterfaceManagementList[i].gateway;
+                        }
+                    }
+                },
+                containerEdit(item) {
+                    this.postMessage('dockeredit');
+                    this.showInterfaceManagement();
+                    this.mirrornamespecial = false ;
+                    this.mirrornamestrbetween = false  ;
+                    this.memusagebetween = false ;
+                    this.interfaceValidate = false ;
+                    this.IPValdator = false;
+                    this.IPrangeValdator = false;
+                    this.IPconflictValdator = false;
+                    this.IPV6Validator = false;
+                    this.imageValidate = false;
+                    this.startcmdValidator = false;
+                    this.dockerdetails = 'details';
+                    this.containerstatus = false;
+                    this.dockereditstatus = true;
+                    this.dform = [];
+                    this.DirectoryList = [];
+                    this.environmentVariable = [];
+                    this.dform = item;
+                    this.dform.memory = this.dform.memory / 1024 / 1024;
+                    setTimeout(()=> {
+                        for(let i=0;i<this.InterfaceManagementList.length;i++) {
+                            if(this.InterfaceManagementList[i].name == this.dform.interface) {
+                                this.ipvalue = this.InterfaceManagementList[i].subnet;
+                                this.gateway = this.InterfaceManagementList[i].gateway;
+                            }
+                        }
+                    },1000)
+                    var mountsarry = item.mounts.split(',');
+                    var envarry = item.env.split(',');
+                    if(mountsarry != ''){
+                        for(let i=0;i<mountsarry.length;i++) {
+                            this.DirectoryList.push({'source_path':mountsarry[i].split(':')[0],'target_path':mountsarry[i].split(':')[1]})
+                        }
+                    }
+                    if(envarry != ''){
+                        for(let j=0;j<envarry.length;j++) {
+                            this.environmentVariable.push({'variable_name':envarry[j].split('=')[0],'variable_value':envarry[j].split('=')[1]})
+                        }
+                    }
+                },
+                // 日志
+                dockerLog(item) {
+                    this.containerstatus = false;
+                    this.dockerlogstatus = true;
+                    // this.postMessage('dockeradd');
+                    this.postMessage('dockerlog');
+                    var payload = {
+                        param: {
+                           "TYPE":"log",
+                           "id":item.id
+                        },
+                        func_name: 'docker_container',
+                        action: "show",
+                    }
+                    AjaxPost('/Action/call',payload,(response) =>{
+                        if(response.Result % 10000 == 0) {
+                            this.dockerlogArry =  response.Data.log;
+                            this.logtotalpiece = this.dockerlogArry.length;
+                            this.logtotal =  Math.ceil(this.logtotalpiece / this.logPerPage);
+                            this.logPage();
+                        }else {
+                            this.MessageTip(response.ErrMsg,'tipn_error',true); 
+                        }
+                        
+                    })
+                },
+                /**
+                 * image
+                 * 镜像管理接口
+                **/
+                showImageManagement() {
+                    var that = this;
+                    var payload = {
+                        param: {
+                           "TYPE":"data,disks,arch"
+                        },
+                        func_name: 'docker_image',
+                        action: "show",
+                    }
+                    AjaxPost('/Action/call',payload,(response)=>{
+                            var data = response.Data.data;
+                            var len = data.length;
+                            var arr = [];
+                            for(var i=0;i<len;i++){
+                                var str = {};
+                                str = {
+                                    "name":data[i].name+':'+data[i].tag,
+                                    "id":data[i].id,
+                                    "create": formatDate(data[i].created),
+                                    "size": formatBytes(data[i].size)
+                                };
+                                arr.push(str)
+                            }
+                            that.ImageManagementList = arr;
+                            that.StoragepartitionList =  response.Data.disks;
+                            that.arch =  response.Data.arch;
+                    })
+                },
+                
+                setupConfirm() {
+                    if(this.storagePath == ''){
+                        this.requiredVal = true;
+                        return false;
+                    }else{
+                        this.requiredVal = false;
+                        this.setupPathTip = true;
+                    } 
+                },
+                setupPathconfirm() {
+                    this.setupPathTip = false;
+                    this.setupPathconfim = true;
+                    var that = this;
+                    var payload = {
+                        func_name: 'docker_server',
+                        action: 'save',
+                        param: {
+                            "f_name": that.storagePath,
+                            'enabled':  this.enabled == true?'yes':'no',
+                            'workdisk': that.storagePath,
+                            'mirrors':this.mirrors
+                        }
+                    };
+                    that.uploadConf.isUpload = true;
+                    AjaxPost('/Action/call',payload,(response)=>{
+                        if(response.Result % 10000 == 0){
+                            that.MessageTip(that.Language.success[that.LanguageIndex],'tipn_correct',false); 
+                        }else {
+                            that.MessageTip(that.Language.error[that.LanguageIndex],'tipn_error',true); 
+                        }
+                        that.setupPathconfim = false;
+                        that.uploadConf.isUpload = false;
+                        that.Mirrosetstatus = false;
+                        that.containerstatus = true;
+                        that.postMessage('docker') 
+                        that.showDockerServe();
+                    })
+                },
+                uploadFileDialog() {
+                    this.uploadfilestate = true;
+                    this.containerstatus = false;
+                    this.postMessage('dockeradd');
+                },
+                deleteImage(data,index) {
+                    var that = this;
+                    var payload = {
+                        param: {
+                            id: data.id != undefined? data.id:this.deldockerlist.join(',')
+                        },
+                        func_name: 'docker_image',
+                        action: "del",
+                    }
+                    AjaxPost('/Action/call', payload, (response) => {
+                        if (response.Result % 10000 == 0) {
+                            that.MessageTip(that.Language.success[that.LanguageIndex], 'tipn_correct', false);
+                            var checkson = document.getElementsByName("user");
+                            for (let q = 0; q < checkson.length; q++) {
+                                checkson[q].checked = false;
+                            }
+                            this.deldockerlist = [];
+                            that.showImageManagement() ;
+                        } else {
+                            that.MessageTip(response.ErrMsg, 'tipn_error', true);
+                        }
+                    });
+                },
+                detailRow(data){
+                    this.postMessage('details')
+                    this.imageShow = false;
+                    this.containerstatus = false;
+                    var payload = {
+                            param: {
+                                'id': data.id,
+                                'TYPE':'inspect'
+                            },
+                            func_name: 'docker_image',
+                            action: "show",
+                        }
+                        AjaxPost('/Action/call',payload,(response)=>{
+                            let json = response.Data.inspect;
+                            this.josnData = JSON.stringify(json,null, 4);
+                        })
+                },
+                JumpFilemanagement(){
+                    window.open('/#/system-setting/filemanagement', '_blank');
+                },
+                uploadFile() {
+                    var that = this;
+                    if(that.uploadMethod == 1){
+                        that.imageFilestatus = true;
+                        var patharr = that.uploadpath.split('/');
+                        var patharry = patharr.splice(0,1);
+                        var path = patharr[patharr.length-1].toLowerCase();
+                        patharr.splice(patharr.length-1,1,path)
+                        var uploadpath = patharr.join('/');
+                        var payload = {
+                            func_name: 'docker_image',
+                            action: 'IMPORT',
+                            param: {
+                                "filepath": uploadpath
+                            }
+                        };
+                        AjaxPost('/Action/call', payload, (response) => {});
+                        this.loadProgress();
+                    }      
+                },
+                loadProgress() {
+                    var that = this;
+                    var payload = {
+                            func_name: 'docker_image',
+                            action: 'show',
+                            param: {
+                                TYPE: "load_progress"
+                            }
+                        };
+                        AjaxPost('/Action/call',payload,(response)=>{
+                            if(response.Result % 10000 == 0){
+                                if(response.Data.status == 1){
+                                    that.showImageManagement();
+                                    that.uploadfilestate = false;
+                                    that.containerstatus = true;
+                                    that.imageFilestatus = false;
+                                    that.uploadpath = '';
+                                    that.MessageTip(that.Language.success[that.LanguageIndex],'tipn_correct',false) 
+                                }else {
+                                    setTimeout(() => {
+                                        this.loadProgress();
+                                    },1000)
+                                }
+                            }else {
+                                that.MessageTip(that.Language.mirror_error[that.LanguageIndex],'tipn_error',true)
+                                that.imageFilestatus = false;
+                            }
+                        })
+                },
+                closeUpload(){
+                    this.uploadfilestate = false;
+                    this.containerstatus = true;
+                    this.postMessage('docker');
+                    this.inintImage();
+                },
+                inintImage(){
+                    this.uploadMethod = '1';
+                    this.uploadpath = '';
+                    this.keywords= '';
+                    this.searchtablestatus = true;
+                    this. MirrorseachList = [] ;
+                    this.PluginDownloadList = [];
+                },
+                exportMirror(row) {
+                    this.exportMirrorstatus = true;
+                    this.mirrornamespecial = false;
+                    this.mirrornamestrbetween = false;
+                    this.exportRow = row;
+                },
+                exportMirrorConfirm(){
+                    var that = this;
+                    if(that.mirrorname == '') {
+                        this.mirrornamestrbetween = true;
+                        return false;
+                    }else {
+                        if(this.mirrornamespecial == true || this.mirrornamestrbetween == true){
+                            return false;
+                        }
+                        AjaxPost('/Action/call',{
+                            action: "EXPORT",
+                            func_name: "docker_image",
+                            param: {
+                                'id':that.exportRow.id,
+                                'part':that.mirrorpath,
+                                'filename':that.mirrorname,
+                                'name':this.exportRow.name.split(':')[0],
+                                'tag':this.exportRow.name.split(':')[1]
+                            },
+                        },(res)=>{
+                            if(res.Result % 10000 == 0){
+                                that.MessageTip(that.Language.tip21[that.LanguageIndex],'tipn_correct',false)
+                                that.exportMirrorstatus = false;
+                            }else {
+                                that.MessageTip(that.Language.error[that.LanguageIndex],'tipn_error',true)
+                            }
+                        })
+                    }
+                },
+                searchImage() {
+                    this.rowsPerPage = '10';
+                    this.pagenow = '1';
+                    this.jumpNum = '1';
+                    this.totalPage = 1;
+                    this.totalpiece =0 ;
+
+                    this.all = 1; //总页数
+                    this.cur = 1;//当前页码
+                    this.numPage = 10;//每页条数,
+                    this.seachPerPage = '10';
+                    this.seachnum = '1';
+                    var payload = {
+                        param: {
+                            'TYPE':'search',
+                            'keyword':this.keywords
+                        },
+                        func_name: 'docker_image',
+                        action: "show",
+                    }
+                    this.loadingstatus = true;
+                    AjaxPost('/Action/call',payload,(response)=>{
+                        if(response.Result % 10000 == 0){
+                            this.MirrorlibraryList = response.Data.search; 
+                            this.searchtablestatus = true;
+                            this.loadingstatus = false;
+                            this.all =  Math.ceil(this.MirrorlibraryList.length/this.numPage);//总页数
+                            this.pageDataFn(this.cur,this.numPage,this.MirrorlibraryList)
+                        }else {
+                            this.loadingstatus = false;
+                            this.MessageTip(this.Language.search_error[this.LanguageIndex],'tipn_error',true)
+                        }
+                    })
+                },
+                EnterDownload(item) {
+                    this.downloadpage = item;
+                    this.tableLoading = true;
+                    if(item.name.indexOf('/') > 0){
+                        var url = location.protocol+"//" + location.host + '/Action/proxy?' + copyStr('https://hub.docker.com/v2/repositories/'+ item.name + '/tags?page_size=' + this.rowsPerPage+'&page='+this.pagenow);
+                        AjaxGet(url,(res)=> {
+                            this.PluginDownloadList = [];
+                            this.totalPage = 1;
+                            this.PluginDownloadList = JSON.parse(JSON.stringify(res.results));
+                            this.totalpiece = res.count;
+                            this.totalPage =  Math.ceil(res.count / this.rowsPerPage);
+                            this.tableLoading = false;
+                        })
+                        this.searchtablestatus = false;
+                    }else {
+                        var url = location.protocol+"//"+ location.host + '/Action/proxy?' + copyStr('https://hub.docker.com/v2/repositories/library/'+ item.name + '/tags?page_size=' + this.rowsPerPage+'&page='+this.pagenow);
+                        AjaxGet(url,(res)=> {
+                            this.PluginDownloadList = [];
+                            this.totalPage = 1;
+                            this.PluginDownloadList = JSON.parse(JSON.stringify(res.results));
+                            this.totalpiece = res.count;
+                            this.totalPage =  Math.ceil(res.count / this.rowsPerPage);
+                            this.tableLoading = false;
+                        })
+                        this.searchtablestatus = false;
+                    }
+                },
+                backBtn(){
+                    this.searchtablestatus = true;
+                },
+                downloadStatus(data){
+                    for(var i=0;i<data.length;i++){
+                        if(data[i].architecture == this.arch) {
+                            return true;
+                        }
+                    }
+                },
+                downloadDocker(item, index) {//下载插件
+                    var that = this;
+                    var payload = {
+                        func_name: 'docker_image',
+                        action: 'pull',
+                        param: {
+                            'name': that.downloadpage.name,
+                            'tag': item.name
+                        }
+                    };
+                    AjaxPost('/Action/call', payload, (response) => {
+                        if (response.Result % 10000 == 0) {
+                            that.downloadprogress(index);
+                        }
+                    });
+                },
+                downloadDocker2() {//下载插件
+                    var that = this;
+                    var payload = {
+                        func_name: 'docker_image',
+                        action: 'pull',
+                        param: {
+                            'name': this.upload_method2_file,
+                            'tag': this.upload_method2_tag
+                        }
+                    };
+                    AjaxPost('/Action/call', payload, (response) => {
+                        if (response.Result % 10000 == 0) {
+                            that.downloadprogress(0);
+                        }
+                    });
+                },
+                downloadDocker3(){ //自定义下载
+                    var that = this;
+                    if(!this.upload_method3_file){
+                        this.MessageTip(this.Language.tip14[this.LanguageIndex], 'tipn_error', true);
+                        return false
+                    }
+                    var payload = {
+                        func_name: 'docker_image',
+                        action: 'pull',
+                        param: {
+                            'name': this.upload_method3_file,
+                            'tag': this.upload_method3_tag
+                        }
+                    };
+                    AjaxPost('/Action/call', payload, (response) => {
+                        if (response.Result % 10000 == 0) {
+                            that.downloadprogress(0);
+                        }
+                    });
+                },
+                downloadprogress(index){
+                    var payload = {
+                        func_name: 'docker_image',
+                        action: 'show',
+                        param: {
+                            'TYPE':'pull_progress'
+                        }
+                    };
+                    AjaxPost('/Action/call', payload, (response) => {
+                        let res = response.Data.pull_progress.progress;
+                        this.progressList = [];
+                        this.downloadSeccess = false;
+                        if(response.Data.pull_progress.status > 0) {
+                            this.downloadstatus = true;
+                            if(res.length == 0){
+                                this.progressList = [this.Language.Requesting_data[this.LanguageIndex]];
+                            }else {
+                                let first = '';
+                                let last = '';
+                                var val = '';
+                                this.percentageNum = '0%';
+                                for(let i=0; i<res.length; i++) {
+                                    if(res[i].indexOf('[') > -1){
+                                        first = res[i].substring(0, res[i].indexOf('['));
+                                        last = res[i].substring(res[i].indexOf(']')+1);
+                                        val = last.replace(/\s+/g,"").split('/');
+                                        val[0] = this.percentage(val[0]);
+                                        val[1] = this.percentage(val[1]);
+                                        this.percentageNum = (val[0] / val[1] * 100).toFixed(2) + '%'
+                                        res[i] = first;
+                                    }
+                                }
+                                this.progressList = res;
+                            }
+                            setTimeout(() => {
+                                this.downloadprogress(index)
+                                this.downloadScrollbar();
+                            }, 1000);
+                        }else{
+                            this.progressList = res;
+                            var str = this.Language.tip26[this.LanguageIndex];
+                            this.progressList.push(str)
+                            this.downloadSeccess = true;
+                            setTimeout(() => {
+                                this.downloadScrollbar();
+                            },1)
+                            
+                            // this.MessageTip(this.Language.tip26[this.LanguageIndex],this.msgcolor[0])
+                        }
+                    })
+                },
+                downloadScrollbar() {
+                    var Scrollbar = document.getElementById('scrollbar');
+                    Scrollbar.scrollTop = Scrollbar.scrollHeight;
+                },
+                /**
+                 * 分页
+                **/
+                changeRowsPerPage() {
+                    this.totalPage =  Math.ceil(this.totalpiece / this.rowsPerPage);
+                    this.pagenow = 1;
+                    this.jumpNum = 1;
+                    this.EnterDownload(this.downloadpage);
+                },
+                jumpGo(){
+                    if(this.jumpNum > this.totalPage){
+                        this.pagenow =  this.pagenow;
+                        this.jumpNum = this.pagenow;
+                    }else {
+                        this.pagenow = this.jumpNum*1;
+                    }
+                    this.EnterDownload(this.downloadpage);
+                },
+                jumpPage(index){
+                    this.pagenow = index*1;
+                    this.jumpNum = this.pagenow;
+                    this.EnterDownload(this.downloadpage);
+                },
+                banckpage(){
+                    if(this.pagenow >1) {
+                        this.pagenow = this.pagenow*1-1;
+                    }else {
+                        this.pagenow = 1;
+                    }
+                    this.jumpNum = this.pagenow;
+                    this.EnterDownload(this.downloadpage);
+                },
+                nextpage() {
+                    if(this.totalPage > this.pagenow){
+                        this.pagenow = this.pagenow*1 + 1;
+                    }else {
+                        this.pagenow = this.totalPage;
+                    }
+                    this.jumpNum = this.pagenow;
+                    this.EnterDownload(this.downloadpage);
+                },
+                pageDataFn(){
+                    var number = this.cur;
+                    var pageSize = this.numPage;
+                    var data = this.MirrorlibraryList;
+                    //处于第几页 number
+                    //保存每页数据的数组
+                    var pagedata = [];
+                    //pageSize 每页条数
+                    //设置开始
+                    let start = (pageSize * number) - pageSize;
+                    // 设置结束长度
+                    let end = pageSize * number;
+                    end = end > data.length ? data.length : end;
+                    for(let i = start; i < end; i++){
+                        //所有分页数据 data
+                        pagedata.push(data[i]) 
+                    }
+                    this.MirrorseachList = pagedata;
+                },
+                changeseachPerPage() {
+                    this.numPage = this.seachPerPage*1;
+                    this.all =  Math.ceil(this.MirrorlibraryList.length/ this.numPage);
+                    this.cur = 1;
+                    this.seachnum = 1;
+                    this.pageDataFn();
+                },
+                seachJump() {
+                    if(this.seachnum > this.all){
+                        this.cur = this.cur;
+                        this.seachnum = this.cur;
+                    }else{
+                        this.cur = this.seachnum*1; 
+                    }
+                   this.pageDataFn();  
+                },
+                seachPage(index){
+                    this.cur = index*1; 
+                    this.seachnum = index*1;
+                    this.pageDataFn();  
+                },
+                seachback(){
+                    if(this.cur > 1){
+                        this.cur = this.cur*1 - 1;
+                    }
+                    this.seachnum = this.cur;
+                    this.pageDataFn(); 
+                },
+                seachnext(){
+                    this.cur = this.cur*1 + 1;
+                    this.seachnum = this.cur;
+                    this.pageDataFn(); 
+                },
+                
+                seachlogPerPage() {
+                    this.logtotal =  Math.ceil(this.logtotalpiece / this.logPerPage);
+                    this.logcur = 1;
+                    this.seachlognum = 1;
+                    this.logPage();
+                },
+                logPage(){
+                    var number = this.logcur;
+                    var pageSize = this.logPerPage;
+                    var data = this.dockerlogArry;
+                    //处于第几页 number
+                    //保存每页数据的数组
+                    var pagedata = [];
+                    //pageSize 每页条数
+                    //设置开始
+                    let start = (pageSize * number) - pageSize;
+                    // 设置结束长度
+                    let end = pageSize * number;
+                    end = end > data.length ? data.length : end;
+                    for(let i = start; i < end; i++){
+                        //所有分页数据 data
+                        pagedata.push(data[i]) 
+                    }
+                    this.dockerlogList = pagedata;
+                },
+                logFirst(index){
+                    this.logcur = index*1; 
+                    this.seachlognum = index*1;
+                    this.logPage(); 
+                },
+                logback() {
+                    if(this.logcur > 1){
+                        this.logcur = this.logcur*1 - 1;
+                    }
+                    this.seachlognum = this.logcur;
+                    this.logPage(); 
+                },
+                lognext(){
+                    this.logcur = this.logcur*1 + 1;
+                    this.seachlognum = this.logcur;
+                    this.logPage(); 
+                },
+                seachlogJump(){
+                    if(this.seachlognum > this.logtotal){
+                        this.logcur = this.logcur;
+                        this.seachlognum = this.logcur;
+                    }else{
+                        this.logcur = this.seachlognum*1; 
+                    }
+                    this.logPage();  
+                },
+                /**
+                 *interface
+                 *接口管理接口
+                **/
+                showInterfaceManagement() {
+                    var payload = {
+                        param: {
+                           "TYPE":"data"
+                        },
+                        func_name: 'docker_network',
+                        action: "show",
+                    }
+                    AjaxPost('/Action/call',payload,(response)=>{
+                        this.InterfaceManagementList = response.Data.data.length > 0 ? response.Data.data : []; 
+                    })
+                },
+                dockerEdit(data, index) {
+                    this.subnetValidator = false;
+                    this.gatewayValdator = false;
+                    this.strlenValidator = false;
+                    this.IPV6gatewayValidator = false;
+                    this.IPV6Validator = false;
+                    this.containerstatus = false;
+                    this.interfaceaddstatus = true;
+                    this.postMessage('dockeredit');
+                    this.interfacetype = 'edit';
+
+                    setTimeout(() => {
+                        this.interfaceobj = {
+                            id: data.id,
+                            name: data.name,
+                            gateway: data.gateway,
+                            subnet: data.subnet,
+                            subnet6: data.subnet6,
+                            gateway6: data.gateway6,
+                            turn_on: data.subnet6 != "" || data.gateway6 != "" ? true : false
+                        };
+                    }, 15);
+                },
+                InterfaceAdd() {
+                    this.subnetValidator = false;
+                    this.gatewayValdator = false;
+                    this.strlenValidator = false;
+                    this.IPV6gatewayValidator = false;
+                    this.IPV6Validator = false;
+                    this.containerstatus = false;
+                    this.interfaceaddstatus = true;
+                    this.postMessage('dockeradd');
+                    this.interfacetype = 'add';
+
+                    setTimeout(() => {
+                        this.interfaceobj = {
+                            name: "",
+                            gateway: "",
+                            subnet: "",
+                            subnet6: "",
+                            gateway6: "",
+                            turn_on: false
+                        };
+                    }, 15);
+                },
+                closeInterfaceadd(data) {
+                    this.containerstatus = true;
+                    this.interfaceaddstatus = false;
+                    this.postMessage('docker');
+                    this.interfaceobj = {};
+                    this.showInterfaceManagement();
+                },
+                interfaceSaveForm() {
+                    var that = this;
+                    
+                    if (that.interfaceobj.name == '') {
+                        that.strlenValidator = true;
+                        return false;
+                    }
+                    if (that.interfaceobj.subnet == '') {
+                        that.subnetValidator = true;
+                        return false;
+                    }
+                    if (that.interfaceobj.gateway =='' ) {
+                        that.gatewayValdator = true;
+                        return false;
+                    }
+                    if (that.interfaceobj.subnet6 == '') {
+                        that.IPV6Validator = false;
+                    }
+                    if (that.interfaceobj.gateway6 == '') {
+                        that.IPV6gatewayValidator = false;
+                    }
+                    if (that.subnetValidator || that.gatewayValdator || that.strlenValidator || that.IPV6gatewayValidator || that.IPV6Validator) {
+                        return false;
+                    }
+
+                    var params = JSON.parse(JSON.stringify(that.interfaceobj));
+                    params.name = params.name.search("doc_") != -1 ? params.name : 'doc_' + params.name;
+                    if (!that.interfaceobj.turn_on) {
+                        params.subnet6 = "";
+                        params.gateway6 = "";
+                    }
+
+                    AjaxPost('/Action/call', {
+                        param: params,
+                        func_name: 'docker_network',
+                        action: this.interfacetype,
+                    }, (response) => {
+                        if (response.Result % 10000 == 0) {
+                            that.containerstatus = true;
+                            that.interfaceaddstatus = false;
+                            that.postMessage('docker');
+                            that.showInterfaceManagement();
+                            that.MessageTip(that.Language.success[that.LanguageIndex], 'tipn_correct', false);
+                        } else {
+                            that.MessageTip(response.ErrMsg, 'tipn_error', true);
+                        } 
+                    })
+                },
+                
+                deleteInterface(data,index) {
+                    var that = this;
+                    var payload = {
+                        param: {
+                            id: data.id
+                        },
+                        func_name: 'docker_network',
+                        action: "del",
+                    }
+                    AjaxPost('/Action/call', payload, (response) => {
+                        if(response.Result % 10000 == 0){
+                            this.showInterfaceManagement()
+                            that.MessageTip(that.Language.success[that.LanguageIndex],'tipn_correct',false)
+                        }else {
+                            this.MessageTip(response.ErrMsg,'tipn_error',true)
+                        }
+                    })
+                },
+                /**
+                 * ServeSettings
+                **/
+                ServeSettings(){
+                    this.Mirrosetstatus = true;
+                    this.containerstatus = false;
+                    this.storagePath = this.dockeserve.workdisk;
+                    this.postMessage('Service_settings')
+                },
+                
+                closeServiceset(){
+                    this.Mirrosetstatus = false;
+                    this.containerstatus = true;
+                    this.postMessage('docker')
+                },
+                /**
+                 * common
+                **/
+                postMessage(type){
+                    window.parent.postMessage({
+                        info: type
+                    }, '*')
+                    if(this.dockerStatus == 'image') {
+                        this.showImageManagement();
+                    }
+                },
+                handleMessageFromParent (event) {
+                    var type = event.data.info;
+                    if(type == 'docker'){
+                        this.closeDaocker();
+                    }
+                },
+                MessageTip (message,classname,type){
+                    this.messageNotice = true;
+                    this.Message = message;
+                    this.tipclassName = classname;
+                    this.tiptype = type;
+                    setTimeout(()=>{
+                        this.messageNotice = false;
+                    },1500)
+                },
+                deleteTip (data,index,type) {
+                    if(this.deldockerlist.length == 0  && data.id == undefined){
+                        this.MessageTip(this.Language.deletetip[this.LanguageIndex],'tipn_error',true); 
+                        return false;
+                    }
+                    this.deletestatus = true;
+                    this.deletedata = data;
+                    this.deletetype = type; 
+                    this.deleteIndex = index;
+                },
+                deleteConfirm(){
+                    this[this.deletetype](this.deletedata,this.deleteIndex);
+                    this.deletestatus = false;
+                },
+                percentage(value) {
+                    value = value.toLowerCase().replace('b', '');
+                    var ary = ['', 'k', 'm', 'g', 't'];
+                    var res = value;
+                    for (var i = 1; i < ary.length; i++) {
+                        if (value.indexOf(ary[i]) >= 0) {
+                            res = value.replace(ary[i], '') * Math.pow(1024, i);
+                        }
+                    }
+                    return res * 1;
+                }
+            }
+        })
+    </script>
+</html>

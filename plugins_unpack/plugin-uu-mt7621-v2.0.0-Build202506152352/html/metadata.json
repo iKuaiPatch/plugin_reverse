@@ -1,0 +1,9 @@
+{
+    "name": "uu",
+    "alias": "UU加速器",
+    "manufacturer": "iKuai",
+    "version": "2.0.0",
+    "type": "external",
+    "description": "网易UU网游加速器是由网易公司推出的游戏加速工具，于2013年3月正式上线。网易UU网游加速器提供游戏加速服务，支持3000余款手游加速，涵盖吃鸡类、MOBA类等多种游戏，可一键加速。",
+    "scripts":["service","uu_install"]
+}

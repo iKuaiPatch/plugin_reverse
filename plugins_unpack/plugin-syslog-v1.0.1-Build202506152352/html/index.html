@@ -1,0 +1,221 @@
+<html>
+    <head>
+        <script src="../../static/js/vue.js"></script>
+        <script src="../../static/js/plugin.js"></script>
+        <script src="../../static/js/element.js"></script>
+        <link rel="stylesheet" href="../../static/css/plugin.css" type="text/css">
+        <link rel="stylesheet" href="../../static/css/element.css">
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    </head>
+    <body>
+        <div id="app" class="wrapper row" v-loading="loading" :element-loading-text="loading_text">
+            <div class="box clearfix">
+                <div class="box_block">
+                    <div class="clearfix margin_phone col-lg-11 col-lg-offset-1 ">
+                        <div  class="line_edit">
+                            <span  class="input_tit">开启日志推送：</span> 
+                            <div  class="input_group">
+                                <el-switch @change="set_log_enable" v-model="logEnable"  ></el-switch>
+                            </div>
+                        </div>
+                        <div  class="line_edit">
+                            <span  class="input_tit">服务器IP/域名:</span> 
+                            <div  class="input_group">
+                                <input type="text" class="inptText" v-model="serverIp" > 
+                            </div>
+                        </div>
+                        <div class="line_edit" >
+                            <span  class="input_tit">端口：</span> 
+                            <div  class="input_group">
+                                <input type="text" class="inptText" v-model="port" > 
+                            </div>
+                        </div>
+                        <div class="line_edit">
+                            <span class="input_tit">协议类型：</span> 
+                            <div class="input_group">
+                                <el-radio-group v-model="protocol">
+                                    <el-radio label="tcp" >TCP</el-radio>
+                                    <el-radio label="udp">UDP</el-radio>
+                                </el-radio-group>
+                            </div>
+                        </div>
+                        
+                        <div class="line_edit" >
+                            <span  class="input_tit">分隔符类型：</span> 
+                            <div  class="input_group">
+                                <el-radio-group v-model="separator">
+                                    <el-radio label="r">回车符(\r)</el-radio>
+                                    <el-radio label="n" >换行符(\n)</el-radio>
+                                    <el-radio label="o">移位符(\o)</el-radio>
+                                </el-radio-group>
+                            </div>
+                        </div>
+                        <div class="line_edit">
+                            <span  class="input_tit">发送日志：</span> 
+                            <div  class="input_group">
+                                <el-checkbox-group v-model="logTypes">
+                                    <el-checkbox label="open_im">IM记录</el-checkbox>
+                                    <el-checkbox label="open_pppauth">认证日志</el-checkbox>
+                                    <el-checkbox label="open_iktimerd_ac">无线终端日志</el-checkbox>
+                                    <br>
+                                    <el-checkbox label="open_url">网页浏览记录</el-checkbox>
+                                    <el-checkbox label="open_nat">NAT日志</el-checkbox>
+                                    <el-checkbox label="open_opt">操作日志</el-checkbox>
+                                    <br>
+                                    <el-checkbox label="open_pppd">外网拨号日志</el-checkbox>
+                                    <el-checkbox label="open_dns">DNS请求日志</el-checkbox>
+                                    <el-checkbox label="open_dhcp">DHCP日志</el-checkbox>
+                                    <br>
+                                    <el-checkbox label="open_sys">系统日志</el-checkbox>
+                                    <el-checkbox label="open_ddns">动态域名日志</el-checkbox>
+                                    <el-checkbox label="open_offline">终端上下线日志</el-checkbox>
+                                    <br>
+                                    <el-checkbox label="open_arp">ARP日志</el-checkbox>
+                                </el-checkbox-group>
+                            </div>
+                        </div>
+                        <div class="h20"></div>
+                        <div class="line_edit">
+                            <div class="input_group">
+                                <button type="submit" @click="save" class="btn btn_blue btn_confirm">保存配置</button>
+                            </div>
+                        </div>
+                        <div class="h20"></div>
+                        <div class="readme col-lg-11 col-xs-12">
+                            <span class="note">帮助提示：</span>
+                            <div>第一步：设置服务器IP/域名、端口、协议类型、分隔符后点击“保存配置”。</div>
+                            <div>第二步：打开顶部“开启日志推送”开关。</div>
+                            <div class="colorR">注意：NAT和DNS请求日志将产生大量日志记录，请谨慎开启。</div>
+                        </div>
+                        <div class="h40"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </body>
+    <script type="module">
+        var app = new Vue({
+            el: '#app',
+            data: {
+                logEnable:false, 
+                loading:false,
+                loading_text: "",
+                result: "",
+                serverIp: '',
+                protocol: 'udp', 
+                port: "514",
+                separator: 'n', 
+                logTypes: [],
+            },
+            created() {
+                this.loadInitData();
+            },
+            methods: {
+                loadInitData() {
+                    self = this;
+                    var payload = {
+                        func_name: 'plugin_syslog',
+                        action: 'show',
+                        param: {TYPE: 'data'}
+                    };
+                    AjaxPost('/Action/call', payload, (response) => {
+                        if (response.Result % 10000 == 0 && response.Data) {
+
+                            const data = response.Data;
+                            self.logEnable = data.enabled == "yes";
+                            self.serverIp = data.server || '';
+                            self.protocol = data.protocol || 'udp';
+                            self.port = data.port != "0" ? data.port: "514" ;
+                            self.separator = data.delimiter === 10 ? 'n' : (data.delimiter === 15 ? 'o' : 'r');
+
+                            self.logTypes = [
+                                'open_im', 'open_pppauth', 'open_iktimerd_ac', 'open_nat',
+                                'open_opt', 'open_offline', 'open_ddns', 'open_dns',
+                                'open_dhcp', 'open_sys', 'open_pppd', 'open_url',
+                                'open_arp'
+                            ].filter((key, index) => data[key] === 1);
+                        }
+                    });
+                },
+                set_log_enable() {
+
+                    self=this;
+
+                    if (! self.serverIp.trim() || ! self.port.trim() || ! self.protocol.trim() ) {
+                        self.loading = false;
+                        self.$message.error('请先设置服务器IP、端口、协议并保存配置！');
+                        self.logEnable = !self.logEnable;
+                        return;
+                    }
+                    var payload = {
+                        func_name: 'plugin_syslog',
+                        action: 'set_log_enable',
+                        param: {enable:self.logEnable?"yes":"no"}
+                    };
+                    AjaxPost('/Action/call', payload, (response) => {
+                        if (response.Result % 10000 == 0) {
+                            this.$message({message: `Log推送已${self.logEnable ? '启动' : '禁用'}！`,type: 'success'});
+                        } else {
+                            self.logEnable = !self.logEnable;
+                        }
+                    });
+                },
+                save() {
+
+                    self=this;
+                    self.loading = true;
+                    self.loading_text = "正在保存...";
+
+                    if (! self.serverIp.trim() || ! self.port.trim() || ! self.protocol.trim() ) {
+                        self.loading = false;
+                        self.$message.error('服务器IP、端口、协议均为必填项！');
+                        return;
+                    }
+
+                    var payload = {
+                        func_name: 'plugin_syslog',
+                        action: 'update_config',
+                        param: {
+                            protocol: self.protocol,
+                            port: self.port,
+                            separator: self.separator,
+                            ip: self.serverIp,
+                            logs: self.logTypes.join(','),
+                        },
+                    };
+
+                    AjaxPost('/Action/call', payload, (response) => {
+                        if(response.Result % 10000 == 0) {
+                            self.loading = false;
+                            self.$message.success('保存配置成功！');
+                        }
+                        else {
+                            self.loading = false;
+                            self.$message.error(`保存配置出错！${response.ErrMsg}`);
+                        }
+                    });
+                },
+            }
+        });
+    </script>
+    <style scoped>
+        button:disabled {
+            color:#C0C4CC;
+            background-color:#EFEFEF;
+            cursor:not-allowed
+        }
+        .el-radio__label {
+            font-size: 12px;
+        }
+        .el-checkbox-group .el-checkbox {
+            width: 120px;
+            /* margin-right: 50px; */
+        }
+        .el-radio-group {
+            margin-top: 5px;
+        }
+        .el-radio {
+            width: 80px;
+        }
+    </style>
+</html>

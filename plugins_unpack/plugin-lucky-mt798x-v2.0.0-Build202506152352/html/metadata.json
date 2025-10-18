@@ -1,0 +1,10 @@
+{
+    "name": "lucky",
+    "alias": "Lucky(万吉)",
+    "manufacturer": "iKuai",
+    "version": "2.0.0",
+    "type": "external",
+    "description": "Lucky(万吉)是软硬路由公网神器,功能包括：ipv6/ipv4端口转发、反向代理、DDNS、WOL、ipv4 stun内网穿透、cron、ACME证书自动续签,阿里云盘、ftp、webdav、filebrowser等众多功能  <br>详情访问：<a>https://lucky666.cn/</a>",
+    "releasenotes": "更新说明：<br>更新内核版本到最新版本v2.17.6。",
+    "scripts":["service"]
+}

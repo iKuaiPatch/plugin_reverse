@@ -1,0 +1,327 @@
+<html>
+    <head>
+        <script src="../../static/js/vue.js"></script>
+        <script src="../../static/js/plugin.js"></script>
+        <script src="../../static/js/element.js"></script>
+        <link rel="stylesheet" href="../../static/css/plugin.css" type="text/css">
+        <link rel="stylesheet" href="../../static/css/element.css">
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+        <style>
+            .status-started {
+                color: green;
+            }
+            .status-stopped {
+                color: red;
+            }
+            .status-unknown {
+                color: gray;
+            }
+            .status-value {
+                color: green;
+            }
+		.input-field {
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+        }
+        .input-label {
+            display: inline-block;
+            width: 80px;
+        }
+		.input-a {
+            width: 80px;
+        }
+        .input-box {
+            width: 250px;
+            padding: 6px;
+            border: 1px solid blue;
+            border-radius: 4px;
+            height: 34px;
+            margin-right: 10px;
+        }
+        .submit-button {
+            height: 34px;
+            padding: 6px 12px;
+            background-color: green;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        </style>
+    </head>
+    <body>
+        <div id="app">
+            <div>
+                <!-- 空行 -->
+                <div style="height: 20px;"></div>
+                <div class="status">
+                    NPS状态：<span :class="statusClass">{{ statusMessage }}</span>
+                </div>
+				 <div style="height: 20px;"></div>
+				 <div>NPS端口：<a>{{ bridge_port }}</a></div> 
+				 <div style="height: 20px;"></div>
+				<div>WEB端口：<a>{{ web_port }}</a></div> 
+				<div style="height: 20px;"></div>
+				 <div>WEB用户：<a>{{ web_username }}</a></div> 
+			  	<div style="height: 20px;"></div>
+				<div>WEB密码：<a>{{ web_password }}</a></div> 
+				<div style="height: 20px;"></div>
+				<div>NPS配置：<a :href="LocalUrl" target="_blank">访问文件</a></div>
+				<div style="height: 20px;"></div>
+				<div>NPS面板：<a :href="npsUrl" target="_blank">点击访问</a></div> 
+              
+                <div style="height: 40px;"></div>
+                <button @click="nps_start" class="btn btn_green btn_confirm margin-l-10" type="button">
+                    {{ statusclick }}
+                </button>
+                <button @click="nps_stop" class="btn btn_red btn_confirm margin-l-10" type="button">
+                    禁用
+                </button>
+				<div style="height: 20px;"></div>
+				<div class="readme"><span class="note" style="left: 20px;">功能说明：</span>
+				<div>1、禁用NPS则并清理所有信息；</div> 
+				</div>
+				<div style="height: 40px;"></div>
+				
+			 <!-- 服务器和密钥输入框 -->
+            <div class="input-field">
+                <label class="input-label" for="bridge_port">服务端口:</label>
+                <input type="text" id="bridge_port" v-model="bridge_port_Input" class="input-box" placeholder="bridge_port" required>
+            </div>
+            <div class="input-field">
+                <label class="input-label" for="web_username">WEB用户:</label>
+                <input type="text" id="web_username" v-model="web_username_Input" class="input-box" placeholder="web_username" required>
+            </div>
+            <!-- 密码、目标和本地类型为可选字段 -->
+            <div class="input-field">
+                <label class="input-label" for="web_password">WEB密码:</label>
+                <input type="text" id="web_password" v-model="web_password_Input" class="input-box" placeholder="web_password">
+            </div>
+            <div class="input-field">
+                <label class="input-label" for="web_port">WEB端口:</label>
+                <input type="text" id="web_port" v-model="web_port_Input" class="input-box" placeholder="web_port">
+				 <button @click="submitConfig" class="btn btn_green btn_confirm margin-l-10">提交</button>
+            </div>
+
+				
+				<div style="height: 40px;"></div>
+			<!-- 文件选择和上传按钮 -->
+				<div class="input-field">
+				<a class="input-a">配置上传:</a>
+				 <input type="text" id="fileName" class="input-box" >
+				<!-- 自定义的选择文件按钮 -->
+				<label for="fileUpload" class="btn btn_blue btn_confirm margin-l-10">
+					选择文件
+				</label>
+				
+				<!-- 隐藏的文件输入框 -->
+				<input type="file" id="fileUpload" style="display: none;" onchange="document.getElementById('fileName').value = this.files[0].name;">
+				
+				<!-- 上传 EEPROM 按钮 -->
+				<button @click="uploadFile" class="btn btn_green btn_confirm margin-l-10" type="button">
+					上传配置
+				</button>
+
+			</div>
+				<div style="height: 30px;"></div>
+				<div class="readme"><span class="note" style="left: 20px;">功能说明：</span>
+				<div>1、上传请确认您的配置文件可用，上传错误可禁用NPS后重传即可，文本内空查看NPS官方文档，</div>
+				</div>
+			
+            </div>
+        </div> 
+    </body>
+    <script type="module">
+        var app = new Vue({
+            el: '#app',
+            data: { 
+                result: "",
+                statusMessage: "未知",
+				statusclick: "安装",
+                statusClass: "status-unknown",
+				LocalUrl: "",
+				npsUrl: "",
+				web_username: "",
+				web_password: "",
+				web_port: "",
+				bridge_port: "",
+				bridge_port_Input: "",  
+                web_username_Input: "",   
+                web_password_Input: "",  
+                web_port_Input: "",   
+                statusDetails: {}  // 初始化为对象，而不是 null
+            },
+            mounted() {
+                this.nps_status();
+				this.setLocalUrl();
+            },
+            methods: {
+                nps_start() {
+                    var payload = {
+                        func_name: 'plugin_nps',
+                        action: 'nps_start',
+                        param: {}
+                    };
+					if (this.statusclick == "安装") {
+						alert('安装中');
+						AjaxPost('/Action/call', payload)
+						this.nps_status();
+						return;
+					};
+                    AjaxPost('/Action/call', payload, (response) => {
+                        if(response.Result % 10000 == 0) {
+						
+						if(this.statusMessage == "已启动") {
+						this.statusMessage = "已停止";
+						this.statusClass = "status-stopped"; // 设置状态类
+						 alert('NPS停止成功');
+						 this.statusclick = "启动";
+						} else {
+                            this.statusMessage = "已启动";
+                            this.statusClass = "status-started"; // 设置状态类
+                            alert('NPS启动成功');
+                            MessageTip("NPS启动成功", "green");
+							this.statusclick = "停止";
+						  }
+                        }
+                    });
+                },
+				submitConfig() {
+					var payload = {
+						func_name: 'plugin_nps',
+						action: 'update_config',
+						param: {
+							bridge_port: this.bridge_port_Input.trim(),
+							web_username: this.web_username_Input.trim(),
+							web_password: this.web_password_Input.trim(),
+							web_port: this.web_port_Input.trim()
+						}
+					};
+
+					AjaxPost('/Action/call', payload, (response) => {
+						if (response && response.Result % 10000 == 0) {
+							alert('配置已成功更新');
+							this.nps_status(); // 重新获取状态，更新显示的 NPS 配置信息
+						} else {
+							alert('配置更新失败');
+						}
+					});
+				},
+                nps_stop() {
+                    var payload = {
+                        func_name: 'plugin_nps',
+                        action: 'stop',
+                        param: {}
+                    };
+                    AjaxPost('/Action/call', payload, (response) => {
+                        if(response.Result % 10000 == 0) {
+                            this.statusMessage = "已停止";
+                            this.statusClass = "status-stopped";
+                            alert('NPS停止成功');
+                            MessageTip("NPS停止成功", "red");
+                        }
+                    });
+                },
+                nps_status() {
+                    var payload = {
+                        func_name: 'plugin_nps',
+                        action: 'show',
+                        param: {
+                            TYPE: 'status'
+                        }
+                    };
+                    AjaxPost('/Action/call', payload, (response) => {
+                        if (response.Result % 10000 == 0 && response.Data) {
+                            const data = response.Data;
+
+                            if (data.status == 1) {
+                                this.statusMessage = "已启动";
+                                this.statusClass = "status-started";
+								this.statusclick = "停止";
+                            } else {
+                                this.statusMessage = "已停止";
+                                this.statusClass = "status-stopped";
+								this.statusclick = "启动";
+                            }
+                            if (data.status == 2) {
+                                this.statusMessage = "安装中";
+                                this.statusClass = "status-started";
+                            }
+							
+							if (data.status == 3) {
+                                this.statusMessage = "已停止";
+                                this.statusClass = "status-stopped";
+								this.statusclick = "安装";
+                            }
+							
+							this.web_username = data.web_username ? data.web_username : "未获取";
+							this.web_password = data.web_password ? data.web_password : "未获取";
+							
+							this.web_port = data.web_port ? data.web_port : "未获取";
+							this.bridge_port = data.bridge_port ? data.bridge_port : "未获取";
+						
+							
+							
+							this.npsweb = data.npsweb
+							var host = window.location.hostname; // 获取当前访问的主机名
+							this.npsUrl = `http://${host}:${this.npsweb}`; // 设置 AdGuard URL
+                            // 将 data 存储到 statusDetails 中
+                            this.statusDetails = data;
+                            console.log('NPS 状态信息:', this.statusDetails);
+
+                        } else {
+                            console.error('Status is undefined in the response', response);
+                            this.statusMessage = "状态未知";
+                            this.statusClass = "status-unknown";
+							this.statusclick = "安装";
+                        }
+                    });
+                },
+		 setLocalUrl() {
+                    var host = window.location.hostname;
+                    this.LocalUrl = `http://${host}/nps.conf`;
+                },
+			uploadFile() {
+                var fileInput = document.getElementById('fileUpload');
+                var file = fileInput.files[0];
+
+                if (!file) {
+                    alert('请先选择一个文件');
+                    return;
+                }
+
+                var formData = new FormData();
+                formData.append('file', file);
+
+                var xhr = new XMLHttpRequest();
+                xhr.open('POST', '/Action/upload', true);
+                xhr.onload = function () {
+                    if (xhr.status == 200) {
+                        alert('文件上传成功');
+                        app.nps_config();
+                    } else {
+                        alert('上传失败');
+                    }
+                };
+                xhr.send(formData);
+            },
+
+		 nps_config() {
+                var payload = {
+                    func_name: 'plugin_nps',
+                    action: 'config',
+                    param: {}
+                };
+                AjaxPost('/Action/call', payload, (response) => {
+                    if (response.Result % 10000 == 0) {
+                        alert('NPS 配置成功');
+                    } else {
+                        alert('NPS 配置失败');
+                    }
+                });
+            }
+            }
+        });
+    </script>
+</html>

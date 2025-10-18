@@ -1,0 +1,9 @@
+{
+    "name": "vnts",
+    "alias": "VNT服务端",
+    "manufacturer": "iKuai",
+    "version": "1.0.2",
+    "type": "external",
+    "description": "VNT是一个简便高效的异地组网、内网穿透工具。<br>详情访问：<a>https://rustvnt.com/</a>",
+    "scripts":["service"]
+}

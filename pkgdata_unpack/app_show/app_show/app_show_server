@@ -1,0 +1,481 @@
+#!/usr/bin/luajit
+
+local str_format = string.format
+local str_find  = string.find
+local str_match  = string.match
+local str_gmatch  = string.gmatch
+local os_remove  = os.remove
+local ffi     = require "ffi"
+local cjson   = require "cjson"
+local sqlite3 = require "lsqlite3"
+local const   = require "const"
+local ikutils = require "iklua.utils"
+local epoll   = require "iklua.ffi.epoll"
+local signal  = require "iklua.ffi.signal"
+local socket  = require "iklua.ffi.socket"
+local hex = require "iklua.string.hex"
+local ip2int  = ikutils.ip2int
+local split   = ikutils.split
+local execute = os.execute
+
+local DEBUG = arg[1] == "-d"
+local PATHFILE  = "/tmp/app_show"
+local LOCKFILE  = "/tmp/.app_show.lock"
+local CONFDB  = "/etc/mnt/ikuai/config.db"
+local LEASEDB = "/var/db/leases.db"
+local TIMEOUT = 3
+
+local ep_obj = epoll.new(1000)
+local epoll_errev = epoll.epoll_errev
+
+local LOOP_COUNT = 0
+local SECOND_LOOP = 0
+
+local LOCK_SH = 1
+local LOCK_EX = 2
+local LOCK_NB = 4
+local LOCK_UN = 8
+
+local is_fork_child
+local ikdb
+local ikdb_leases
+local ikdb_collect
+local OPENDB
+local RSP_DATA = {}
+local IK_RELEASE = {}
+
+local sock_accept = socket.Accept
+
+local str_gsub = string.gsub
+local os_date = os.date
+local os_time = os.time
+local C = ffi.C
+
+
+ffi.cdef [[
+	typedef int32_t pid_t;
+	typedef long size_t;
+	typedef long ssize_t;
+
+	int daemon(int nochdir, int noclose);
+	int fcntl(int fd, int cmd, int arg);
+	int open(const char *pathname, int flags, ...);
+	pid_t waitpid(pid_t pid, int *status, int options);
+	pid_t fork(void);
+	int flock(int fd, int operation);
+]]
+
+function ik_load_release()                              
+	local f = io.open("/etc/release")                    
+	local t = {}                                         
+	if f then                                            
+		for line in f:lines() do                         
+			key,val = str_match(line,"^([^ ]+) *= *(.+)")
+			if key then                                  
+				t[key] = val                             
+			end                                          
+		end                                              
+		f:close()                                        
+	end                                                  
+
+	t.VERSION_NUM = tonumber(t.VERSION_NUM)              
+	return t                                             
+end
+
+
+function main()
+	--忽略 SIGPIPE = 13 信号
+	signal.register(13, nil)
+
+	if not ikL_flock(LOCKFILE) then
+		print("app_show already running.")
+		os.exit(1)
+	end
+
+	if DEBUG then
+		function ikdebug(...) print(...) end
+	else
+		C.daemon(1,0)
+		function ikdebug(...) end
+	end
+
+	init_sqlite()
+	IK_RELEASE = ik_load_release()
+	init_register()
+	server_epoll()
+end
+
+function init_sqlite()
+	ikdb = sqlite3.open(CONFDB)
+	if ikdb then
+		ikdb:busy_timeout(1000) --timeout 1s
+		ikdb:create_function('ip2int',1,function(ctx,ip) ctx:result_text(ip2int(ip)) end)
+	else
+		print("ikdb open failed.")
+		os.exit(1)	
+	end
+--[[
+	ikdb_leases = sqlite3.open(LEASEDB)
+	if ikdb_leases then
+		ikdb_leases:busy_timeout(1000) --timeout 1s
+	else
+		print("ikdb_leases open failed.")
+		os.exit(1)
+	end
+]]--
+end
+
+function init_register()
+	init_register_sock("timer", ik_event_cb_timer,0,500*1000)
+	init_register_sock("unix",  ik_event_cb_server, PATHFILE)
+end
+
+function init_register_sock(typ, func, a, b, c)
+	local fd
+	if typ == "timer" then
+		fd = ep_obj:timer_create(a,b)
+	elseif typ == "unix" then
+		fd = socket.UnixStream(a)
+	end
+
+	assert(fd >= 0, "register socket failed")
+	C.fcntl(fd, const.F_SETFD, const.FD_CLOEXEC)
+	C.fcntl(fd, const.F_SETFL, const.O_NONBLOCK)
+
+	local reg = {
+		callback = func,
+		error = ikdebug,
+		close = ep_obj.close,
+		events = ep_obj.EPOLLIN
+	}
+
+	ep_obj:epoll_add(fd, reg)
+
+	return fd
+end
+
+function ik_check_expired()
+	--5分钟没有收到请求，关闭数据库程序退出
+	if LOOP_COUNT ~= 0 and LOOP_COUNT % 300 == 0 then
+		os.exit(0)
+	end
+end
+
+--定时器处理事物500ms
+function ik_event_cb_timer(fd, events)
+
+	if not ep_obj:timer_read(fd) then
+		return nil
+	end
+
+	ikdebug(os_time(),LOOP_COUNT,SECOND_LOOP)
+	if LOOP_COUNT % 3 == 0 then
+		if  SECOND_LOOP == 0 then
+			ik_show_homepage()
+			--ik_show_dhcp_status()
+		elseif SECOND_LOOP == 1 then
+			ik_show_global_config()
+			ik_show_ac_status()
+		end
+	end
+
+	SECOND_LOOP = SECOND_LOOP + 1
+
+	if SECOND_LOOP == 2 then
+		LOOP_COUNT = LOOP_COUNT + 1
+		SECOND_LOOP = 0
+	end
+	ik_check_expired()
+
+end
+
+function ik_sock_send(fd, data)
+	local sendlen = 0
+	while true do
+		local len, err = socket.Send(fd, data:sub(sendlen+1))
+		--local len,err = socket.SendtoHost(fd, data:sub(sendlen+1), PATHFILE)
+		if not len or len < 0 then --send fail
+			ikdebug("send data fail")
+			return false, err
+		end
+
+		sendlen = sendlen + len
+		if sendlen >= #data then
+			break
+		end
+	end
+
+	return true
+end
+
+function ik_show_homepage_sysstat(fd,key)
+	ikdebug("call ik_show_homepage_sysstat")
+	local t = {}
+	local file = io.popen("cat /proc/sys/net/netfilter/nf_conntrack_count")
+	if file then
+		local conn_num = file:read("*a")
+		file:close()
+		t["connect_num"] = tonumber(conn_num)
+	else
+		t["connect_num"] = 0
+	end
+		
+	local file = io.open("/proc/ikuai/stats/ik_proto_stats", "r")
+	if file then
+		for line in file:lines() do
+			local name,conn,upload,download,total_up,total_down = str_match(line,"([^ ]+)%s+([0-9]+)%s+([0-9]+)%s+([0-9]+)%s+([0-9]+)%s+([0-9]+)")
+			if name == "Total" then
+				t["upload"] = tonumber(upload)
+				t["download"] = tonumber(download)
+				t["total_up"] = tonumber(total_up)
+				t["total_down"] = tonumber(total_down)
+			end
+		end
+		file:close()
+	else
+		t["upload"] = 0
+		t["download"] = 0
+		t["total_up"] = 0
+		t["total_down"] = 0
+	end
+	if not RSP_DATA["homepage"] then
+		RSP_DATA["homepage"] = {}
+	end
+	RSP_DATA["homepage"]["sysstat"] = {}
+	RSP_DATA["homepage"]["sysstat"]["stream"] = t
+end
+
+function ik_show_global_config()
+	ikdebug("call ik_show_global_config")
+	local parental_mode_sql = "select parental_mode,stream_ctl_mode from global_config" 
+	local parental_mode
+	local stream_ctl_mode 
+	local status, res, sqlvm = pcall(ikdb.nrows,ikdb,parental_mode_sql)
+	if status then
+		for row in res, sqlvm do
+			parental_mode = row.parental_mode
+			stream_ctl_mode = row.stream_ctl_mode
+		end
+	end
+	
+	local mac_app_count_sql = "select count() as mac_app_count from (select mac from mac_app where enabled='yes' group by mac)"
+	local mac_app_count
+	local status, res, sqlvm = pcall(ikdb.nrows,ikdb,mac_app_count_sql)
+	if status then
+		for row in res, sqlvm do
+			mac_app_count = row.mac_app_count or 0
+		end
+	end
+	RSP_DATA["mac_app"] = {}
+	RSP_DATA["mac_app"]["parental_mode"] = parental_mode
+	RSP_DATA["mac_app"]["mac_app_count"] = mac_app_count or 0
+	RSP_DATA["stream_control"] = {}
+	RSP_DATA["stream_control"]["stream_ctl_mode"] = stream_ctl_mode
+
+end
+
+function __dhcp_pool_num()
+	local f = io.open("/tmp/iktmp/ik_dhcpd.status","r")
+	if f then
+		sum_dhcp_num = 0
+		for line in f:lines() do
+			local status,num = str_match(line,"([^ ]+) ([0-9]+)")
+			sum_dhcp_num = sum_dhcp_num + num
+		end
+		
+		f:close()
+		if not RSP_DATA["homepage"] then
+			RSP_DATA["homepage"] = {}
+		end
+		RSP_DATA["homepage"]["dhcp_addrpool_num"] = {}
+		RSP_DATA["homepage"]["dhcp_addrpool_num"]["available_num"] = sum_dhcp_num
+	end
+end
+
+function ik_show_homepage_cputemp()
+	local dir_str = "/tmp/iktmp/cputemp/"
+	local cmd = "ls "..dir_str
+	local t = {}
+
+	local fp = io.popen(cmd)
+	if fp then
+		for filename in fp:lines() do
+			local f = io.open(dir_str..filename,"r")
+			if f then
+				local cputemp_str = f:read("*a")
+				if cputemp then
+					cputemp = str_gsub(cputemp_str,"[\t\n\r]+$","")
+					cputemp = tonumber(cputemp) / 1000
+				else
+					cputemp = 0
+				end
+				table.insert(t,cputemp)
+				f:close()
+			end
+		end
+		fp:close()
+	end
+	if not RSP_DATA["homepage"] then
+		RSP_DATA["homepage"] = {}
+	end
+	if not RSP_DATA["homepage"]["sysstat"] then
+		RSP_DATA["homepage"]["sysstat"] ={}
+	end
+	RSP_DATA["homepage"]["sysstat"]["cputemp"] = t
+end
+
+function ik_show_homepage()
+
+	--__dhcp_pool_num()
+	
+	ik_show_homepage_sysstat()
+	ik_show_homepage_cputemp()
+end
+
+function ik_show_dhcp_status()
+	local status
+	local fp = io.popen("pidof ik_dhcpd")
+	local pid = fp:read("*a")
+	if pid ~= "" then
+		status = 1
+	else
+		status = 0
+	end
+	RSP_DATA["dhcp_server"] = {}
+	RSP_DATA["dhcp_server"]["status"] = status
+end
+
+function ik_show_ac_status()
+	local ac_status
+	local f_ac = io.open("/tmp/iktmp/AC.status","r")
+	local f_mesh = io.open("/tmp/iktmp/AC.mesh","r")
+	if f_ac then
+		ac_status = 1
+	elseif f_mesh then
+		ac_status = 2
+	else
+		ac_status = 0
+	end
+	if f_ac then
+		f_ac:close()
+	end
+	if f_mesh then
+		f_mesh:close()
+	end
+	RSP_DATA["ac_server"] = {}
+	RSP_DATA["ac_server"]["ac_status"] = ac_status
+	--wifi ssid1
+	local ssid1_sql = "select ssid1 from wifi"
+	local ssid1
+	local status, res, sqlvm = pcall(ikdb.nrows,ikdb,ssid1_sql)
+	if status then
+		for row in res, sqlvm do
+			ssid1 = row.ssid1
+		end
+		RSP_DATA["wifi"] = {}
+		RSP_DATA["wifi"]["ssid1"] = ssid1 or ""
+	end
+end
+function ik_app_show(fd)
+	ik_sock_send(fd, cjson.encode(RSP_DATA))
+end
+
+function ik_event_cb_local(fd, events)
+	ikdebug("callback: ik_event_cb_local")
+
+	local data = socket.Recvfrom(fd)
+
+	if data then
+		local task_type, remain = data:match("^ *(%.[^;]-;) *(.*)")
+		if task_type == ".show;" then
+			ik_app_show(fd)
+		else
+			ik_app_show_basic(fd)
+		end
+		LOOP_COUNT = 0
+	end
+
+	if ep_obj:epoll_del(fd) then
+		socket.Close(fd)
+	end
+end
+
+function ik_event_cb_server(fd, events) 
+	ikdebug("callback: ik_event_cb_server")
+	local cltfd = sock_accept(fd)
+	if cltfd < 0 then
+		return nil
+	end
+
+	socket.SetTimeout(cltfd, TIMEOUT)
+	ikdebug("a new client connect fd = "..cltfd)
+
+	local reg = {
+		callback = ik_event_cb_local,
+		error = ikdebug,
+		close = ep_obj.close,
+		events = ep_obj.EPOLLIN
+	}
+	local ret = ep_obj:epoll_add(cltfd, reg)
+	if not ret then
+		socket.Close(cltfd)
+		return nil
+	end
+end
+
+
+function timer_read(fd)
+	return C.read(fd, timer, timer_len)
+end
+
+
+function server_epoll()
+	ikdebug("Starting server!")
+	ep_obj.embed_func_end = function ()
+		CACHE_HOST_STATS = nil
+		CACHE_MAC_COMMENT = nil
+		CACHE_MAC_APNAME = nil
+		CACHE_MAC_HOSTNAME = nil
+	end
+
+	ep_obj:epoll_loop()
+end
+
+--安全fork子进程
+--参数 no_repeat 表示如果已经是子进程, 就不会再重复的fork
+--ikL_safe_fork(true) or ikL_safe_fork()
+function ikL_safe_fork(no_repeat)
+	if no_repeat and is_fork_child then
+		return 0
+	end
+
+	local pid = C.fork()
+	if pid == 0 then
+		local pid_c = C.fork()
+		if pid_c == 0 then
+			if not DEBUG then
+				C.daemon(1,0)
+			end
+			is_fork_child = true
+			return pid
+		end
+		os.exit(0)
+	elseif pid > 0 then
+		C.waitpid(pid, nil, 0)
+		return pid
+	else
+		return false
+	end
+end
+
+function ikL_flock(file, typ)
+	local typ = typ or LOCK_EX
+	local fd = C.open(file, const.O_WRONLY + const.O_CREAT)
+	if not fd then return false end
+
+	return C.flock(fd, LOCK_EX+LOCK_NB) >= 0
+end
+
+
+main()
+

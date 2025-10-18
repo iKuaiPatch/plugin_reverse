@@ -1,0 +1,411 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+	"http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+	<title>比较 source_dump 和 dump</title>
+	<style type="text/css">
+	<!--
+		body {
+			font-family: sans-serif;
+			font-size: smaller;
+		}
+		table {
+			border-collapse: collapse;
+			border: 1px solid gray;
+		}
+		th,td {
+			padding: 3px;
+			text-align: left;
+			vertical-align: middle;
+			border: 1px solid gray;
+		}
+		th {
+			color: white;
+			background: blue;
+			padding: 4px 4px;
+			background: linear-gradient(mediumblue, darkblue);
+		}
+		.icon2 { background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAEMSURBVDhPlZA/a8JAGIfz1RQcFBwsdFBwKH6E4lDcpHSQ4FCCQxEHIR2EdBAcOwl2KNhB0EGwQ4cMHW5wuMHh5/teXv+il/OFh5DLPU8u8WwzGgLHyLLbRB+A1sQaUArge0Ye2ycaJCI2AoXMmlxlm33CdzmBUHs4RbbZJ+yTTCfZfYbh/4YAT7d3EJk4BipV5RbovulEJIlFwx8FynF6IOhoxPLGncisfjmwsgeCV5IviIYlcHc/Tz+B39YHSURmvqBAaeL2D/wWRY5Ew4wDn24BnucXvReZ6Q9QKI7cAo2mOhEN3xTIR+mBxpPC9ExkJl8cCO2BxzrJF0TDGMjmAnsgm/FxlVxCstPztk2giMKL5rlfAAAAAElFTkSuQmCC'); background-repeat: no-repeat; background-size: 16px 16px; }
+		.icon6 { background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAHTSURBVDhPjZDfK4NRGMf3d6xcSAqjjNHGiHdMe6MQFxZKblxLKXK3UpIruVgL0Sg1uRGRC7/eZTYyNb8yIr3hYoQk5uuc453j+BFPfXrOezrfz/P06mj5poH/wB7/VL4piPUMPD5q3AGxGBGQNxQtIpZ3ggc/wiSYCMeugcQb2rUYL8/w70GVQHtri4gWfS+PWwt/WvmzQFUJ50CUcgI4m74IBofEqSyohRjkHD3iOBtioqB/4A8BIbLHcTaoXwR9wGFvLyPU3IyIy8XOdF02lfTILqe2PioKLt1unEmFuKqW8bC+hoOKUgQsOaD3ibVFQYQLNtoqcGEvxo1sw3MwiNd4HPd+P3YK87CSm8kkdO2tbU5tjSIKLu0luJXL8BIOM8FDKIRwgQmrRgO2exrZ1A/BJiBXLXHBks2AM5sValkxngIBJrhTFGyZjVjOzsCCbGICxc+Rq2a5YKVVwr41Hwdk5dNKOxPsSlYoOZlYNKQi2FHHJiurHNnh5QJvezvWjekImrJw3N3J1j/u6sR8WjJ8yXrMdOXx6ZpAKvdwAa1RhwNzKSnsh8XJBrRP6vXoMZu/hd8Fg6JAKnVhjGwyWVSEkaQkjFss7Jve/0y/JtDp3gBqlJMft0IK3wAAAABJRU5ErkJggg=='); background-repeat: no-repeat; background-size: 16px 16px; }
+		.icon9 { background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAEmSURBVDhPY6AeaGD4D2WhskEAnxwYgARhEthoXHIoAJ8ifHJwgE8RPjk4wKcInxwcYNMAA/jkYGDuAqf/QfNV/ztPF/nvMlnxP0MyDoXYQNMGo/8xa9j+By1l/e+7gOm/7WS2/yY9rP9XnpkJMQSfi+bMd4RrBmH3uWxgA779/PJfp4nzv0mjOKohIBrZgIBJvHCbQdhrDv//n7+//3/y/sF/pWrm/7IlbKgGgAAy230SD1jD9hsL/kcvVwezn354ALYdpFmvSgS/AfEzjP7/+fsHrBFEgzQbd3CCbRctYPxf32FGwIDJ/v/zVvuANb//9va/XjM73OnKmZL/hfMYUf0MAuh8ozqp/7Fznf+7TdQFawRhkEawZmJBdH8gXBN/BrGaGRgA8KLg0U9t6kEAAAAASUVORK5CYII='); background-repeat: no-repeat; background-size: 16px 16px; }
+		.icon10 { background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAEVSURBVDhPY6AaaGBg+A9lorDRAVY5kCBMAp1GBvjkMCSHsAEggFUBFOCUu9Xe/h+Ez8bF/b/W0gJmQ6UIg5ezZv1/5Gzz/1WA1/+vR4/8v+nu+P+UpdF/kDhIHt1WFP7JDHew5o9eLv9/nznz/+/fv2BDLlmZ/D9krINhCIjGMOClmwPYgD+XLkEMOHsWbsD52hgUA0AAxYC9ztpgF4AwsgtAXgAZsMvLBL8Bh5Kd/t+0NgXjBz5uYAMuO9mANe/WVv1/piQEvwFLi4rAis+Y6P6/W10Odj6IBmleqyj1f0OVKaqfgQCdz7DA0/P/dmVlcICBXACil0tJ/a+1sEBViA+AXLLc1vb/fFlZMA3iQ6XwAAYGAMud8vq1m1euAAAAAElFTkSuQmCC'); background-repeat: no-repeat; background-size: 16px 16px; }
+		.icon19 { background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAJBSURBVDhPrZJfSFNhGMbPWUS0riOtKLaKcv/c5gzTIbWNCSOhi+gq7CKyRhRChTExTCajoH/LYouIURfRRSGYJE6hVtvY2sq0omWCCS2qixU5MtLz9H7fmVlrURc98JyP8x3e3/d873mF/y2xyP+uVLAKDwNmJC4aEe82gLZUZCX/+Dex4mJFzlQwSA2ZQYqTzaebLw4WGRg6uRYDPhXueFehr3MlejuWo6d92Vy6xRzAYuPLOWDq9O8uoVttSyGK4hEqVZNFgd0ZH7qAbAeifl1J3z21HoMn1qC/azVuH1/BkzATQCWwhkkTHiT8jXjp8yHd1ITnXi9yY2OQJKlw7k+ig5iutSjlJFG/Hq/P78GkrQ7vt7mQjz5ApmELkpvMyIQOEeTX3kxHd/E1dGARFApFtxA/68IbZz0+uuz4lkpBmp3FVDyOJ3XViFTpkHtG/WE9Kjg3uIMDruxfyAAXhMS+BrxzbsYnlwMzIyMckE+nMVJrwX2TFo/bd8o9Kjjb28gBl90LZMCQXYtJuxVvHfX4mkxywOdYDI9qTLhn1GDAZQGoR3N+dcPOAZf2ijIgstuGF9aNyFDkia1ODhi1WREz6xDWrkPq8Hbg6cEfHg3VckCwWZB74KisdEdNFUhZ9Bhva+Xxxz2t6N+gwk0VDY6nmjeM3ZnFZiezYvoDfeRjAj2WuI3G6z1qdT4bCMyQJLZeLS+fbjYYhlnMUubF8qjTOBHETkk8en24s6xs+KhGE6b3FtrX0mfNH0zjLCi/A9+r6BhtjwaSAAAAAElFTkSuQmCC'); background-repeat: no-repeat; background-size: 16px 16px; }
+		.icon20 { background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAJOSURBVDhPrZJfSFNRHMfv2djGRm1UjmG1amaJMZapzAgK0sKQBBksiIT1UhKiSKSBI5sry6KSNm0t/w1CxipiaGKEQQQWoS9SDz30sIcSMmI92Nzmvft2zrlLaRn10A8+3MM59/s93/M7R/jfRXL495oJlmH6bine3CnB614b6JSFouOLfysmzq2XPcXMZC+FmeQmW0m3Ig7mADy/XohnVy2YuLwF497NGPNsRPSC6Wc6LTdgsbF4G1i49Tur1GO3EYSQViotoBCBnRlfuoA5D6Z81lV5cbMIk9e242nXVjzp3MSTMKiBRWANk2IeDIYq4RjegapAHg75LRidfQBJkpDJZLJ7Z4tuxOp+i05O8ipghzdaiuMRJRxhDY4MqXGgT43yGyqkxTT99dfeJKdc/Btq0kChUPQKA8MHUf9IDWdYgboRDaoH1djvVyORWkBkJojo9Hm5R1nik8e4wVCjihn0CXW+tXCMqFAbUqAmpEHNgAGppUV8jMdg9WpR3mmSe5RlbqyWGwycUcoG1b41SC4lMPE+hBPhIj7+9C2G3Ve0KHArYT6nBmLty3yIVHGDew1ENnDRa0wvJbkwLaa4uKxbi50dVNymhK09D3jXvMzb0D5uEDwtyD2ocNr8zQ+PQpRExBNfYbukQaGbwNyqgLGF4GK3nTeMnZnFZjszMb2BcUqHoNfr84sbjLP1/ZXi4R6raG4jYv5ZIm1oItK2k6bPBoOhn0XNhYvlpy5wE7uzJLDuFJlf30i+611kvsy5Z4jOV9DlXX+APmdB9wOrL9Xczf+pRwAAAABJRU5ErkJggg=='); background-repeat: no-repeat; background-size: 16px 16px; }
+		.icon22 { background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAJFSURBVDhPlVJfSFNxFD5u3llRy1QCqVFIPSTEnbglrZYUUyc5C8oC30YgZQnRHiIferCgFx+ip97qsT9U0ItPVpTpQzlKuVYE/mHK3JwW6tzc1K9vPy9EVGYffNx7zvnOOd/v3p/8DQ6HOPx+i98M/w+aJtrykgAQVFXp98z0+nGzQzqTcyUcsB+JmAWSd6zTLK0P8Uhu+0bSoVwEg7UQsWpmeW1cvyY3kLJi+KsNz5/lqUHx8QK6OHLLlKyN2YnV7SIbYBUPmk80KBfNZxqY+wdCF6Q9O5XPBhvFxciXJtQfamRMR2E7cwfbTemfERvg9oXNamONdxe2SivOnfIxLlK5QP3JrCn9HZeCEooPWID5TUrccXUPykqu4HJLNZC1MafB6M658ITMll8R6ZNMOsLmKQ3gHXh4v5T2vXjRVYzMLAevFKq83xdYMFt+4nyztCXCVmDaDozwGHHB3JANT+7sADKM53PcQhc2DHYV0oWr1WxdxeQbwdIIm/m78IXihCA6KOjp4vs0mSQXyRV+Cz6P1wSSZqtIS5NcTPTS4gQ/3ieKhslJ4Rb+e/Hi9aOdwHfm0rkh1C1rCD8t4r2obFMD+h/IWOodiyO8NLnto2RMsLt0G6r1x5j54FYDVW2cjPKoUYG7sumbGtB9V/pnXgpSPYJ0r2CRxEeSblbe88mjLPWt1tJvGYdJQ1DhDMKqba9QQ/aW6bf18sZRt+7/7NLrDJezzvC4fMZh91HD7aw1VE6x1vAe8A2V7zs9VmA/+0pE5Afp9WpmPZBTsAAAAABJRU5ErkJggg=='); background-repeat: no-repeat; background-size: 16px 16px; }
+		.icon26 { background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAINSURBVDhPjZDfS1NhHMYP/gMJXiQTURmBOiNnU7acomc62aEgxS6KEsSbri0QFK8cCCVejS7G0KimEC26GUWxC3/sjNaO0oSViiuUGNbFFBURXU/v+553nr2joC98eOHlfT7P9xyJTug18D+wx3+b0EuIcwocH3MOgGyWCMgbCo+IE5wzgudhEsyHs7+A/Bt68pgxgRk9qF2xQrPUImKu1qkoR/hiORMMDYrwqD4BP28tWDnfnKFkCDtAmvINuHOvSOB7ogejtLWqGmHS/KqsFC8u6ARKJIZPkpDeJILbWVEwNS1+L2vmrcWkvlBBpkjwCNiYnGRoAwNIeb3w0UbOY9JMmSCk1oC+W2lRsOv3Y1tuxc+bCo6iy1jv6UTc0QR6T1cuRBekDMHH+z344W7HnuLCaSKB37kcDmMxfG5txuLVBtY6xnlAWFklgl5VFOy6O7CvdOEsmWSCI01D8poNS1YLVsfvslYaZHwClBsRQxBxWbDtciLT1Y6TeJwJDlQVK3YrFhrr8V6xoY8051FjVBA2BItDMr46W7BOVv5+3c0Ea7ITalMDPlguIfGw32gnqEtE4AkaguDwMKLWOiRsl7E1NsLW3xodwbvaGoRqTHgz2sxChcjdAUNA56nHg7dmM/vrObIBPedNJozb7WxlhiDwiQK504tnZJP5tjbMVlbiucMBevdvprhAkv4AuaBa7w9OG3UAAAAASUVORK5CYII='); background-repeat: no-repeat; background-size: 16px 16px; }
+		.icon27 { background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAIWSURBVDhPjY9fSFNhGIe/s+E5DIpdaITBLvpnN7VgSXfFnJU1EvWEF2oi4UWFYIH9gQZKGmU1Jm2VRZuO4DSsjAiiq64CuyjWRWCBsISKXUScoNicW/x6v++bnZ1h0AsPZxfneX47jN/zZ8D/IF5e7WafwH5FIJ8v85MwAf4Op6zYz3hgidWySTLHeAhks/JZ1qwz7kvRfc8t0CY1sAkGdoUYYTC/Af3H7JRVefGpqtWVZRI5fDn7WZL5BHT3VgVu3payFqPl67Q6RoSIIWKAOE70STILPGBWBaIV3/uPVQHJ8x8o0JW1B8LXgEQyAH16K5on67AvthGsnxY53YROBCXz7wG9M2MPjD71oWvGCT2l4eCUir23VDSGa2yrApJlIG0F4tNNOPpYRWfKgXZDQ0tCxZ6YilzhF2be3pXrFf8g/Y4CHXNWoD26FrpRg9akA8GkhmDcjUIxjy/mIraPutB4cb1Y5WL6jSTY+tIKtETXYKmYw4uPSfSktonfX38sYudlFzaFnPCcUcG8tN4gmXtNgUOzVqDvjg/LxSUhLpcKQt417kLDMMnnnPBeqBOrXBS84gGjIhBrw+Cjwyj9LsHMfYd3TMOWkALPWQfWnVYwMr77r7hCYH/cCvDzDW9Ab6IZB27sgOe8gvohBbWDCjafrLeJViBsD0QiEfRMdAip9pQC9wkFR662we/3I9B0aVWkydgfc9E9S8jQzqoAAAAASUVORK5CYII='); background-repeat: no-repeat; background-size: 16px 16px; }
+		.indent0 { padding-left: 20px; background-position: 2px center; }
+		.indent1 { padding-left: 28px; background-position: 10px center; }
+		.indent2 { padding-left: 36px; background-position: 18px center; }
+		.indent3 { padding-left: 44px; background-position: 26px center; }
+		.indent4 { padding-left: 52px; background-position: 34px center; }
+		.indent5 { padding-left: 60px; background-position: 42px center; }
+	-->
+	</style>
+</head>
+<body>
+<h2>比较 source_dump 和 dump</h2>
+<table border="1">
+<tr>
+<th>文件名称</th><th>文件夹</th><th>比较结果</th><th>扩展名</th></tr>
+<tr style='background-color: #f0de7d'><td class="icon19 indent1">boot</td><td></td><td>文件夹不同</td><td></td></tr>
+<tr style='background-color: #f0de7d'><td class="icon19 indent2">grub</td><td>/boot</td><td>文件夹不同</td><td></td></tr>
+<tr style='background-color: #ffffff'><td class="icon20 indent3">i386-pc</td><td>/boot/grub</td><td>完全相同</td><td></td></tr>
+<tr style='background-color: #ffffff'><td class="icon20 indent3">x86_64-efi</td><td>/boot/grub</td><td>完全相同</td><td></td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent3">grub-gpt-boot.img</td><td>/boot/grub</td><td>二进制文件完全相同</td><td>img</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent3">grub-gpt-core.img</td><td>/boot/grub</td><td>二进制文件完全相同</td><td>img</td></tr>
+<tr style='background-color: #f0de7d'><td class="icon26 indent3">grub.cfg</td><td>/boot/grub</td><td>文本文件不同</td><td>cfg</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent3">grub.img</td><td>/boot/grub</td><td>二进制文件完全相同</td><td>img</td></tr>
+<tr style='background-color: #f0de7d'><td class="icon10 indent2">rootfs</td><td>/boot</td><td>二进制文件不同</td><td></td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent2">vmlinuz</td><td>/boot</td><td>二进制文件完全相同</td><td></td></tr>
+<tr style='background-color: #ffffff'><td class="icon22 indent0">rootfs</td><td></td><td>无法比较文件</td><td></td></tr>
+<tr style='background-color: #ffffff'><td class="icon22 indent1">system</td><td></td><td>无法比较文件</td><td></td></tr>
+<tr style='background-color: #ffffff'><td class="icon20 indent2">bin</td><td>/system</td><td>完全相同</td><td></td></tr>
+<tr style='background-color: #ffffff'><td class="icon20 indent2">dev</td><td>/system</td><td>完全相同</td><td></td></tr>
+<tr style='background-color: #ffffff'><td class="icon22 indent2">etc</td><td>/system</td><td>无法比较文件</td><td></td></tr>
+<tr style='background-color: #ffffff'><td class="icon20 indent2">lib</td><td>/system</td><td>完全相同</td><td></td></tr>
+<tr style='background-color: #ffffff'><td class="icon20 indent2">lib64</td><td>/system</td><td>完全相同</td><td></td></tr>
+<tr style='background-color: #ffffff'><td class="icon20 indent2">lost+found</td><td>/system</td><td>完全相同</td><td></td></tr>
+<tr style='background-color: #ffffff'><td class="icon20 indent2">mnt</td><td>/system</td><td>完全相同</td><td></td></tr>
+<tr style='background-color: #ffffff'><td class="icon20 indent2">overlay</td><td>/system</td><td>完全相同</td><td></td></tr>
+<tr style='background-color: #ffffff'><td class="icon20 indent2">proc</td><td>/system</td><td>完全相同</td><td></td></tr>
+<tr style='background-color: #ffffff'><td class="icon20 indent2">rom</td><td>/system</td><td>完全相同</td><td></td></tr>
+<tr style='background-color: #ffffff'><td class="icon20 indent2">root</td><td>/system</td><td>完全相同</td><td></td></tr>
+<tr style='background-color: #f0de7d'><td class="icon19 indent2">sbin</td><td>/system</td><td>文件夹不同</td><td></td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent3">arp</td><td>/system/sbin</td><td>二进制文件完全相同</td><td></td></tr>
+<tr style='background-color: #dddddd'><td class="icon2 indent3">autoinit</td><td>/system/sbin</td><td>仅在右侧: /system/sbin</td><td>  </td><td></td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent3">depmod</td><td>/system/sbin</td><td>二进制文件完全相同</td><td></td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent3">devmem</td><td>/system/sbin</td><td>二进制文件完全相同</td><td></td></tr>
+<tr style='background-color: #ffffff'><td class="icon27 indent3">dut_calibration</td><td>/system/sbin</td><td>文本文件完全相同</td><td></td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent3">halt</td><td>/system/sbin</td><td>二进制文件完全相同</td><td></td></tr>
+<tr style='background-color: #ffffff'><td class="icon27 indent3">hotplug-call</td><td>/system/sbin</td><td>文本文件完全相同</td><td></td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent3">hotplug2</td><td>/system/sbin</td><td>二进制文件完全相同</td><td></td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent3">hwclock</td><td>/system/sbin</td><td>二进制文件完全相同</td><td></td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent3">ifconfig</td><td>/system/sbin</td><td>二进制文件完全相同</td><td></td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent3">init</td><td>/system/sbin</td><td>二进制文件完全相同</td><td></td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent3">insmod</td><td>/system/sbin</td><td>二进制文件完全相同</td><td></td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent3">ip</td><td>/system/sbin</td><td>二进制文件完全相同</td><td></td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent3">lsmod</td><td>/system/sbin</td><td>二进制文件完全相同</td><td></td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent3">mdadm</td><td>/system/sbin</td><td>二进制文件完全相同</td><td></td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent3">mkswap</td><td>/system/sbin</td><td>二进制文件完全相同</td><td></td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent3">modinfo</td><td>/system/sbin</td><td>二进制文件完全相同</td><td></td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent3">modprobe</td><td>/system/sbin</td><td>二进制文件完全相同</td><td></td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent3">pivot_root</td><td>/system/sbin</td><td>二进制文件完全相同</td><td></td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent3">poweroff</td><td>/system/sbin</td><td>二进制文件完全相同</td><td></td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent3">reboot</td><td>/system/sbin</td><td>二进制文件完全相同</td><td></td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent3">rmmod</td><td>/system/sbin</td><td>二进制文件完全相同</td><td></td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent3">route</td><td>/system/sbin</td><td>二进制文件完全相同</td><td></td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent3">start-stop-daemon</td><td>/system/sbin</td><td>二进制文件完全相同</td><td></td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent3">switch_root</td><td>/system/sbin</td><td>二进制文件完全相同</td><td></td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent3">sysctl</td><td>/system/sbin</td><td>二进制文件完全相同</td><td></td></tr>
+<tr style='background-color: #ffffff'><td class="icon27 indent3">sysinit</td><td>/system/sbin</td><td>文本文件完全相同</td><td></td></tr>
+<tr style='background-color: #ffffff'><td class="icon27 indent3">sysupgrade</td><td>/system/sbin</td><td>文本文件完全相同</td><td></td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent3">tc</td><td>/system/sbin</td><td>二进制文件完全相同</td><td></td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent3">udevtrigger</td><td>/system/sbin</td><td>二进制文件完全相同</td><td></td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent3">udhcpc</td><td>/system/sbin</td><td>二进制文件完全相同</td><td></td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent3">usbmode</td><td>/system/sbin</td><td>二进制文件完全相同</td><td></td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent3">vconfig</td><td>/system/sbin</td><td>二进制文件完全相同</td><td></td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent3">watchdog</td><td>/system/sbin</td><td>二进制文件完全相同</td><td></td></tr>
+<tr style='background-color: #ffffff'><td class="icon20 indent2">sys</td><td>/system</td><td>完全相同</td><td></td></tr>
+<tr style='background-color: #ffffff'><td class="icon20 indent2">tmp</td><td>/system</td><td>完全相同</td><td></td></tr>
+<tr style='background-color: #ffffff'><td class="icon22 indent2">usr</td><td>/system</td><td>无法比较文件</td><td></td></tr>
+<tr style='background-color: #ffffff'><td class="icon20 indent3">bin</td><td>/system/usr</td><td>完全相同</td><td></td></tr>
+<tr style='background-color: #ffffff'><td class="icon20 indent3">DTalkInside</td><td>/system/usr</td><td>完全相同</td><td></td></tr>
+<tr style='background-color: #ffffff'><td class="icon22 indent3">ikuai</td><td>/system/usr</td><td>无法比较文件</td><td></td></tr>
+<tr style='background-color: #ffffff'><td class="icon20 indent3">lib</td><td>/system/usr</td><td>完全相同</td><td></td></tr>
+<tr style='background-color: #ffffff'><td class="icon20 indent3">lib64</td><td>/system/usr</td><td>完全相同</td><td></td></tr>
+<tr style='background-color: #ffffff'><td class="icon20 indent4">ipsec</td><td>/system/usr/lib64</td><td>完全相同</td><td></td></tr>
+<tr style='background-color: #ffffff'><td class="icon20 indent4">iptables</td><td>/system/usr/lib64</td><td>完全相同</td><td></td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent5">libip6t_dst.so</td><td>/system/usr/lib64/iptables</td><td>二进制文件完全相同</td><td>so</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent5">libip6t_eui64.so</td><td>/system/usr/lib64/iptables</td><td>二进制文件完全相同</td><td>so</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent5">libip6t_frag.so</td><td>/system/usr/lib64/iptables</td><td>二进制文件完全相同</td><td>so</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent5">libip6t_hbh.so</td><td>/system/usr/lib64/iptables</td><td>二进制文件完全相同</td><td>so</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent5">libip6t_ipv6header.so</td><td>/system/usr/lib64/iptables</td><td>二进制文件完全相同</td><td>so</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent5">libip6t_mh.so</td><td>/system/usr/lib64/iptables</td><td>二进制文件完全相同</td><td>so</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent5">libip6t_rt.so</td><td>/system/usr/lib64/iptables</td><td>二进制文件完全相同</td><td>so</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent5">libip6t_srh.so</td><td>/system/usr/lib64/iptables</td><td>二进制文件完全相同</td><td>so</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent5">libipt_FULLCONENAT.so</td><td>/system/usr/lib64/iptables</td><td>二进制文件完全相同</td><td>so</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent5">libipt_MIRROR.so</td><td>/system/usr/lib64/iptables</td><td>二进制文件完全相同</td><td>so</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent5">libipt_realm.so</td><td>/system/usr/lib64/iptables</td><td>二进制文件完全相同</td><td>so</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent5">libipt_SAME.so</td><td>/system/usr/lib64/iptables</td><td>二进制文件完全相同</td><td>so</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent5">libipt_ULOG.so</td><td>/system/usr/lib64/iptables</td><td>二进制文件完全相同</td><td>so</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent5">libipt_unclean.so</td><td>/system/usr/lib64/iptables</td><td>二进制文件完全相同</td><td>so</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent5">libxt_appmark.so</td><td>/system/usr/lib64/iptables</td><td>二进制文件完全相同</td><td>so</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent5">libxt_APPMARK.so</td><td>/system/usr/lib64/iptables</td><td>二进制文件完全相同</td><td>so</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent5">libxt_AUDIT.so</td><td>/system/usr/lib64/iptables</td><td>二进制文件完全相同</td><td>so</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent5">libxt_bytesband.so</td><td>/system/usr/lib64/iptables</td><td>二进制文件完全相同</td><td>so</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent5">libxt_byteslimit.so</td><td>/system/usr/lib64/iptables</td><td>二进制文件完全相同</td><td>so</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent5">libxt_cgroup.so</td><td>/system/usr/lib64/iptables</td><td>二进制文件完全相同</td><td>so</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent5">libxt_CHECKSUM.so</td><td>/system/usr/lib64/iptables</td><td>二进制文件完全相同</td><td>so</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent5">libxt_CLASSIFY.so</td><td>/system/usr/lib64/iptables</td><td>二进制文件完全相同</td><td>so</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent5">libxt_CONNSECMARK.so</td><td>/system/usr/lib64/iptables</td><td>二进制文件完全相同</td><td>so</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent5">libxt_cpu.so</td><td>/system/usr/lib64/iptables</td><td>二进制文件完全相同</td><td>so</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent5">libxt_dccp.so</td><td>/system/usr/lib64/iptables</td><td>二进制文件完全相同</td><td>so</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent5">libxt_devgroup.so</td><td>/system/usr/lib64/iptables</td><td>二进制文件完全相同</td><td>so</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent5">libxt_emark.so</td><td>/system/usr/lib64/iptables</td><td>二进制文件完全相同</td><td>so</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent5">libxt_hashlimit.so</td><td>/system/usr/lib64/iptables</td><td>二进制文件完全相同</td><td>so</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent5">libxt_high_prio_host.so</td><td>/system/usr/lib64/iptables</td><td>二进制文件完全相同</td><td>so</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent5">libxt_HMARK.so</td><td>/system/usr/lib64/iptables</td><td>二进制文件完全相同</td><td>so</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent5">libxt_IDLETIMER.so</td><td>/system/usr/lib64/iptables</td><td>二进制文件完全相同</td><td>so</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent5">libxt_ifaces.so</td><td>/system/usr/lib64/iptables</td><td>二进制文件完全相同</td><td>so</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent5">libxt_ifname.so</td><td>/system/usr/lib64/iptables</td><td>二进制文件完全相同</td><td>so</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent5">libxt_IKQUEUE.so</td><td>/system/usr/lib64/iptables</td><td>二进制文件完全相同</td><td>so</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent5">libxt_ikverdict.so</td><td>/system/usr/lib64/iptables</td><td>二进制文件完全相同</td><td>so</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent5">libxt_IMQ.so</td><td>/system/usr/lib64/iptables</td><td>二进制文件完全相同</td><td>so</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent5">libxt_ipcomp.so</td><td>/system/usr/lib64/iptables</td><td>二进制文件完全相同</td><td>so</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent5">libxt_ipvs.so</td><td>/system/usr/lib64/iptables</td><td>二进制文件完全相同</td><td>so</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent5">libxt_LED.so</td><td>/system/usr/lib64/iptables</td><td>二进制文件完全相同</td><td>so</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent5">libxt_local_host.so</td><td>/system/usr/lib64/iptables</td><td>二进制文件完全相同</td><td>so</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent5">libxt_matchcount.so</td><td>/system/usr/lib64/iptables</td><td>二进制文件完全相同</td><td>so</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent5">libxt_MIRROR.so</td><td>/system/usr/lib64/iptables</td><td>二进制文件完全相同</td><td>so</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent5">libxt_nfacct.so</td><td>/system/usr/lib64/iptables</td><td>二进制文件完全相同</td><td>so</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent5">libxt_NFLOG.so</td><td>/system/usr/lib64/iptables</td><td>二进制文件完全相同</td><td>so</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent5">libxt_NFQUEUE.so</td><td>/system/usr/lib64/iptables</td><td>二进制文件完全相同</td><td>so</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent5">libxt_NTH_CONNMARK.so</td><td>/system/usr/lib64/iptables</td><td>二进制文件完全相同</td><td>so</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent5">libxt_osf.so</td><td>/system/usr/lib64/iptables</td><td>二进制文件完全相同</td><td>so</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent5">libxt_peerconns.so</td><td>/system/usr/lib64/iptables</td><td>二进制文件完全相同</td><td>so</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent5">libxt_rateest.so</td><td>/system/usr/lib64/iptables</td><td>二进制文件完全相同</td><td>so</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent5">libxt_rpfilter.so</td><td>/system/usr/lib64/iptables</td><td>二进制文件完全相同</td><td>so</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent5">libxt_sctp.so</td><td>/system/usr/lib64/iptables</td><td>二进制文件完全相同</td><td>so</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent5">libxt_SECMARK.so</td><td>/system/usr/lib64/iptables</td><td>二进制文件完全相同</td><td>so</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent5">libxt_suffix.so</td><td>/system/usr/lib64/iptables</td><td>二进制文件完全相同</td><td>so</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent5">libxt_SYNPROXY.so</td><td>/system/usr/lib64/iptables</td><td>二进制文件完全相同</td><td>so</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent5">libxt_TCPOPTSTRIP.so</td><td>/system/usr/lib64/iptables</td><td>二进制文件完全相同</td><td>so</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent5">libxt_TEE.so</td><td>/system/usr/lib64/iptables</td><td>二进制文件完全相同</td><td>so</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent5">libxt_TPROXY.so</td><td>/system/usr/lib64/iptables</td><td>二进制文件完全相同</td><td>so</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent5">libxt_TRACE.so</td><td>/system/usr/lib64/iptables</td><td>二进制文件完全相同</td><td>so</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent5">libxt_u32.so</td><td>/system/usr/lib64/iptables</td><td>二进制文件完全相同</td><td>so</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent5">libxt_urlroute.so</td><td>/system/usr/lib64/iptables</td><td>二进制文件完全相同</td><td>so</td></tr>
+<tr style='background-color: #ffffff'><td class="icon20 indent4">lua</td><td>/system/usr/lib64</td><td>完全相同</td><td></td></tr>
+<tr style='background-color: #ffffff'><td class="icon20 indent4">openvpn-ikuai</td><td>/system/usr/lib64</td><td>完全相同</td><td></td></tr>
+<tr style='background-color: #ffffff'><td class="icon20 indent4">pppd</td><td>/system/usr/lib64</td><td>完全相同</td><td></td></tr>
+<tr style='background-color: #ffffff'><td class="icon20 indent4">pptpd</td><td>/system/usr/lib64</td><td>完全相同</td><td></td></tr>
+<tr style='background-color: #ffffff'><td class="icon20 indent4">sasl2</td><td>/system/usr/lib64</td><td>完全相同</td><td></td></tr>
+<tr style='background-color: #ffffff'><td class="icon27 indent4">libaclqq.so.2</td><td>/system/usr/lib64</td><td>文本文件完全相同</td><td>2</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libadtu.so</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>so</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libattr.so</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>so</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libattr.so.1</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>1</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libattr.so.1.1.2448</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>2448</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libblkid.so.1</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>1</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libblkid.so.1.1.0</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>0</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libcap.so</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>so</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libcap.so.2</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>2</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libcap.so.2.43</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>43</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libcharset.so</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>so</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libcharset.so.1</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>1</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libcharset.so.1.0.0</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>0</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libcom_err.so.0</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>0</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libcom_err.so.0.0</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>0</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libcrypto.so.1.0.0</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>0</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libcurl.so.4</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>4</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libcurl.so.4.6.0</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>0</td></tr>
+<tr style='background-color: #ffffff'><td class="icon27 indent4">libdnsproxy.so.2</td><td>/system/usr/lib64</td><td>文本文件完全相同</td><td>2</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libdtalkd.so</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>so</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libe2p.so.2</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>2</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libe2p.so.2.3</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>3</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libelf-0.186.so</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>so</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libelf.so.1</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>1</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libenca.so</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>so</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libenca.so.0</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>0</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libenca.so.0.5.1</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>1</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libev.so</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>so</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libev.so.4</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>4</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libev.so.4.0.0</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>0</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libext2fs.so.2</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>2</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libext2fs.so.2.4</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>4</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libfdisk.so.1</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>1</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libfdisk.so.1.1.0</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>0</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libfdt-1.6.1.so</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>so</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libfdt.so</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>so</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libfdt.so.1</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>1</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libffi.so.8</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>8</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libffi.so.8.1.0</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>0</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libform.so.6</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>6</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libform.so.6.2</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>2</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libformw.so.6</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>6</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libformw.so.6.2</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>2</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libglib-2.0.so</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>so</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libglib-2.0.so.0</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>0</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libglib-2.0.so.0.6600.4</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>4</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libgmodule-2.0.so</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>so</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libgmodule-2.0.so.0</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>0</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libgmodule-2.0.so.0.6600.4</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>4</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libgmp.so.10</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>10</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libgmp.so.10.4.1</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>1</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libgobject-2.0.so</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>so</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libgobject-2.0.so.0</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>0</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libgobject-2.0.so.0.6600.4</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>4</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libgthread-2.0.so</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>so</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libgthread-2.0.so.0</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>0</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libgthread-2.0.so.0.6600.4</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>4</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libhistory.so</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>so</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libhistory.so.7</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>7</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libhistory.so.7.0</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>0</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libiconv.so</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>so</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libiconv.so.2</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>2</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libiconv.so.2.4.0</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>0</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libikasio.so</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>so</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libikbacktrace.so</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>so</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libikdb.so</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>so</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libikevent.so</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>so</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libimobiledevice-1.0.so.6</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>6</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libimobiledevice-1.0.so.6.0.0</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>0</td></tr>
+<tr style='background-color: #ffffff'><td class="icon27 indent4">libinit.so.2</td><td>/system/usr/lib64</td><td>文本文件完全相同</td><td>2</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libip4tc.so.2</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>2</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libip4tc.so.2.0.0</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>0</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libip6tc.so.2</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>2</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libip6tc.so.2.0.0</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>0</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libipset.so.13</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>13</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libipset.so.13.1.0</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>0</td></tr>
+<tr style='background-color: #ffffff'><td class="icon27 indent4">libipset.so.2</td><td>/system/usr/lib64</td><td>文本文件完全相同</td><td>2</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libiptext.so</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>so</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libiptext4.so</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>so</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libiptext6.so</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>so</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libjansson.so</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>so</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libjansson.so.4</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>4</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libjansson.so.4.13.0</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>0</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libjson-c.so.2</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>2</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libjson-c.so.5</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>5</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libjson-c.so.5.1.0</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>0</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libkmod.so.2</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>2</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libkmod.so.2.3.5</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>5</td></tr>
+<tr style='background-color: #ffffff'><td class="icon27 indent4">liblb.so.2</td><td>/system/usr/lib64</td><td>文本文件完全相同</td><td>2</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">liblber-2.4.so.2</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>2</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">liblber-2.4.so.2.11.5</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>5</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libldap-2.4.so.2</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>2</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libldap-2.4.so.2.11.5</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>5</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libldap_r-2.4.so.2</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>2</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libldap_r-2.4.so.2.11.5</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>5</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libluajit-5.1.so</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>so</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libluajit-5.1.so.2</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>2</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libluajit-5.1.so.2.1.0</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>0</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">liblzma.so.5</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>5</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">liblzma.so.5.2.5</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>5</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">liblzo2.so.2</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>2</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">liblzo2.so.2.0.0</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>0</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libmenu.so.6</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>6</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libmenu.so.6.2</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>2</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libmenuw.so.6</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>6</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libmenuw.so.6.2</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>2</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libminiupnpc.so.17</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>17</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libminiupnpc.so.2.2.1</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>1</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libmnl.so.0</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>0</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libmnl.so.0.2.0</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>0</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libncurses.so.6</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>6</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libncurses.so.6.2</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>2</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libncursesw.so.6</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>6</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libncursesw.so.6.2</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>2</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libnetfilter_conntrack.so.3</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>3</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libnetfilter_conntrack.so.3.7.0</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>0</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libnetfilter_cthelper.so.0</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>0</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libnetfilter_cthelper.so.0.0.0</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>0</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libnetfilter_cttimeout.so.1</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>1</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libnetfilter_cttimeout.so.1.0.0</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>0</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libnetfilter_queue.so.1</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>1</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libnetfilter_queue.so.1.5.0</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>0</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libnetsnmp.so.30</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>30</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libnetsnmp.so.30.0.2</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>2</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libnetsnmpagent.so.30</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>30</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libnetsnmpagent.so.30.0.2</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>2</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libnetsnmphelpers.so.30</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>30</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libnetsnmphelpers.so.30.0.2</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>2</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libnetsnmpmibs.so.30</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>30</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libnetsnmpmibs.so.30.0.2</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>2</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libnetsnmptrapd.so.30</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>30</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libnetsnmptrapd.so.30.0.2</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>2</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libnfnetlink.so.0</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>0</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libnfnetlink.so.0.2.0</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>0</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libnl-3.so.200</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>200</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libnl-3.so.200.26.0</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>0</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libnl-genl-3.so.200</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>200</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libnl-genl-3.so.200.26.0</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>0</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libnl-nf-3.so.200</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>200</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libnl-nf-3.so.200.26.0</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>0</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libnl-route-3.so.200</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>200</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libnl-route-3.so.200.26.0</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>0</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libnl-tiny.so</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>so</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libpanel.so.6</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>6</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libpanel.so.6.2</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>2</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libpanelw.so.6</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>6</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libpanelw.so.6.2</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>2</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libpcap.so.1</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>1</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libpcap.so.1.9.1</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>1</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libpci.so.3</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>3</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libpci.so.3.7.0</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>0</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libpcre.so</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>so</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libpcre.so.1</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>1</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libpcre.so.1.2.12</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>12</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libpcreposix.so.0</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>0</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libpcreposix.so.0.0.7</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>7</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libpixman-1.so</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>so</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libpixman-1.so.0</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>0</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libpixman-1.so.0.36.0</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>0</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libplist-2.0.so.3</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>3</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libplist-2.0.so.3.3.0</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>0</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libpopt.so.0</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>0</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libpopt.so.0.0.0</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>0</td></tr>
+<tr style='background-color: #ffffff'><td class="icon27 indent4">libpre.so.2</td><td>/system/usr/lib64</td><td>文本文件完全相同</td><td>2</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libprotobuf-c.so.1</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>1</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libprotobuf-c.so.1.0.0</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>0</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libprotobuf-lite.so</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>so</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libprotobuf-lite.so.9</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>9</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libprotobuf-lite.so.9.0.1</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>1</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libprotobuf.so</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>so</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libprotobuf.so.9</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>9</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libprotobuf.so.9.0.1</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>1</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libprotoc.so</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>so</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libprotoc.so.9</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>9</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libprotoc.so.9.0.1</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>1</td></tr>
+<tr style='background-color: #ffffff'><td class="icon27 indent4">libqqsec_proto.so.2</td><td>/system/usr/lib64</td><td>文本文件完全相同</td><td>2</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">librc_core.so</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>so</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libreadline.so</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>so</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libreadline.so.7</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>7</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libreadline.so.7.0</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>0</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libsasl2.so.3</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>3</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libsasl2.so.3.0.0</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>0</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libselinux.so.1</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>1</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libsepol.so.2</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>2</td></tr>
+<tr style='background-color: #ffffff'><td class="icon27 indent4">libsnat_proto.so.2</td><td>/system/usr/lib64</td><td>文本文件完全相同</td><td>2</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libsqlite3.so</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>so</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libsqlite3.so.0</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>0</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libsqlite3.so.0.8.6</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>6</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libss.so.2</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>2</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libss.so.2.0</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>0</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libssl.so</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>so</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libssl.so.1.0.0</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>0</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libstdc++.so.6</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>6</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libstdc++.so.6.0.29</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>29</td></tr>
+<tr style='background-color: #ffffff'><td class="icon27 indent4">libstdc++.so.6.0.29-gdb.py</td><td>/system/usr/lib64</td><td>文本文件完全相同</td><td>py</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libuClibc++-0.2.5.so</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>so</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libuClibc++.so.0</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>0</td></tr>
+<tr style='background-color: #ffffff'><td class="icon27 indent4">liburlproto.so.2</td><td>/system/usr/lib64</td><td>文本文件完全相同</td><td>2</td></tr>
+<tr style='background-color: #ffffff'><td class="icon27 indent4">liburlwhitelist.so.2</td><td>/system/usr/lib64</td><td>文本文件完全相同</td><td>2</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libusb-1.0.so.0</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>0</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libusb-1.0.so.0.3.0</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>0</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libusbmuxd-2.0.so.6</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>6</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libusbmuxd-2.0.so.6.0.0</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>0</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libuuid.so.1</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>1</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libuuid.so.1.3.0</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>0</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libwpa_verify.so</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>so</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libxml2.so.2</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>2</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libxml2.so.2.9.10</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>10</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libxtables.so.12</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>12</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libxtables.so.12.2.0</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>0</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libyaml-0.so.2</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>2</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libyaml-0.so.2.0.9</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>9</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libyaml.so</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>so</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libz.so</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>so</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libz.so.1</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>1</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">libz.so.1.2.11</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td>11</td></tr>
+<tr style='background-color: #ffffff'><td class="icon9 indent4">qemu-bridge-helper</td><td>/system/usr/lib64</td><td>二进制文件完全相同</td><td></td></tr>
+<tr style='background-color: #ffffff'><td class="icon20 indent3">libexec</td><td>/system/usr</td><td>完全相同</td><td></td></tr>
+<tr style='background-color: #ffffff'><td class="icon20 indent3">local</td><td>/system/usr</td><td>完全相同</td><td></td></tr>
+<tr style='background-color: #ffffff'><td class="icon22 indent3">openresty</td><td>/system/usr</td><td>无法比较文件</td><td></td></tr>
+<tr style='background-color: #ffffff'><td class="icon20 indent3">sbin</td><td>/system/usr</td><td>完全相同</td><td></td></tr>
+<tr style='background-color: #ffffff'><td class="icon20 indent3">share</td><td>/system/usr</td><td>完全相同</td><td></td></tr>
+<tr style='background-color: #ffffff'><td class="icon20 indent2">var</td><td>/system</td><td>完全相同</td><td></td></tr>
+<tr style='background-color: #ffffff'><td class="icon20 indent2">www</td><td>/system</td><td>完全相同</td><td></td></tr>
+</table>
+</body>
+</html>

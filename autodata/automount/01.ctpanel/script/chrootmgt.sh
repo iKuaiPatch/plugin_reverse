@@ -1,0 +1,179 @@
+. /etc/mnt/plugins/configs/config.sh
+CHROOT_DIR=/tmp/iktmp/chroot
+mkdir -p $CHROOT_DIR
+
+mount_plugin() {
+    local PLUGIN_NAME="$1"
+    umount_plugin $PLUGIN_NAME #  先卸载可能的残留确保成功
+    for DIR in \
+		$EXT_PLUGIN_INSTALL_DIR/$PLUGIN_NAME/bin $EXT_PLUGIN_CONFIG_DIR/$PLUGIN_NAME $EXT_PLUGIN_LOG_DIR/$PLUGIN_NAME
+	do
+		if ! mount | grep -q "$CHROOT_DIR$DIR"; then
+			mkdir -p "$CHROOT_DIR$DIR"
+			mount --bind "$DIR" "$CHROOT_DIR$DIR"
+		fi
+	done
+}
+
+umount_plugin() {
+    local PLUGIN_NAME="$1"
+    count=0
+    # 找出所有挂载在 CHROOT_DIR 下的挂载点并卸载
+    while true; do
+        for DIR in \
+            $EXT_PLUGIN_INSTALL_DIR/$PLUGIN_NAME/bin $EXT_PLUGIN_CONFIG_DIR/$PLUGIN_NAME $EXT_PLUGIN_LOG_DIR/$PLUGIN_NAME
+        do
+            if mount | grep -q "$CHROOT_DIR$DIR"; then
+                umount "$CHROOT_DIR$DIR"
+                rm -rf "$CHROOT_DIR$DIR"
+            fi
+        done
+        count=$((count + 1))
+        # 尝试3次确保 umount成功
+        [ "$count" -gt 2 ] && break
+    done
+}
+
+set_profile() {
+    profileLine="$1"
+    pluginname="$2"
+    [ -d $CHROOT_DIR/etc ] || mkdir -p $CHROOT_DIR/etc
+    if ! grep -q "^$profileLine" $CHROOT_DIR/etc/profile; then
+        echo "$profileLine   #pline-$pluginname" >> $CHROOT_DIR/etc/profile
+    fi
+}
+
+clean_profile() {
+    pluginname="$1"
+    sed -i "/#pline-$pluginname/d" $CHROOT_DIR/etc/profile
+
+}
+
+get_chroot_dir() {
+    echo -n $CHROOT_DIR
+}
+
+# 构建插件的虚拟文件系统
+build_chroot() {
+    
+    # 挂载系统核心目录
+    mkdir -p $CHROOT_DIR/sys $CHROOT_DIR/proc "$CHROOT_DIR/var/run" $CHROOT_DIR/root $CHROOT_DIR/tmp
+    mount -t sysfs /sys $CHROOT_DIR/sys
+    mount -t proc /proc $CHROOT_DIR/proc
+
+    set_profile "export USER=root HOME=/root PATH=/bin:/sbin:/usr/bin:/usr/sbin"
+    set_profile 'export PS1="(chroot) \u@\h:\w\# "'
+
+    touch "$CHROOT_DIR/var/run/xtables.lock"
+    mount --bind /var/run/xtables.lock $CHROOT_DIR/var/run/xtables.lock
+
+    for DIR in \
+        /dev /dev/pts /dev/shm /etc/hosts.d /etc/ssl $EXT_PLUGIN_LOG_DIR
+    do
+        if ! mount | grep -q "$CHROOT_DIR$DIR"; then
+            mkdir -p "$CHROOT_DIR$DIR"
+            mount --bind "$DIR" "$CHROOT_DIR$DIR"
+        fi
+    done
+
+    # 复制系统核心程序
+    for binary in \
+        /bin/busybox ash sh mount umount wget reboot sync  \
+		grep cp mv tar md5sum "[" vi ls cat awk hexdump sleep zcat bzcat \
+		printf wc sed rm find cut basename free uptime tail ps df \
+        dirname pidof sort date killall kill ip iptables lsmod uname curl ln \
+		mkdir fsync bash head crond touch env which chmod chown stat id whoami \
+        ping nslookup traceroute netstat nc test true false top ipset 
+    do
+        local file="$(which $binary)"
+		[ "$file" ] && install_bin $file
+    done
+
+
+    # 复制或创建系统核心文件
+    mkdir -p $CHROOT_DIR/etc/crontabs
+    cp /etc/passwd $CHROOT_DIR/etc/
+    cp /etc/group $CHROOT_DIR/etc/
+    cp /etc/resolv.conf $CHROOT_DIR/etc/
+    echo '127.0.0.1 localhost' > $CHROOT_DIR/etc/hosts
+    echo '127.0.0.1 iKuai' >> $CHROOT_DIR/etc/hosts
+    # [ -L "/lib64" ] && ln -s /lib $RAM_ROOT/lib64
+
+    # 修复由于chroot挂载导致的磁盘管理页面会错误将已挂载分区显示为“不使用”的问题
+    sed -i "s/(\"df -B1\")/(\"df -B1 | grep -v \/tmp\/iktmp\/chroot\")/g" /usr/ikuai/script/utils/disk_find.lua
+}
+
+install_disk(){
+    
+    DISK_USER_DIR=/etc/disk_user
+    for link in "$DISK_USER_DIR"/*; do
+        if [ -d "$link" ] && [ -L "$link" ]; then
+            target=$(readlink -f "$link")
+            link_name=$(basename "$link")
+            chroot_target_dir="$CHROOT_DIR$target"
+            
+            # 防止地址穿越漏洞
+            [ "${target:0:9}" = "/etc/disk" ] || continue
+
+            # 检查目标目录是否已经挂载
+            if ! mount | grep -q "$chroot_target_dir"; then
+                mkdir -p "$chroot_target_dir"
+                mount --bind "$target" "$chroot_target_dir"
+                ln -sf "$target" "$CHROOT_DIR/$link_name"
+            fi
+        fi
+    done
+}
+
+install_file() { # <file> [ <file> ... ]
+	local target dest dir
+	for file in "$@"; do
+		if [ -L "$file" ]; then
+			target="$(readlink -f "$file")"
+			dest="$CHROOT_DIR/$file"
+			[ ! -f "$dest" ] && {
+				dir="$(dirname "$dest")"
+				mkdir -p "$dir"
+				ln -s "$target" "$dest"
+			}
+			file="$target"
+		fi
+		dest="$CHROOT_DIR/$file"
+		[ -f "$file" -a ! -f "$dest" ] && {
+			dir="$(dirname "$dest")"
+			mkdir -p "$dir"
+			cp "$file" "$dest"
+		}
+	done
+}
+
+install_bin() {
+	local src files
+	src=$1
+	files=$1
+	[ -x "$src" ] && files="$src $(libs $src)"
+	install_file $files
+}
+
+remove_chroot() {
+    count=0
+    # 找出所有挂载在 CHROOT_DIR 下的挂载点并卸载
+    while true; do
+        mount | grep "$CHROOT_DIR" | awk '{print $3}' | while read -r mount_point; do
+            umount "$mount_point"
+        done
+        count=$((count + 1))
+
+        # 尝试3次，超过则跳出循环
+        [ "$count" -gt 2 ] && break
+    done
+
+    # 删除 CHROOT_DIR
+    rm -rf "$CHROOT_DIR"
+}
+
+[ -x /usr/bin/ldd ] || ldd() { LD_TRACE_LOADED_OBJECTS=1 $*; }
+libs() { ldd $* | awk '{print $3}'; }
+
+run() { chroot "$CHROOT_DIR" /bin/bash -l -c "$*"; }
+

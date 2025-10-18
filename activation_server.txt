@@ -1,0 +1,14 @@
+https://doh.pub/dns-query?name=reg.routeros.top&type=TXT
+http://47.122.131.172:8085
+http://47.122.131.172:8085/api/admesg
+http://47.122.131.172:8085/api/test
+
+{
+	"macAddress": "",
+	"routerId": "",
+	"machineCode": "",
+	"captcha": "",
+	"modelType": "",
+	"expire": 0,
+}
+http://47.122.131.172:8085/api/activate2

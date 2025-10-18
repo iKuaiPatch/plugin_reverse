@@ -1,0 +1,9 @@
+{
+  "name": "gecoos",
+  "alias": "集客AC",
+  "manufacturer": "feiyu",
+  "version": "2.0.1",
+  "type": "external",
+  "description": "GecoOS 集客 AC 是 GecoOS 操作系统中的一部分，主要用于提供集成管理的 无线局域网控制器(AC, Access Controller)。",
+  "scripts":["service"]
+}
