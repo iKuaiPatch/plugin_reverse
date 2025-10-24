@@ -1,0 +1,15 @@
+{
+	"name": "smartdns",
+	"alias": "SmartDNS",
+	"manufacturer": "iKuai",
+	"version": "1.1.20",
+	"type": "external",
+    "description": "smartdns - 一个本地DNS服务器，获取最快的网站IP，获得最佳上网体验，支持DoH，DoT<a>https://github.com/pymumu/smartdns</a>",
+    "releasenotes": "更新说明：<br>1、新增",
+    "build": "202411240224",
+    "compatibility": [
+      "mt7621",
+      "mt798x",
+      "x86"
+    ]
+}

@@ -1,0 +1,4 @@
+./navidrome --musicfolder "/etc/disk_user/mnt/music/"
+
+
+https://www.navidrome.org/docs/usage/configuration-options/

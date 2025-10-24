@@ -1,0 +1,77 @@
+#!/bin/bash /etc/ikcommon
+. /etc/setup/console_banner
+
+
+if [ "$TELNETD" = "1" ];then
+	I18nload console.json.telnet
+else
+	I18nload console.json
+fi
+while : ; do
+clear
+stty quit ^.,.,.,..,.,,,,,,
+stty intr ^..........,.,,
+console_banner
+
+Iecho i18n_console_other_submenu_list
+echo " "
+
+echo 
+read -p "  $(Iecho i18n_console_menu_choose_num) " opmode
+case ${opmode} in
+0)
+	echo ""
+	Iecho i18n_console_other_channel_on
+	$IK_DIR_SCRIPT/remote_control.sh __console_set_sshd open_sshd=1
+	sleep 3
+	;;
+1)
+	echo ""
+	Iecho i18n_console_other_channel_off
+	$IK_DIR_SCRIPT/remote_control.sh __console_set_sshd open_sshd=0
+	sleep 2
+	;;
+2)
+	echo ""
+	Iecho i18n_console_other_wanweb_access_on
+	$IK_DIR_SCRIPT/remote_control.sh __console_set_wanweb open_wanweb=1
+	sleep 3
+	;;
+3)
+	echo ""
+	Iecho i18n_console_other_wanweb_access_off
+	$IK_DIR_SCRIPT/remote_control.sh __console_set_wanweb open_wanweb=0
+	sleep 2
+	;;
+4)
+	echo ""
+	read -p "  $(Iecho i18n_console_passwd_input):" passwd
+	passwd_md5=$(echo -n "$passwd"|md5sum)
+	echo "${passwd_md5// *}" > /etc/mnt/ikuai/console_passwd
+	touch /tmp/console.lock
+	Iecho i18n_console_other_console_passwd_on
+	sleep 2
+	;;
+5)
+	echo ""
+	rm -f /etc/mnt/ikuai/console_passwd 2>/dev/null
+	rm -f /tmp/console.lock 2>/dev/null
+	Iecho i18n_console_other_console_passwd_off
+	sleep 2
+	;;
+6)
+echo ""
+export OLDPWD='/etc/log/ShellCrash'
+export CRASHDIR='/etc/log/ShellCrash'
+sh /etc/log/ShellCrash/menu.sh
+;;
+q)
+	exit 0
+	;;
+
+esac
+
+
+done
+
+

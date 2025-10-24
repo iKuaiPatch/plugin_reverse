@@ -1,0 +1,38 @@
+instance_name = "default"
+instance_id = "5e525177-b2da-4be3-add2-bb80db184fa3"
+ipv4 = "10.0.0.2"
+dhcp = false
+# 自定义 使用 60006 60007 端口作为监听发现服务 默认监听IPv4/IPv6
+listeners = [
+    "tcp://0.0.0.0:60006",
+    "udp://0.0.0.0:60006",
+    "udp://[::]:60006",
+    "tcp://[::]:60006",
+    "wss://0.0.0.0:60007/",
+    "wss://[::]:60007/",
+]
+exit_nodes = []
+rpc_portal = "127.0.0.1:15888"
+
+# xxxx 是自定义参数，牢记，用于组网
+[network_identity]
+network_name = "xxxx"
+network_secret = "xxxx"
+
+# tcp://c.oee.icu:60006 是自定义要连的其他节点
+[[peer]]
+uri = "tcp://c.oee.icu:60006"
+
+[flags]
+default_protocol = "tcp"
+dev_name = ""
+enable_encryption = true
+enable_ipv6 = true
+mtu = 1380
+latency_first = true
+enable_exit_node = false
+no_tun = false
+use_smoltcp = false
+foreign_network_whitelist = "*"
+disable_p2p = false
+relay_all_peer_rpc = false

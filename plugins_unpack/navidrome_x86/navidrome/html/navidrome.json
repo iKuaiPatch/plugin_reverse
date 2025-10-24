@@ -1,0 +1,15 @@
+{
+	"name": "navidrome",
+	"alias": "音乐服务",
+	"manufacturer": "iKuai",
+	"version": "1.1.9",
+	"type": "external",
+    "description": "Navidrome 是一个开源的音乐流媒体服务器，旨在提供一个自托管的音乐库管理和播放解决方案。它允许用户将自己的音乐文件（如 MP3、FLAC、OGG 等格式）上传到服务器，并通过 Web 界面或客户端应用（如手机、电脑、智能音响等设备）进行访问和播放。</a>",
+    "releasenotes": "更新说明：<br>1、新增",
+    "build": "202411240224",
+    "compatibility": [
+      "mt7621",
+      "mt798x",
+      "x86"
+    ]
+}

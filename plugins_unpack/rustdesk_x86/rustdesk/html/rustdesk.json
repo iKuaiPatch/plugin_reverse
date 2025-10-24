@@ -1,0 +1,15 @@
+{
+	"name": "rustdesk",
+	"alias": "rustdesk远控",
+	"manufacturer": "iKuai",
+	"version": "1.1.9",
+    "type": "external",
+    "description": "rustdesk自行搭建属于你的RustDesk服务器,所有的一切都是免费且开源的。<br>详情访问：<a>https://github.com/rustdesk/</a>",
+    "releasenotes": "更新说明：新增",
+    "build": "202411240224",
+    "compatibility": [
+      "mt7621",
+      "mt798x",
+      "x86"
+    ]
+}

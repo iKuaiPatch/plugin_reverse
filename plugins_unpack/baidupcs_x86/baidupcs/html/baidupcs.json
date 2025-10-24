@@ -1,0 +1,15 @@
+{
+	"name": "baidupcs",
+	"alias": "百度网盘",
+	"manufacturer": "iKuai",
+	"version": "1.1.9",
+    "type": "external",
+    "description": "BaiduPCS（百度网盘PCS）是百度推出的一款命令行工具，旨在方便用户通过命令行操作百度网盘（Baidu Netdisk）的文件管理和下载<br>官网地址：<a>https://github.com/iikira/BaiduPCS-Go</a>",
+    "releasenotes": "更新说明：<br>支持从百度网盘下载和上传文件",
+    "build": "202411240224",
+    "compatibility": [
+      "mt7621",
+      "mt798x",
+      "x86"
+    ]
+}

@@ -1,0 +1,14 @@
+{
+	"name": "VNTS",
+	"alias": "VNTS服务端",
+	"manufacturer": "iKuai",
+	"version": "1.1.9",
+    "type": "external",
+    "description": "VNT是一个简便高效的异地组网、内网穿透工具。<br>详情访问：<a>https://rustvnt.com/</a>",
+    "build": "202411240224",
+    "compatibility": [
+      "mt7621",
+      "mt798x",
+      "x86"
+    ]
+}

@@ -1,0 +1,1 @@
+/usr/bin/rclone rcd --rc-web-gui --rc-web-gui-no-open-browser --rc-addr=:5572 --rc-user=admin --rc-pass='123456' --log-level=NOTICE --cache-dir=/vfsCache --rc-allow-origin="https://rclone.github.io"  

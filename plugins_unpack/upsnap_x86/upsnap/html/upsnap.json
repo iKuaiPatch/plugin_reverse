@@ -1,0 +1,15 @@
+{
+	"name": "upsnap",
+	"alias": "UpSnap",
+	"manufacturer": "iKuai",
+	"version": "1.0.0",
+	"type": "external",
+    "description": "使用 SvelteKit、Go 和 PocketBase 编写的简单局域网唤醒网络应用程序。",
+    "releasenotes": "更新说明：<br>1、新增",
+    "build": "202411240224",
+    "compatibility": [
+      "mt7621",
+      "mt798x",
+      "x86"
+    ]
+}

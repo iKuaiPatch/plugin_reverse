@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>zerotier 配置</title>
+    <script src="../../static/js/vue.js"></script>
+    <script src="../../static/css/app.js"></script>
+    <link rel="stylesheet" href="../../static/css/app.css" type="text/css">
+    <style>
+        .status-started {
+            color: green;
+        }
+        .status-stopped {
+            color: red;
+        }
+        .status-unknown {
+            color: gray;
+        }
+        .status-value {
+            color: green;
+        }
+        .input-field {
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+        }
+        .input-label {
+            display: inline-block;
+            width: 80px;
+        }
+        .input-box {
+            width: 250px;
+            padding: 6px;
+            border: 1px solid blue;
+            border-radius: 4px;
+            height: 34px;
+            margin-right: 10px;
+        }
+        .submit-button {
+            height: 34px;
+            padding: 6px 12px;
+            background-color: green;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <div>
+            <!-- 空行 -->
+            <div style="height: 20px;"></div>
+            <div class="status">
+               服务状态：<span :class="statusClass">{{ statusMessage }}</span>
+            </div>
+            <div style="height: 20px;"></div>
+            <div class="status">
+               连接状态：<span class="status-value">{{ link_status }}</span>
+            </div>
+			  <div style="height: 20px;"></div>
+            <div class="status">
+               连接类型：<span class="status-value">{{ link_type }}</span>
+            </div>
+			 <div style="height: 20px;"></div>
+            <div class="status">
+               网络名称：<span class="status-value">{{ networks_name }}</span>
+            </div>
+			 <div style="height: 20px;"></div>
+            <div class="status">
+               硬件地址：<span class="status-value">{{ dev_mac }}</span>
+            </div>
+			  <div style="height: 20px;"></div>
+            <div class="status">
+               网络地址：<span class="status-value">{{ network_maks }}</span>
+            </div>
+			 <div style="height: 20px;"></div>
+            <div class="status">
+               网络配置：<span class="status-value">{{ server }}</span>
+            </div>
+
+            <div style="height: 40px;"></div>
+
+            <!-- 服务器和密钥输入框 -->
+            <div class="input-field">
+                <label class="input-label" for="server">网络ID:</label>
+                <input type="text" id="server" v-model="serverInput" class="input-box" placeholder="网络ID" required>
+				 <button @click="submitConfig" class="btn btn_green btn_confirm margin-l-10">提交</button>
+            </div>
+            <!-- 空行 -->
+            <div style="height: 20px;"></div>
+           
+            <div style="height: 20px;"></div>
+            <button @click="zerotier_start" class="btn btn_green btn_confirm margin-l-10" type="button">
+                 {{ statusclick }}
+            </button>
+            <button @click="zerotier_disable" class="btn btn_red btn_confirm margin-l-10" type="button">
+                禁用
+            </button>
+        </div>
+
+		<div style="height: 40px;"></div>
+			<!-- 文件选择和上传按钮 -->
+				<div>
+				 <input type="text" id="fileName" readonly style="background-color: white; border: 1px solid blue; padding: 6px; border-radius: 4px;" >
+				<!-- 自定义的选择文件按钮 -->
+				<label for="fileUpload" class="btn btn_blue btn_confirm margin-l-10">
+					选择文件
+				</label>
+				
+				<!-- 隐藏的文件输入框 -->
+				<input type="file" id="fileUpload" style="display: none;" onchange="document.getElementById('fileName').value = this.files[0].name;">
+				
+				<!-- 上传 EEPROM 按钮 -->
+				<button @click="uploadFile" class="btn btn_green btn_confirm margin-l-10" type="button">
+					上传配置
+				</button>
+				<div style="height: 20px;"></div>
+				<div class="readme"><span class="note" style="left: 20px;">功能说明：</span>
+				<div>1、自定义planet，请上传正确文件，如果上传错误重新上传就行了，或禁用启用恢复。</div>
+
+				</div>
+			</div>
+			
+    </div>
+    
+    <script type="module">
+        var app = new Vue({
+            el: '#app',
+            data: { 
+                result: "",
+                statusMessage: "未知",
+                statusClass: "status-unknown",
+                server: "未配置", 
+				networks_name : "未获取",
+				dev_mac : "未获取",
+				link_status : "未获取",
+				link_type : "未获取",
+				network_dev : "未获取",
+				network_maks : "未获取",
+				statusclick: "启动",				
+                serverInput: ""  
+            },
+            mounted() {
+                this.zerotier_status();
+            },
+            methods: {
+                validateInput(input, regex) {
+                    return regex.test(input);
+                },
+				submitConfig() {
+					// 过滤正则表达式
+					const serverRegex = /^[a-zA-Z0-9\.]+(:[0-9]+)?$/;  // 允许字母、数字、点，且仅允许服务器中使用冒号
+					const vkeyAndLocalTypeRegex = /^[a-zA-Z0-9\.]+$/; // 仅允许字母、数字、点
+					const targetRegex = /^[a-zA-Z0-9\.\:\s]+$/; // 允许字母、数字、点、冒号和空格，仅目标允许空格
+
+					// 验证服务器
+					if (!this.validateInput(this.serverInput.trim(), serverRegex)) {
+						alert("请输入正确格试网络ID");
+						return;
+					}
+					if (this.serverInput.trim() == this.server) {
+						alert("网络ID相同");
+						return;
+					}
+
+					var payload = {
+						func_name: 'plugin_zerotier',
+						action: 'update_config',
+						param: {
+							server: this.serverInput.trim()
+						}
+					};
+
+					AjaxPost('/Action/call', payload, (response) => {
+						if (response && response.Result % 10000 == 0) {
+							alert('配置已成功更新');
+							this.zerotier_status(); // 重新获取状态，更新显示的zerotier 配置信息
+						} else {
+							alert('配置更新失败');
+						}
+					});
+				},
+               zerotier_start() {
+                    var payload = {
+                        func_name: 'plugin_zerotier',
+                        action: 'start',
+                        param: {}
+                    };
+                    AjaxPost('/Action/call', payload, (response) => {
+						if(this.statusMessage == "已启动") {
+						this.statusMessage = "已停止";
+						this.statusClass = "status-stopped"; // 设置状态类
+						 alert('zerotier停止成功');
+						 this.statusclick = "启动";
+						} else {
+                            this.statusMessage = "已启动";
+                            this.statusClass = "status-started"; // 设置状态类
+                            alert('zerotier启动成功');
+                            MessageTip("zerotier启动成功", "green");
+							this.statusclick = "停止";
+						  }
+						   
+                    });
+                },
+               zerotier_stop() {
+                    var payload = {
+                        func_name: 'plugin_zerotier',
+                        action: 'stop',
+                        param: {}
+                    };
+                    AjaxPost('/Action/call', payload, (response) => {
+                        if(response.Result % 10000 == 0) {
+                            this.statusMessage = "已停止";
+                            this.statusClass = "status-stopped";
+                            alert('zerotier停止成功');
+                            MessageTip("zerotier停止成功", "red");
+							 this.zerotier_status();
+                        }
+						 
+                    });
+                },
+               zerotier_disable() {
+                    var payload = {
+                        func_name: 'plugin_zerotier',
+                        action: 'disable',
+                        param: {}
+                    };
+                    AjaxPost('/Action/call', payload, (response) => {
+                        if(response.Result % 10000 == 0) {
+                            this.statusMessage = "已停止";
+                            this.statusClass = "status-stopped";
+                            alert('zerotier禁用成功');
+                            MessageTip("zerotier禁用成功", "red");
+							 this.zerotier_status();
+                        }
+						 
+                    });
+                },
+               zerotier_status() {
+                    var payload = {
+                        func_name: 'plugin_zerotier',
+                        action: 'show',
+                        param: {
+                            TYPE: 'status,config'
+                        }
+                    };
+                    AjaxPost('/Action/call', payload, (response) => {
+                        if (response.Result % 10000 == 0 && response.Data) {
+                            const data = response.Data;
+
+                            if (data.status == 1) {
+                                this.statusMessage = "已启动";
+                                this.statusClass = "status-started";
+								this.statusclick = "停止";
+                            } else {
+                                this.statusMessage = "已停止";
+                                this.statusClass = "status-stopped";
+								this.statusclick = "启动";
+                            }
+
+
+                            this.server = data.server ? data.server : "未配置";
+							this.networks_name = data.networks_name ? data.networks_name : "未获取";
+							this.dev_mac = data.dev_mac ? data.dev_mac : "未获取";
+							this.link_status = data.link_status ? data.link_status : "未获取";
+							this.link_type = data.link_type ? data.link_type : "未获取";
+							this.network_dev = data.network_dev ? data.network_dev : "未获取";
+							this.network_maks = data.network_maks ? data.network_maks : "未获取";
+                            console.log('zerotier 状态信息:', data);
+
+                        } else {
+                            console.error('Status is undefined in the response', response);
+                            this.statusMessage = "状态未知";
+                            this.statusClass = "status-unknown";
+                        }
+                    });
+                },
+							uploadFile() {
+                var fileInput = document.getElementById('fileUpload');
+                var file = fileInput.files[0];
+
+                if (!file) {
+                    alert('请先选择一个文件');
+                    return;
+                }
+
+                var formData = new FormData();
+                formData.append('file', file);
+
+                var xhr = new XMLHttpRequest();
+                xhr.open('POST', '/Action/upload', true);
+                xhr.onload = function () {
+                    if (xhr.status == 200) {
+                        alert('文件上传成功');
+                        app.zer_config();
+                    } else {
+                        alert('上传失败');
+                    }
+                };
+                xhr.send(formData);
+            },
+		 zer_config() {
+                var payload = {
+                    func_name: 'plugin_zerotier',
+                    action: 'config',
+                    param: {}
+                };
+                AjaxPost('/Action/call', payload, (response) => {
+                    if (response.Result % 10000 == 0) {
+                        alert('配置成功');
+                    } else {
+                        alert('配置失败');
+                    }
+					 this.VNT_status();
+                });
+            }
+            }
+        });
+    </script>
+</body>
+</html>

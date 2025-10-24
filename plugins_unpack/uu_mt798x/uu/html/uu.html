@@ -1,0 +1,139 @@
+<html>
+    <head>
+        <script src="../../static/js/vue.js"></script>
+		<script src="../../static/css/app.js"></script>
+		<link rel="stylesheet" href="../../static/css/app.css" type="text/css">
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+        <style>
+            .status-started {
+                color: green;
+            }
+            .status-stopped {
+                color: red;
+            }
+            .status-unknown {
+                color: gray;
+            }
+            .status-value {
+                color: green;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="app">
+            <div>
+                <!-- 空行 -->
+                <div style="height: 20px;"></div>
+                <div class="status">
+                    UU加速状态：<span :class="statusClass">{{ statusMessage }}</span>
+                </div>
+				<div style="height: 20px;"></div>
+				<!-- 访问控制台链接 -->
+				<div style="margin-top: 10px;">
+					访问官方：<a href="https://uu.163.com/console/" target="_blank" style="color: blue; text-decoration: underline;">UU.163.com</a>
+				</div>
+				<!-- 空行 -->
+				<div style="height: 30px;"></div>
+                <button @click="uu_start" class="btn btn_green btn_confirm margin-l-10" type="button">
+                    {{ statusclick }}
+                </button>
+                <button @click="uu_stop" class="btn btn_red btn_confirm margin-l-10" type="button">
+                     禁用
+                </button>
+            </div>
+			<!-- 空行 -->
+            <div style="height: 30px;"></div>
+		<div class="readme"><span class="note" style="left: 20px;">功能说明：</span>
+		<div>1、下载，UU主机加速，绑定新的硬件设备，选安装路由器插件，绑定，禁用后可重新绑定；</div> 
+		</div>
+ 
+        </div> 
+    </body>
+    <script type="module">
+        var app = new Vue({
+            el: '#app',
+            props: ["type"],
+            data: { 
+                result: "",
+                statusMessage: "未知",
+				statusclick: "安装",
+                statusClass: "status-unknown"
+
+            },
+            mounted() {
+                this.uu_status();
+            },
+            methods: {
+                uu_start() {
+                    var payload = {
+                        func_name: 'plugin_uu',
+                        action: 'uu_start',
+                        param: {}
+                    };
+                    AjaxPost('/Action/call', payload, (response) => {
+                        if(response.Result % 10000 == 0) {
+						
+						if(this.statusMessage == "已启动") {
+						this.statusMessage = "已停止";
+						this.statusClass = "status-stopped"; // 设置状态类
+						 alert('停止成功');
+						 this.statusclick = "启动";
+						} else {
+                            this.statusMessage = "已启动";
+                            this.statusClass = "status-started"; // 设置状态类
+                            alert('启动成功');
+                            MessageTip("启动成功", "green");
+							this.statusclick = "停止";
+						  }
+                        }
+                    });
+                },
+               uu_stop() {
+                    var payload = {
+                        func_name: 'plugin_uu',
+                        action: 'stop',
+                        param: {}
+                    };
+                    AjaxPost('/Action/call', payload, (response) => {
+                        if(response.Result % 10000 == 0) {
+                            this.statusMessage = "已停止";
+                            this.statusClass = "status-stopped";
+                            alert('禁用成功');
+                           
+                        }
+                    });
+                },
+                uu_status() {
+                    var payload = {
+                        func_name: 'plugin_uu',
+                        action: 'show',
+                        param: {
+                            TYPE: 'status'
+                        }
+                    };
+                    AjaxPost('/Action/call', payload, (response) => {
+                        if (response.Result % 10000 == 0 && response.Data) {
+                            const data = response.Data;
+
+                            if (data.status == 1) {
+                                this.statusMessage = "已启动";
+                                this.statusClass = "status-started";
+								this.statusclick = "停止";
+                            } else {
+                                this.statusMessage = "已停止";
+                                this.statusClass = "status-stopped";
+								this.statusclick = "启动";
+                            }
+                           
+
+                        } else {
+                           
+                            this.statusMessage = "状态未知";
+                            this.statusClass = "status-unknown";
+                        }
+                    });
+                }
+            }
+        });
+    </script>
+</html>

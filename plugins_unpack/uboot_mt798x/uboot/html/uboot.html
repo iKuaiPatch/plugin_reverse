@@ -1,0 +1,299 @@
+<html>
+    <head>
+        <script src="../../static/js/vue.js"></script>
+		<script src="../../static/css/app.js"></script>
+		<link rel="stylesheet" href="../../static/css/app.css" type="text/css">
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+        <style>
+            .status-started {
+                color: green;
+            }
+            .status-stopped {
+                color: red;
+            }
+            .status-unknown {
+                color: gray;
+            }
+            .status-value {
+                color: green;
+            }
+		.input-field {
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+        }
+        .input-label {
+            display: inline-block;
+            width: 80px;
+        }
+        .input-box {
+            width: 250px;
+            padding: 6px;
+            border: 1px solid blue;
+            border-radius: 4px;
+            height: 34px;
+            margin-right: 10px;
+        }
+        .submit-button {
+            height: 34px;
+            padding: 6px 12px;
+            background-color: green;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+		.frontend-lib .flex-col {
+		flex-direction: column;
+			}
+			.p-panel-title {
+    line-height: 1;
+    font-weight: var(--p-panel-title-font-weight);
+}
+        </style>
+    </head>
+    <body>
+       <div id="app">
+            <div>
+ 
+                <div class="status">
+				当前-UBOOT：<span :class="statusClass">{{ statusMessage }}</span>
+                </div>
+				
+				<div style="height: 30px;"></div>
+				
+				当前更新状态：<span :class="statusClass">{{ statusMessageup }}</span>
+                </div>
+				
+				<div style="height: 30px;"></div>
+                <button @click="uboot_start" class="btn btn_green btn_confirm margin-l-10" type="button">
+                    {{ statusclick }}
+                </button>
+				 <button @click="update_start" class="btn btn_green btn_confirm margin-l-10" type="button">
+                    {{ statusclickup }}
+                </button>
+				
+				
+				<button @click="mtd_log" class="btn btn_green btn_confirm margin-l-10" type="button">
+                   格试化分区
+                </button>
+				
+				<button @click="update_ota" class="btn btn_green btn_confirm margin-l-10" type="button">
+                   还原官方
+                </button>
+				
+				<div style="height: 20px;"></div>
+				
+				
+				<div class="readme"><span class="note" style="left: 20px;">功能说明：</span>
+				<div>1、状态:写入U-boot就可以了,如果系统崩了，请访问192.168.1.1，U-boot控制台进程刷机；</div> 
+				<div>2、还原官方，就是在线更新为官方固件，不保留插件，点了就去升级就行，误点重启即可</div> 
+				</div>
+				<div style="height: 30px;"></div>
+					
+				
+            </div>
+        </div>
+    </body>
+    <script type="module">
+        var app = new Vue({
+            el: '#app',
+            data: { 
+                result: "",
+                statusMessage: "未知",
+				statusMessageup: "未知",
+                statusClass: "status-unknown",
+				LocalUrl: "",
+				statusclick: "写入",
+				statusclickup: "关闭",
+                statusDetails: {}  // 初始化为对象，而不是 null
+            },
+            mounted() {
+                this.uboot_status();
+				this.setLocalUrl();
+            },
+            methods: {
+                uboot_start() {
+                    var payload = {
+                        func_name: 'plugin_uboot',
+                        action: 'uboot_start',
+                        param: {}
+                    };
+                    AjaxPost('/Action/call', payload, (response) => {
+						 this.statusClass = "status-started"; // 设置状态类
+						 alert('写入成功');
+						 this.statusclick = "写入";
+						  this.uboot_status();
+                    });
+                },
+				update_start() {
+                    var payload = {
+                        func_name: 'plugin_uboot',
+                        action: 'update_start',
+                        param: {}
+                    };
+                    AjaxPost('/Action/call', payload, (response) => {
+						 this.statusClass = "status-started"; // 设置状态类
+						 alert('成功');
+						  this.uboot_status();
+                    });
+                },
+				submitConfig() {
+					 if (this.token.trim() === "") {
+                        alert("请输入有效的用户");
+                        return;
+                    }
+
+					var payload = {
+						func_name: 'plugin_uboot',
+						action: 'update_config',
+						param: {
+							server: this.serverInput,
+							token: this.tokenInput
+						}
+					};
+
+					AjaxPost('/Action/call', payload, (response) => {
+						if (response && response.Result % 10000 == 0) {
+							alert('配置已成功更新');
+							this.uboot_status(); // 重新获取状态，更新显示的  配置信息
+						} else {
+							alert('配置更新失败');
+						}
+						 this.uboot_status();
+					});
+				},
+                uboot_stop() {
+                    var payload = {
+                        func_name: 'plugin_uboot',
+                        action: 'stop',
+                        param: {}
+                    };
+                    AjaxPost('/Action/call', payload, (response) => {
+                        if(response.Result % 10000 == 0) {
+                            this.statusMessage = "已停止";
+                            this.statusClass = "status-started";
+                            alert('停止成功');
+                            MessageTip("停止成功", "red");
+							this.statusclick = "写入";
+                        }
+						 this.uboot_status();
+                    });
+                },
+			 mtd_log() {
+                    var payload = {
+                        func_name: 'plugin_uboot',
+                        action: 'mtd_log',
+                        param: {}
+                    };
+                    AjaxPost('/Action/call', payload, (response) => {
+                        if(response.Result % 10000 == 0) {
+							this.statusclick = "格试化成功";
+                        }
+                    });
+                },
+			 update_ota() {
+                    var payload = {
+                        func_name: 'plugin_uboot',
+                        action: 'update_ota',
+                        param: {}
+                    };
+                    AjaxPost('/Action/call', payload, (response) => {
+                        if(response.Result % 10000 == 0) {
+							this.statusclick = "设置成功，请在线升级。";
+                        }
+                    });
+                },
+				
+				
+                uboot_status() {
+                    var payload = {
+                        func_name: 'plugin_uboot',
+                        action: 'show',
+                        param: {
+                            TYPE: 'status'
+                        }
+                    };
+                    AjaxPost('/Action/call', payload, (response) => {
+                        if (response.Result % 10000 == 0 && response.Data) {
+                            const data = response.Data;
+
+                            if (data.status == 1) {
+                                this.statusMessage = "已启动";
+                                this.statusClass = "status-started";
+								this.statusclick = "写入";
+                            } else {
+                                this.statusMessage = "已停止";
+                               this.statusClass = "status-started";
+								this.statusclick = "写入";
+                            }
+							
+							this.Name = data.Name ? data.Name : "未获取";
+							this.statusMessage = data.uboot_type ? data.uboot_type : "未获取";
+						    this.statusMessageup = data.updatup ? data.updatup : "未获取";
+							
+							if (data.updatup == "开启" ) {
+							this.statusclickup = "关闭更新"
+							} else {
+							this.statusclickup = "开启更新"
+							
+							}
+
+                            // 将 data 存储到 statusDetails 中
+                            this.statusDetails = data;
+                            console.log(' 状态信息:', this.statusDetails);
+
+                        } else {
+                            console.error('Status is undefined in the response', response);
+                            this.statusMessage = "状态未知";
+                            this.statusClass = "status-unknown";
+                        }
+                    });
+                },
+		 setLocalUrl() {
+                    var host = window.location.hostname;
+                    this.LocalUrl = `${host}`;
+                },
+			uploadFile() {
+                var fileInput = document.getElementById('fileUpload');
+                var file = fileInput.files[0];
+
+                if (!file) {
+                    alert('请先选择一个文件');
+                    return;
+                }
+
+                var formData = new FormData();
+                formData.append('file', file);
+
+                var xhr = new XMLHttpRequest();
+                xhr.open('POST', '/Action/upload', true);
+                xhr.onload = function () {
+                    if (xhr.status == 200) {
+                        alert('文件上传成功');
+                        app.uboot_config();
+                    } else {
+                        alert('上传失败');
+                    }
+                };
+                xhr.send(formData);
+            },
+		 uboot_config() {
+                var payload = {
+                    func_name: 'plugin_uboot',
+                    action: 'config',
+                    param: {}
+                };
+                AjaxPost('/Action/call', payload, (response) => {
+                    if (response.Result % 10000 == 0) {
+                        alert(' 配置成功');
+                    } else {
+                        alert(' 配置失败');
+                    }
+					 this.uboot_status();
+                });
+            }
+            }
+        });
+    </script>
+</html>

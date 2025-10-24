@@ -1,0 +1,826 @@
+<html>
+    <head>
+        <script src="../../static/js/vue.js"></script>
+		<script src="../../static/css/app.js"></script>
+		<link rel="stylesheet" href="../../static/css/app.css" type="text/css">
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+        <style>
+            .status-started {
+                color: green;
+            }
+            .status-stopped {
+                color: red;
+            }
+            .status-unknown {
+                color: gray;
+            }
+            .status-value {
+                color: green;
+            }
+			.status2-started {
+                color: green;
+            }
+            .status2-stopped {
+                color: red;
+            }
+            .status2-unknown {
+                color: gray;
+            }
+            .status2-value {
+                color: green;
+            }
+		.input-field {
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+        }
+        .input-label {
+            display: inline-block;
+            width: 80px;
+        }
+		.input-a {
+            width: 80px;
+        }
+        .input-box {
+            width: 250px;
+            padding: 6px;
+            border: 1px solid blue;
+            border-radius: 4px;
+            height: 34px;
+            margin-right: 10px;
+        }
+        .submit-button {
+            height: 34px;
+            padding: 6px 12px;
+            background-color: green;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+		       .status-value {
+            color: green;
+        }
+        /* 自定义 Switch 样式（调整按钮大小） */
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 40px;  /* 调小按钮的宽度 */
+            height: 20px; /* 调小按钮的高度 */
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 20px;  /* 较小的按钮圆角 */
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 16px;  /* 调小滑块的高度 */
+            width: 16px;   /* 调小滑块的宽度 */
+            left: 2px;
+            bottom: 2px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider {
+            background-color: #2196F3;
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(20px); /* 调整滑块滑动的距离 */
+        }
+		/* 新增的布局样式 */
+        .line_edit {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .input_tit {
+            margin-right: 10px; /* 控制文本和按钮之间的间距 */
+        }
+        </style>
+    </head>
+    <body>
+        <div id="app">
+            <div>
+                <!-- 空行 -->
+                <div class="status">
+                    实列1：<span :class="statusClass">{{ statusMessage }}</span>
+                </div>
+				<div style="height: 5px;"></div>
+
+			 <div class="line_edit">
+                <span class="input_tit">绑定线程到CPU：</span>
+                <!-- 使用自定义 Switch 组件 -->
+                <custom-switch v-model="fBindToCPU" @change="BindToCPU"></custom-switch>
+            </div>
+		   
+			<div style="height: 5px;"></div>
+			
+			 <div class="line_edit">
+                <span class="input_tit">断开慢速客户：</span>
+                <!-- 使用自定义 Switch 组件 -->
+                <custom-switch v-model="fDropSlowClients" @change="Clients"></custom-switch>
+			</div>
+
+			<div style="height: 10px;"></div>
+			 <!-- 服务器和密钥输入框 -->
+            <div class="input-field">
+                <label class="input-label" for="bridge_port">服务端口:</label>
+                <input type="text" id="bridge_port" v-model="bridge_port" class="input-box" :placeholder="bridge_port" required>
+            </div>
+			            <div class="input-field">
+                <label class="input-label" for="ifName">服务接口:</label>
+                <input type="text" id="ifName" v-model="ifName" class="input-box" :placeholder="ifName" required>
+            </div>
+			     <div class="input-field">
+                <label class="input-label" for="threadsCountMax">工作线程:</label>
+                <input type="text" id="threadsCountMax" v-model="threadsCountMax" class="input-box" :placeholder="threadsCountMax" required>
+            </div>
+			     <div class="input-field">
+                <label class="input-label" for="precache">默认缓存:</label>
+                <input type="text" id="precache" v-model="precache" class="input-box" :placeholder="precache" required>
+            </div>
+						     <div class="input-field">
+                <label class="input-label" for="ringBufSize">环形缓冲:</label>
+                <input type="text" id="ringBufSize" v-model="ringBufSize" class="input-box" :placeholder="ringBufSize" required>
+            </div>
+						     <div class="input-field">
+                <label class="input-label" for="rcvBuf">接收缓冲:</label>
+                <input type="text" id="rcvBuf" v-model="rcvBuf" class="input-box" :placeholder="rcvBuf" required>
+            </div>
+						     <div class="input-field">
+                <label class="input-label" for="rcvTimeout">超时接收:</label>
+                <input type="text" id="rcvTimeout" v-model="rcvTimeout" class="input-box" :placeholder="rcvTimeout" required>
+            </div>
+			
+			
+            <div class="input-field">
+                <label class="input-label" for="rejoinTime">重新加入:</label>
+                <input type="text" id="rejoinTime" v-model="rejoinTime" class="input-box" :placeholder="rejoinTime" required>
+				 <button @click="submitConfig" class="btn btn_green btn_confirm margin-l-10">提交</button>
+            </div>
+
+
+				
+				<div style="height: 5px;"></div>
+			<!-- 文件选择和上传按钮 -->
+				<div class="input-field">
+				<a class="input-a">配置上传:</a>
+				 <input type="text" id="fileName" class="input-box" >
+				<!-- 自定义的选择文件按钮 -->
+				<label for="fileUpload" class="btn btn_blue btn_confirm margin-l-10">
+					选择文件
+				</label>
+				
+				<!-- 隐藏的文件输入框 -->
+				<input type="file" id="fileUpload" style="display: none;" onchange="document.getElementById('fileName').value = this.files[0].name;">
+				
+				<!-- 上传 EEPROM 按钮 -->
+				<button @click="uploadFile" class="btn btn_green btn_confirm margin-l-10" type="button">
+					上传配置
+				</button>
+
+			</div>
+				<div style="height: 5px;"></div>
+				<div class="readme"><span class="note" style="left: 20px;">功能说明：</span>
+				<div>1、上传请确认您的配置文件可用，上传错误重传即可，文本内容请查看官方文档，启动后开机会自启动，停止则不启动</div>
+				</div>
+			
+			      <div style="height: 5px;"></div>
+                <button @click="app_start" class="btn btn_green btn_confirm margin-l-10" type="button">
+                    {{ statusclick }}
+                </button>
+				<div style="height: 10px;"></div>
+			
+            </div>
+			<!-- 第二个进程 -->	
+			
+			
+			           <div>
+                <!-- 空行 -->
+                <div class="status">
+                    实列2：<span :class="statusClass2">{{ statusMessage2 }}</span>
+                </div>
+				<div style="height: 10px;"></div>
+
+			 <div class="line_edit">
+                <span class="input_tit">绑定线程到CPU：</span>
+                <!-- 使用自定义 Switch 组件 -->
+                <custom-switch v-model="fBindToCPU2" @change="BindToCPU2"></custom-switch>
+            </div>
+		   
+			<div style="height: 10px;"></div>
+			
+			 <div class="line_edit">
+                <span class="input_tit">断开慢速客户：</span>
+                <!-- 使用自定义 Switch 组件 -->
+                <custom-switch v-model="fDropSlowClients2" @change="Clients2"></custom-switch>
+			</div>
+
+			<div style="height: 10px;"></div>
+			 <!-- 服务器和密钥输入框 -->
+            <div class="input-field">
+                <label class="input-label" for="bridge_port2">服务端口:</label>
+                <input type="text" id="bridge_port2" v-model="bridge_port2" class="input-box" :placeholder="bridge_port2" required>
+            </div>
+			            <div class="input-field">
+                <label class="input-label" for="ifName2">服务接口:</label>
+                <input type="text" id="ifName2" v-model="ifName2" class="input-box" :placeholder="ifName2" required>
+            </div>
+			     <div class="input-field">
+                <label class="input-label" for="threadsCountMax2">工作线程:</label>
+                <input type="text" id="threadsCountMax2" v-model="threadsCountMax2" class="input-box" :placeholder="threadsCountMax2" required>
+            </div>
+			     <div class="input-field">
+                <label class="input-label" for="precache2">默认缓存:</label>
+                <input type="text" id="precache2" v-model="precache2" class="input-box" :placeholder="precache2" required>
+            </div>
+				<div class="input-field">
+                <label class="input-label" for="ringBufSize2">环形缓冲:</label>
+                <input type="text" id="ringBufSize2" v-model="ringBufSize2" class="input-box" :placeholder="ringBufSize2" required>
+            </div>
+				<div class="input-field">
+                <label class="input-label" for="rcvBuf2">接收缓冲:</label>
+                <input type="text" id="rcvBuf2" v-model="rcvBuf2" class="input-box" :placeholder="rcvBuf2" required>
+            </div>
+				 <div class="input-field">
+                <label class="input-label" for="rcvTimeout2">超时接收:</label>
+                <input type="text" id="rcvTimeout2" v-model="rcvTimeout2" class="input-box" :placeholder="rcvTimeout2" required>
+            </div>
+			
+			
+            <div class="input-field">
+                <label class="input-label" for="rejoinTime2">重新加入:</label>
+                <input type="text" id="rejoinTime" v-model="rejoinTime2" class="input-box" :placeholder="rejoinTime2" required>
+				 <button @click="submitConfig2" class="btn btn_green btn_confirm margin-l-10">提交</button>
+            </div>
+
+			<!-- 文件选择和上传按钮 -->
+			<div style="height: 5px;"></div>
+				<div class="input-field">
+				<a class="input-a">配置上传:</a>
+				 <input type="text" id="fileName2" class="input-box" >
+				<!-- 自定义的选择文件按钮 -->
+				<label for="fileUpload2" class="btn btn_blue btn_confirm margin-l-10">
+					选择文件
+				</label>
+				
+				<!-- 隐藏的文件输入框 -->
+				<input type="file" id="fileUpload2" style="display: none;" onchange="document.getElementById('fileName2').value = this.files[0].name;">
+				
+				<!-- 上传 EEPROM 按钮 -->
+				<button @click="uploadFile2" class="btn btn_green btn_confirm margin-l-10" type="button">
+					上传配置
+				</button>
+
+			</div>
+				<div style="height: 5px;"></div>
+                <button @click="app_start2" class="btn btn_green btn_confirm margin-l-10" type="button">
+                    {{ statusclick2 }}
+                </button>
+            </div>
+			
+			
+        </div> 
+    </body>
+    <script type="module">
+			// 自定义 Switch 组件
+		Vue.component('custom-switch', {
+			props: {
+				value: Boolean
+			},
+			template: '<label class="switch">' +
+						'<input type="checkbox" :checked="localValue" @change="emitChange">' +
+						'<span class="slider"></span>' +
+					  '</label>',
+			data() {
+				return {
+					localValue: this.value
+				};
+			},
+			watch: {
+				value(newValue) {
+					this.localValue = newValue;
+				}
+			},
+			methods: {
+				emitChange(event) {
+					this.localValue = event.target.checked;
+					this.$emit('input', this.localValue);
+					this.$emit('change');  // 触发 change 事件
+				}
+			}
+		});
+	
+        var app = new Vue({
+            el: '#app',
+            data: { 
+                result: "",
+                statusMessage: "未知",
+				statusclick: "安装",
+                statusClass: "status-unknown",
+				//LocalUrl: "",
+				//npsUrl: "",
+				//fSocketHalfClosed: "",
+				bridge_port: "7088", 
+				ifName: "lan1",  
+				threadsCountMax: "1", 
+				fDropSlowClients:false,
+				fBindToCPU:false, 
+				fSocketTCPNoDelay: "", 
+				fSocketTCPNoPush: "", 
+				precache: "4096", 
+				ringBufSize: "1024", 
+				sndBuf: "", 
+				rcvBuf: "512", 
+				sndLoWatermark: "", 
+				congestionControl: "", 
+				rcvLoWatermark: "", 
+				rcvTimeout: "2", 
+				rejoinTime: "0", 
+				//第二个实列
+				statusMessage2: "未知",
+				statusclick2: "安装",
+                statusClass2: "status-unknown",
+				bridge_port2: "7089", 
+				ifName2: "lan2",  
+				threadsCountMax2: "1", 
+				fDropSlowClients2:false,
+				fBindToCPU2:false, 
+				fSocketTCPNoDelay2: "", 
+				fSocketTCPNoPush2: "", 
+				precache2: "4096", 
+				ringBufSize2: "1024", 
+				sndBuf2: "", 
+				rcvBuf2: "512", 
+				sndLoWatermark2: "", 
+				congestionControl2: "", 
+				rcvLoWatermark2: "", 
+				rcvTimeout2: "2", 
+				rejoinTime2: "0",
+                statusDetails: {}  // 初始化为对象，而不是 null
+            },
+            mounted() {
+                this.app_status();
+				//this.setLocalUrl();
+            },
+            methods: {
+                app_start() {
+                    var payload = {
+                        func_name: 'plugin_msd_lite',
+                        action: 'app_start',
+                        param: {}
+                    };
+					if (this.statusclick == "安装") {
+						alert('安装中');
+						AjaxPost('/Action/call', payload)
+						this.status();
+						return;
+					};
+                    AjaxPost('/Action/call', payload, (response) => {
+                        if(response.Result % 10000 == 0) {
+						
+						if(this.statusMessage == "已启动") {
+						this.statusMessage = "已停止";
+						this.statusClass = "status-stopped"; // 设置状态类
+						 alert('停止成功');
+						 this.statusclick = "启动";
+						} else {
+                            this.statusMessage = "已启动";
+                            this.statusClass = "status-started"; // 设置状态类
+                            alert('启动成功');
+                            MessageTip("启动成功", "green");
+							this.statusclick = "停止";
+						  }
+                        }
+                    });
+                },
+				app_start2() {
+                    var payload = {
+                        func_name: 'plugin_msd_lite',
+                        action: 'app_start2',
+                        param: {}
+                    };
+					if (this.statusclick == "安装") {
+						alert('安装中');
+						AjaxPost('/Action/call', payload)
+						this.status();
+						return;
+					};
+                    AjaxPost('/Action/call', payload, (response) => {
+                        if(response.Result % 10000 == 0) {
+						
+						if(this.statusMessage2 == "已启动") {
+						this.statusMessage2 = "已停止";
+						this.statusClass2 = "status2-stopped"; // 设置状态类
+						 alert('停止成功');
+						 this.statusclick2 = "启动";
+						} else {
+                            this.statusMessage2 = "已启动";
+                            this.statusClass2 = "status2-started"; // 设置状态类
+                            alert('启动成功');
+                            MessageTip("启动成功", "green");
+							this.statusclick2 = "停止";
+						  }
+                        }
+                    });
+                },
+				submitConfig() {
+					var payload = {
+						func_name: 'plugin_msd_lite',
+						action: 'update_config',
+						param: {
+							bridge_port: this.bridge_port, 
+							ifName: this.ifName, 
+							threadsCountMax: this.threadsCountMax, 
+							precache: this.precache, 
+							ringBufSize: this.ringBufSize, 
+							rcvBuf: this.rcvBuf, 
+							rcvTimeout: this.rcvTimeout, 
+							rejoinTime: this.rejoinTime
+						}
+					};
+
+					AjaxPost('/Action/call', payload, (response) => {
+						if (response && response.Result % 10000 == 0) {
+							alert('配置已成功更新');
+							this.NPS_status(); // 重新获取状态，更新显示的 NPS 配置信息
+						} else {
+							alert('配置更新失败');
+						}
+					});
+				},
+				submitConfig2() {
+					var payload = {
+						func_name: 'plugin_msd_lite',
+						action: 'update_config2',
+						param: {
+							bridge_port: this.bridge_port2, 
+							ifName: this.ifName2, 
+							threadsCountMax: this.threadsCountMax2, 
+							precache: this.precache2, 
+							ringBufSize: this.ringBufSize2, 
+							rcvBuf: this.rcvBuf2, 
+							rcvTimeout: this.rcvTimeout2, 
+							rejoinTime: this.rejoinTime2
+						}
+					};
+
+					AjaxPost('/Action/call', payload, (response) => {
+						if (response && response.Result % 10000 == 0) {
+							alert('配置已成功更新');
+							this.NPS_status(); // 重新获取状态，更新显示的 NPS 配置信息
+						} else {
+							alert('配置更新失败');
+						}
+					});
+				},
+                app_stop() {
+                    var payload = {
+                        func_name: 'plugin_msd_lite',
+                        action: 'stop',
+                        param: {}
+                    };
+                    AjaxPost('/Action/call', payload, (response) => {
+                        if(response.Result % 10000 == 0) {
+                            this.statusMessage = "已停止";
+                            this.statusClass = "status-stopped";
+                            alert('停止成功');
+                            MessageTip("停止成功", "red");
+                        }
+                    });
+                },
+				 app_stop2() {
+                    var payload = {
+                        func_name: 'plugin_msd_lite',
+                        action: 'stop2',
+                        param: {}
+                    };
+                    AjaxPost('/Action/call', payload, (response) => {
+                        if(response.Result % 10000 == 0) {
+                            this.statusMessage = "已停止";
+                            this.statusClass = "status-stopped";
+                            alert('停止成功');
+                            MessageTip("停止成功", "red");
+                        }
+                    });
+                },
+                app_status() {
+                    var payload = {
+                        func_name: 'plugin_msd_lite',
+                        action: 'show',
+                        param: {
+                            TYPE: 'status'
+                        }
+                    };
+                    AjaxPost('/Action/call', payload, (response) => {
+                        if (response.Result % 10000 == 0 && response.Data) {
+                            const data = response.Data;
+
+                            if (data.status == 1) {
+                                this.statusMessage = "已启动";
+                                this.statusClass = "status-started";
+								this.statusclick = "停止";
+                            } else {
+                                this.statusMessage = "已停止";
+                                this.statusClass = "status-stopped";
+								this.statusclick = "启动";
+                            }
+                            if (data.status == 2) {
+                                this.statusMessage = "安装中";
+                                this.statusClass = "status-started";
+                            }
+							
+							if (data.status == 3) {
+                                this.statusMessage = "已停止";
+                                this.statusClass = "status-stopped";
+								this.statusclick = "安装";
+                            }
+							
+						//	this.web_username = data.web_username ? data.web_username : "未获取";
+						//	this.web_password = data.web_password ? data.web_password : "未获取";
+							
+						//	this.web_port = data.web_port ? data.web_port : "未获取";
+						//	this.bridge_port = data.bridge_port ? data.bridge_port : "未获取";
+
+							this.bridge_port = data.bridge_port; 
+							this.ifName = data.ifName;
+							this.threadsCountMaxt = data.threadsCountMax;
+							this.precache = data.precache;
+							this.ringBufSize = data.ringBufSize;
+							this.rcvBuft = data.rcvBuf;
+							this.rcvTimeout = data.rcvTimeout;
+							this.rejoinTim = data.rejoinTim;
+							
+						if (data.fDropSlowClients === "yes") {
+                            this.fDropSlowClients = true;
+                        } else {
+                            this.fDropSlowClients = false;
+                        }
+						
+						if (data.fBindToCPU === "yes") {
+                            this.fBindToCPU = true;
+                        } else {
+                            this.fBindToCPU = false;
+                        }
+						//第二个实列
+						
+							if (data.status2 == 1) {
+                                this.statusMessage2 = "已启动";
+                                this.statusClass2 = "status2-started";
+								this.statusclick2 = "停止";
+                            } else {
+                                this.statusMessage2 = "已停止";
+                                this.statusClass2 = "status2-stopped";
+								this.statusclick2 = "启动";
+                            }
+                            if (data.status2 == 2) {
+                                this.statusMessage2 = "安装中";
+                                this.statusClass2 = "status2-started";
+                            }
+							
+							if (data.status2 == 3) {
+                                this.statusMessage2 = "已停止";
+                                this.statusClass2 = "status2-stopped";
+								this.statusclick2 = "安装";
+                            }
+							this.bridge_port2 = data.bridge_port2; 
+							this.ifName2 = data.ifName2;
+							this.threadsCountMaxt2 = data.threadsCountMax2;
+							this.precache2 = data.precache2;
+							this.ringBufSize2 = data.ringBufSize2;
+							this.rcvBuft2 = data.rcvBuf2;
+							this.rcvTimeout2 = data.rcvTimeout2;
+							this.rejoinTim2 = data.rejoinTim2;
+							
+						if (data.fDropSlowClients2 === "yes") {
+                            this.fDropSlowClients2 = true;
+                        } else {
+                            this.fDropSlowClients2 = false;
+                        }
+						
+						if (data.fBindToCPU2 === "yes") {
+                            this.fBindToCPU2 = true;
+                        } else {
+                            this.fBindToCPU2 = false;
+                        }
+
+
+                            // 将 data 存储到 statusDetails 中
+                            this.statusDetails = data;
+                            console.log('状态信息:', this.statusDetails);
+
+                        } else {
+                            console.error('Status is undefined in the response', response);
+                            this.statusMessage = "状态未知";
+                            this.statusClass = "status-unknown";
+							this.statusclick = "安装";
+                        }
+                    });
+                },
+		 setLocalUrl() {
+                    var host = window.location.hostname;
+                    this.LocalUrl = `http://${host}/nps.conf`;
+                },
+			uploadFile() {
+                var fileInput = document.getElementById('fileUpload');
+                var file = fileInput.files[0];
+
+                if (!file) {
+                    alert('请先选择一个文件');
+                    return;
+                }
+
+                var formData = new FormData();
+                formData.append('file', file);
+
+                var xhr = new XMLHttpRequest();
+                xhr.open('POST', '/Action/upload', true);
+                xhr.onload = function () {
+                    if (xhr.status == 200) {
+                        alert('文件上传成功');
+                        app.app_config();
+                    } else {
+                        alert('上传失败');
+                    }
+                };
+                xhr.send(formData);
+            },
+			uploadFile2() {
+                var fileInput = document.getElementById('fileUpload2');
+                var file = fileInput.files[0];
+
+                if (!file) {
+                    alert('请先选择一个文件');
+                    return;
+                }
+
+                var formData = new FormData();
+                formData.append('file', file);
+
+                var xhr = new XMLHttpRequest();
+                xhr.open('POST', '/Action/upload', true);
+                xhr.onload = function () {
+                    if (xhr.status == 200) {
+                        alert('文件上传成功');
+                        app.app_config();
+                    } else {
+                        alert('上传失败');
+                    }
+                };
+                xhr.send(formData);
+            },
+		BindToCPU(){
+                var payload = {
+                    func_name: 'plugin_msd_lite',
+                    action: 'BindToCPU',
+                    param: {status:this.fBindToCPU}
+                };
+                AjaxPost('/Action/call', payload, (response) => {
+                    if (response.Result % 10000 == 0) {
+                        // 执行成功后确保状态与实际保持同步
+						if (!this.fBindToCPU == false) {
+						
+						 this.fBindToCPU = true;
+
+						} else {
+						this.fBindToCPU = false;
+						
+						}
+						
+						
+                    } else {
+                        // 如果出错，恢复之前的状态
+                        alert('操作失败，请重试');
+                    }
+		
+                });
+            },
+			BindToCPU2(){
+                var payload = {
+                    func_name: 'plugin_msd_lite',
+                    action: 'BindToCPU2',
+                    param: {status:this.fBindToCPU2}
+                };
+                AjaxPost('/Action/call', payload, (response) => {
+                    if (response.Result % 10000 == 0) {
+                        // 执行成功后确保状态与实际保持同步
+						if (!this.fBindToCPU2 == false) {
+						
+						 this.fBindToCPU2 = true;
+
+						} else {
+						this.fBindToCPU2 = false;
+						
+						}
+						
+						
+                    } else {
+                        // 如果出错，恢复之前的状态
+                        alert('操作失败，请重试');
+                    }
+		
+                });
+            },
+			Clients(){
+                var payload = {
+                    func_name: 'plugin_msd_lite',
+                    action: 'DropSlowClients',
+                    param: {status:this.fDropSlowClients}
+                };
+                AjaxPost('/Action/call', payload, (response) => {
+                    if (response.Result % 10000 == 0) {
+                        // 执行成功后确保状态与实际保持同步
+						if (!this.fDropSlowClients == false) {
+						
+						 this.fDropSlowClients = true;
+
+						} else {
+						this.fDropSlowClients = false;
+						
+						}
+						
+						
+                    } else {
+                        // 如果出错，恢复之前的状态
+                        alert('操作失败，请重试');
+                    }
+		
+                });
+            },
+			Clients2(){
+                var payload = {
+                    func_name: 'plugin_msd_lite',
+                    action: 'DropSlowClients2',
+                    param: {status:this.fDropSlowClients2}
+                };
+                AjaxPost('/Action/call', payload, (response) => {
+                    if (response.Result % 10000 == 0) {
+                        // 执行成功后确保状态与实际保持同步
+						if (!this.fDropSlowClients2 == false) {
+						
+						 this.fDropSlowClients2 = true;
+
+						} else {
+						this.fDropSlowClients2 = false;
+						
+						}
+						
+						
+                    } else {
+                        // 如果出错，恢复之前的状态
+                        alert('操作失败，请重试');
+                    }
+		
+                });
+            },
+		 app_config() {
+                var payload = {
+                    func_name: 'plugin_msd_lite',
+                    action: 'config',
+                    param: {}
+                };
+                AjaxPost('/Action/call', payload, (response) => {
+                    if (response.Result % 10000 == 0) {
+                        alert('配置成功');
+                    } else {
+                        alert('配置失败');
+                    }
+                });
+            },
+			app_config2() {
+                var payload = {
+                    func_name: 'plugin_msd_lite',
+                    action: 'config2',
+                    param: {}
+                };
+                AjaxPost('/Action/call', payload, (response) => {
+                    if (response.Result % 10000 == 0) {
+                        alert('配置成功');
+                    } else {
+                        alert('配置失败');
+                    }
+                });
+            }
+            }
+        });
+    </script>
+</html>

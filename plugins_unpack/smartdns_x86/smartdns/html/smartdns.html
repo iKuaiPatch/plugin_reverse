@@ -1,0 +1,1208 @@
+<html>
+    <head>
+        <script src="../../static/js/vue.js"></script>
+		<script src="../../static/css/app.js"></script>
+		<link rel="stylesheet" href="../../static/css/app.css" type="text/css">
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+        <style>
+            .status-started {
+                color: green;
+            }
+            .status-stopped {
+                color: red;
+            }
+            .status-unknown {
+                color: gray;
+            }
+            .status-value {
+                color: green;
+            }
+		.input-field {
+			width: 50%; /* 固定宽度，也可以使用百分比，如 80% */
+			max-width: 100%; /* 确保它不会超出父容器的宽度 */
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+        }
+        .input-label {
+            display: inline-block;
+            width: 80px;
+        }
+		.input-a {
+            width: 80px;
+        }
+        .input-box {
+            width: 250px;
+            padding: 6px;
+            border: 1px solid blue;
+            border-radius: 4px;
+            height: 34px;
+            margin-right: 10px;
+        }
+        .submit-button {
+            height: 34px;
+            padding: 6px 12px;
+            background-color: green;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+		       .status-value {
+            color: green;
+        }
+        /* 自定义 Switch 样式（调整按钮大小） */
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 40px;  /* 调小按钮的宽度 */
+            height: 20px; /* 调小按钮的高度 */
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 20px;  /* 较小的按钮圆角 */
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 16px;  /* 调小滑块的高度 */
+            width: 16px;   /* 调小滑块的宽度 */
+            left: 2px;
+            bottom: 2px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider {
+            background-color: #2196F3;
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(20px); /* 调整滑块滑动的距离 */
+        }
+		/* 新增的布局样式 */
+        .line_edit {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .input_tit {
+            margin-right: 10px; /* 控制文本和按钮之间的间距 */
+        }
+		  /* 样式：选中的选项卡 */
+         .tabs {
+                display: flex;
+                cursor: pointer;
+                margin-bottom: 10px;
+            }
+
+            .tab {
+                padding: 10px 20px;
+                background-color: #ddd;
+                margin-right: 10px;
+                border-radius: 4px;
+            }
+
+            .tab.active {
+                background-color: #2196F3;
+                color: white;
+            }
+
+            .tab-content {
+                display: none; /* 默认隐藏 */
+                padding: 20px;
+                background-color: white; /* 设置内容区域的背景色为白色 */
+                border-radius: 4px;
+            }
+
+            .tab-content.active {
+                display: block; /* 显示激活的内容 */
+            }
+			            /* 表格样式 */
+             /* 标题 */
+            .title {
+                font-size: 24px;
+                font-weight: bold;
+                color: #2196F3;
+                text-align: left;  /* 右对齐 */
+                margin-right: 20px;
+                margin-top: 20px;
+            }
+
+            /* 表格样式 */
+			
+            table {
+                width: 100%;
+                border-collapse: collapse;
+                margin-top: 30px;
+                border: 2px solid blue; /* 边框颜色设置为蓝色并且是实线 */
+            }
+
+            table, th, td {
+                border: 1px solid blue;  /* 表格内的边框也设置为蓝色 */
+            }
+
+            th, td {
+                padding: 10px;
+                text-align: center;  /* 表头内容居中 */
+            }
+		button {
+                cursor: pointer;
+                padding: 5px 10px;
+                background-color: #2196F3;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                margin: 5px 0;
+            }
+
+            button.delete {
+                background-color: #f44336;
+            }
+
+            /* 按钮容器样式 */
+            .button-container {
+                margin-top: 10px;
+            }
+
+            .checkbox-cell {
+                text-align: center;
+            }
+
+            .input-large {
+                width: 100%;
+            }
+			/* 表格容器样式 */
+.table-container {
+    width: 100%;
+    border-collapse: collapse; /* 避免表格单元格之间有多余的间隔 */
+    margin-bottom: 20px;
+}
+
+/* 表头和表格单元格边框 */
+.table-container th, .table-container td {
+    border: 1px solid #ccc; /* 表格边框 */
+    padding: 2px 2px; /* 较小的内边距，减少行高 */
+    text-align: center; /* 内容居中 */
+    font-size: 14px; /* 缩小字体大小 */
+}
+
+/* 输入框样式 */
+.table-container input[type="text"],
+.table-container select {
+    border: none;
+    width: 100%;
+    padding: 1px 1px; /* 减小输入框的内边距 */
+    font-size: 14px; /* 缩小字体大小 */
+    box-sizing: border-box;
+}
+/* 复选框样式 */
+.table-container input[type="checkbox"] {
+    margin: 0;
+    padding: 0;
+}
+
+/* 如果你只想让“添加”和“删除”按钮都变小，可以给它们加上一个类 */
+button.add-btn,
+button.delete-btn {
+    font-size: 10px;
+    padding: 1px 1px;
+    min-width: 60px;
+    height: 20px;
+}
+
+.table-container button:hover {
+    background-color: #e0e0e0; /* 鼠标悬停效果 */
+}
+
+
+
+		/* 新的选项卡样式（放在页面底部） */
+				#tabs-bottom {
+				  display: flex;
+				  margin: 20px 0;
+				  border-bottom: 2px solid #ddd;
+				}
+
+				#tabs-bottom .tab {
+				  padding: 10px 20px;
+				  cursor: pointer;
+				  font-size: 16px;
+				  text-align: center;
+				  background-color: #f5f5f5;
+				  border: 1px solid #ddd;
+				  border-radius: 5px 5px 0 0;
+				  margin-right: 5px;
+				  transition: background-color 0.3s ease;
+				}
+
+				#tabs-bottom .tab.active {
+				  background-color: #4CAF50;
+				  color: white;
+				  border-color: #4CAF50;
+				}
+
+				/* 选项卡内容区样式 */
+				#tab-content, #tab-content-bottom {
+				  padding: 20px;
+				  border: 1px solid #ddd;
+				  border-radius: 0 0 5px 5px;
+				  background-color: #fff;
+				}
+
+				#tab-content textarea, #tab-content-bottom textarea {
+				  width: 100%;
+				  padding: 10px;
+				  font-size: 14px;
+				  border: 1px solid #ddd;
+				  border-radius: 5px;
+				  resize: vertical;
+				  min-height: 200px;
+				  margin-bottom: 20px; /* 保证文本框和按钮之间有间隔 */
+				}
+
+				#tab-content button, #tab-content-bottom button {
+				  padding: 10px 20px;
+				  margin-top: 10px;
+				  background-color: #4CAF50;
+				  color: white;
+				  border: none;
+				  border-radius: 5px;
+				  cursor: pointer;
+				  font-size: 16px;
+				  transition: background-color 0.3s ease;
+				}
+
+				#tab-content button:hover, #tab-content-bottom button:hover {
+				  background-color: #45a049;
+				}
+
+				/* 隐藏未选中的选项卡内容 */
+				#tab-content > div, #tab-content-bottom > div {
+				  display: none;
+				}
+
+				#tab-content > div.active, #tab-content-bottom > div.active {
+				  display: block;
+				}
+
+				.submit-btn {
+				  padding: 10px 20px;
+				  margin-top: 20px;
+				  background-color: #4CAF50;
+				  color: white;
+				  border: none;
+				  border-radius: 5px;
+				  cursor: pointer;
+				  font-size: 16px;
+				  transition: background-color 0.3s ease;
+				}
+
+				.submit-btn:hover {
+				  background-color: #45a049;
+				}
+				
+				.form-group {
+					margin-bottom: 15px;
+				}
+
+				label {
+					display: block;
+					font-weight: bold;
+					margin-bottom: 5px;
+				}
+
+				input[type="text"],
+				input[type="number"] {
+					width: 100%;
+					padding: 8px;
+					margin-top: 5px;
+					font-size: 14px;
+					border: 1px solid #ccc;
+					border-radius: 4px;
+				}
+
+				input[type="checkbox"] {
+					margin-top: 5px;
+				}
+
+				button {
+					background-color: #4CAF50;
+					color: white;
+					padding: 10px 15px;
+					border: none;
+					cursor: pointer;
+					border-radius: 4px;
+				}
+
+				button:hover {
+					background-color: #45a049;
+				}
+				/* 调整所有输入框的宽度 */
+				form input[type="text"], form input[type="number"], form textarea {
+					width: 300px; /* 固定宽度，也可以使用百分比，如 80% */
+					max-width: 100%; /* 确保它不会超出父容器的宽度 */
+					padding: 8px;
+					margin: 5px 0;
+					box-sizing: border-box; /* 使内边距和边框计入总宽度 */
+				}
+
+				/* 对于checkbox，设置合适的宽度 */
+				form input[type="checkbox"] {
+					margin-right: 10px;
+				}
+				
+form {
+    display: flex;
+    flex-wrap: wrap; /* 自动换行 */
+    gap: 10px; /* 控制列之间的间距 */
+}
+
+.form-group {
+    flex: 1 1 45%; /* 每个 form-group 元素宽度为 45% */
+    min-width: 200px; /* 防止过窄，确保输入框不太小 */
+    margin-bottom: 10px; /* 减小表单项之间的垂直间距 */
+}
+
+
+}
+/* 修改后的输入框字段样式 */
+.custom-input-field {
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+}
+
+/* 修改后的标签样式 */
+.custom-input-label {
+    display: inline-block;
+    width: 100px;  /* 控制标签的宽度 */
+    margin-right: 10px; /* 控制文本和输入框之间的间距 */
+}
+
+/* 修改后的文本框样式 */
+.textarea-box {
+    width: 100%;
+    height: 300px;
+    padding: 10px;
+    font-family: monospace;
+    font-size: 14px;
+    border: 1px solid blue;
+    border-radius: 4px;
+    margin-right: 10px;
+    resize: both; /* 允许用户调整大小 */
+}
+        </style>
+    </head>
+    <body>
+        <div id="app">
+            <div>
+			
+			     <div class="tabs">
+                    <div class="tab" :class="{ active: activeTab === 1 }" @click="changeTab(1)">常规设置</div>
+                    <div class="tab" :class="{ active: activeTab === 2 }" @click="changeTab(2)">第二DNS服务器</div>
+					<div class="tab" :class="{ active: activeTab === 3 }" @click="changeTab(3)">自定义设置</div>
+                </div>
+			
+			
+			<div class="tab-content" :class="{ active: activeTab === 1 }">
+                <!-- 空行 -->
+               
+				
+                <div class="status">
+                    服务状态：<span :class="statusClass">{{ statusMessage }}</span>
+                </div>
+				<div style="height: 20px;"></div>
+
+				 <form @submit.prevent="submitConfig">
+				<!-- 服务器名称 -->
+				<div class="form-group">
+					<label for="serverName">服务器名称</label>
+					<input type="text" id="serverName" v-model="formData.serverName" placeholder="smartdns" required>
+				</div>
+
+				<!-- 本地端口 -->
+				<div class="form-group">
+					<label for="localPort">本地端口</label>
+					<input type="number" id="localPort" v-model="formData.localPort" placeholder="6353" required>
+				</div>
+
+				<!-- TCP 服务器 -->
+				<div class="form-group">
+					<label for="tcpServer">TCP 服务器</label>
+					<input type="checkbox" id="tcpServer" v-model="formData.tcpServer">
+				</div>
+
+				<!-- IPV6 服务器 -->
+				<div class="form-group">
+					<label for="ipv6Server">IPV6 服务器</label>
+					<input type="checkbox" id="ipv6Server" v-model="formData.ipv6Server">
+				</div>
+				
+				
+				
+				<!-- 双栈 IP 优选 -->
+				<div class="form-group">
+					<label for="dualStackIP">双栈 IP 优选</label>
+					<input type="checkbox" id="dualStackIP" v-model="formData.dualStackIP">
+				</div>
+
+				<!-- 域名预加载 -->
+				<div class="form-group">
+					<label for="domainPreload">域名预加载</label>
+					<input type="checkbox" id="domainPreload" v-model="formData.domainPreload">
+				</div>
+
+				<!-- 缓存过期服务 -->
+				<div class="form-group">
+					<label for="cacheExpire">缓存过期服务</label>
+					<input type="checkbox" id="cacheExpire" v-model="formData.cacheExpire">
+				</div>
+
+				<!-- 缓存大小 -->
+				<div class="form-group">
+					<label for="cacheSize">缓存大小</label>
+					<input type="number" id="cacheSize" v-model="formData.cacheSize" placeholder="请输入缓存大小">
+				</div>
+
+				<!-- 解析本地主机名 -->
+				<div class="form-group">
+					<label for="resolveLocalHost">解析本地主机名</label>
+					<input type="checkbox" id="resolveLocalHost" v-model="formData.resolveLocalHost">
+				</div>
+
+				<!-- 自动设置 Dnsmasq -->
+				<div class="form-group">
+					<label for="autoDnsmasq">自动设置 Dnsmasq</label>
+					<input type="checkbox" id="autoDnsmasq" v-model="formData.autoDnsmasq">
+				</div>
+
+				<!-- 停用 IPV6 地址解析 -->
+				<div class="form-group">
+					<label for="disableIpv6">停用 IPV6 地址解析</label>
+					<input type="checkbox" id="disableIpv6" v-model="formData.disableIpv6">
+				</div>
+
+				<!-- 停用 HTTPS 地址解析 -->
+				<div class="form-group">
+					<label for="disableHttps">停用 HTTPS 地址解析</label>
+					<input type="checkbox" id="disableHttps" v-model="formData.disableHttps">
+				</div>
+
+				<!-- 域名 TTL -->
+				<div class="form-group">
+					<label for="domainTTL">域名 TTL</label>
+					<input type="number" id="domainTTL" v-model="formData.domainTTL" placeholder="请输入域名 TTL">
+				</div>
+
+				<!-- 域名 TTL 最小值 -->
+				<div class="form-group">
+					<label for="domainTTLMin">域名 TTL 最小值</label>
+					<input type="number" id="domainTTLMin" v-model="formData.domainTTLMin" placeholder="600">
+				</div>
+
+				<!-- 域名 TTL 最大值 -->
+				<div class="form-group">
+					<label for="domainTTLMax">域名 TTL 最大值</label>
+					<input type="number" id="domainTTLMax" v-model="formData.domainTTLMax" placeholder="请输入域名 TTL 最大值">
+				</div>
+
+				<!-- 回应的域名 TTL 最大值 -->
+				<div class="form-group">
+					<label for="responseTTLMax">回应的域名 TTL 最大值</label>
+					<input type="number" id="responseTTLMax" v-model="formData.responseTTLMax" placeholder="请输入回应的域名 TTL 最大值">
+				</div>
+
+				<!-- 提交按钮 -->
+				<div class="form-group">
+					<button class="btn btn_green btn_confirm margin-l-10" type="submit">提交</button>
+					<button @click="app_start" class="btn btn_green btn_confirm margin-l-10" type="button">
+                    {{ statusclick }}
+                </button>
+				</div>
+				
+			</form>
+			
+						<div class="table-container">
+							<div class="title">上游服务器</div>
+
+									<!-- 表格 -->
+								<table class="table-container">
+									<thead>
+										<tr>
+											<th>DNS服务器名称</th>
+											<th>协议类型</th>
+											<th>端口</th>
+											<th>服务器组</th>
+											<th>IP 黑名单过滤</th>
+											<th>额外的服务器参数</th>
+											<th>操作</th>
+										</tr>
+									</thead>
+									<tbody>
+										<!-- 渲染服务器数据 -->
+										<tr v-for="(server, index) in servers" :key="index">
+											<td>
+												<input type="text" v-model="server.dnsIp" placeholder="请输入DNS服务器名称" />
+											</td>
+											<td>
+												<select v-model="server.protocol">
+													<option value="UDP">UDP</option>
+													<option value="TCP">TCP</option>
+													<option value="TLS">TLS</option>
+													<option value="HTTPS">HTTPS</option>
+													<option value="DOH">DOH</option>
+													
+													
+												</select>
+											</td>
+											<td>
+												<input type="text" v-model="server.dnsPort" placeholder="请输入端口" />
+											</td>
+											<td>
+												<input type="text" v-model="server.group" placeholder="服务组" />
+											</td>
+											<td>
+												<input type="checkbox" v-model="server.ipBlacklist" />
+											</td>
+											<td>
+												<input type="text" v-model="server.extraParams" placeholder="请输入额外的服务器参数" />
+											</td>
+											<td>
+												<!-- 如果是最后一行且没有数据输入，显示"添加"按钮 -->
+												<button v-if="index === servers.length - 1" @click="addServer(index)" class="add-btn">添加</button>
+												<!-- 对于其他行，显示"删除"按钮 -->
+												<button v-if="index !== servers.length - 1" @click="deleteRow(index)" class="delete-btn">删除</button>
+											</td>
+										</tr>
+									</tbody>
+								</table>
+
+								</div>
+
+			  
+
+
+			</div>
+			
+			
+			
+			
+			
+			<div class="tab-content" :class="{ active: activeTab === 2 }">
+                <!-- 空行第二选项卡 -->
+				<form @submit.prevent="submitConfig">
+				<!-- 启用 -->
+				<div class="form-group">
+					<label for="enable">启用</label>
+					<input type="checkbox" id="enable" v-model="formDataSecond.enable">
+				</div>
+
+				<!-- 本地端口 -->
+				<div class="form-group">
+					<label for="localPort2">本地端口</label>
+					<input type="number" id="localPort2" v-model="formDataSecond.localPort2" placeholder="6363">
+				</div>
+
+				<!-- TCP 服务器 -->
+				<div class="form-group">
+					<label for="tcpServer2">TCP 服务器</label>
+					<input type="checkbox" id="tcpServer2" v-model="formDataSecond.tcpServer2">
+				</div>
+
+				<!-- 服务器组 -->
+				<div class="form-group">
+					<label for="serverGroup">服务器组</label>
+					<input type="text" id="serverGroup" v-model="formDataSecond.serverGroup" placeholder="Default">
+				</div>
+
+				<!-- 跳过测速 -->
+				<div class="form-group">
+					<label for="skipTest">跳过测速</label>
+					<input type="checkbox" id="skipTest" v-model="formDataSecond.skipTest">
+				</div>
+
+				<!-- 跳过 Address 规则 -->
+				<div class="form-group">
+					<label for="skipAddressRule">跳过 Address 规则</label>
+					<input type="checkbox" id="skipAddressRule" v-model="formDataSecond.skipAddressRule">
+				</div>
+
+				<!-- 跳过 Nameserver 规则 -->
+				<div class="form-group">
+					<label for="skipNameserverRule">跳过 Nameserver 规则</label>
+					<input type="checkbox" id="skipNameserverRule" v-model="formDataSecond.skipNameserverRule">
+				</div>
+
+				<!-- 跳过 IPset 规则 -->
+				<div class="form-group">
+					<label for="skipIPsetRule">跳过 IPset 规则</label>
+					<input type="checkbox" id="skipIPsetRule" v-model="formDataSecond.skipIPsetRule">
+				</div>
+
+				<!-- 跳过 Address SOA(#) 规则 -->
+				<div class="form-group">
+					<label for="skipAddressSOARule">跳过 Address SOA(#) 规则</label>
+					<input type="checkbox" id="skipAddressSOARule" v-model="formDataSecond.skipAddressSOARule">
+				</div>
+
+				<!-- 跳过双栈优选 -->
+				<div class="form-group">
+					<label for="skipDualStack">跳过双栈优选</label>
+					<input type="checkbox" id="skipDualStack" v-model="formDataSecond.skipDualStack">
+				</div>
+
+				<!-- 跳过 Cache -->
+				<div class="form-group">
+					<label for="skipCache">跳过 Cache</label>
+					<input type="checkbox" id="skipCache" v-model="formDataSecond.skipCache">
+				</div>
+
+				<!-- 停用 IPV6 地址解析 -->
+				<div class="form-group">
+					<label for="disableIPv62">停用 IPV6 地址解析</label>
+					<input type="checkbox" id="disableIPv62" v-model="formDataSecond.disableIPv62">
+				</div>
+
+				<!-- 提交按钮 -->
+				<div class="form-group">
+					<button class="btn btn_green btn_confirm margin-l-10" type="submit">提交</button>
+				</div>
+			</form>
+
+			</div>
+			
+		<!-- 第三个选项卡 -->
+			<div class="tab-content" :class="{ active: activeTab === 3 }">
+				<div>
+                    <input type="text" id="fileName" readonly style="background-color: width; border: 1px solid blue; padding: 6px; border-radius: 4px; width: 200px;" v-model="uploadedFileName">
+                    <!-- 自定义的选择文件按钮 -->
+                    <label for="fileUpload" class="btn btn_blue btn_confirm margin-l-10">
+                        选择文件
+                    </label>
+                    
+                    <!-- 隐藏的文件输入框 -->
+                    <input type="file" id="fileUpload" style="display: none;" @change="handleFileChange">
+                    
+                    <!-- 上传配置按钮 -->
+                    <button @click="uploadFile" class="btn btn_green btn_confirm margin-l-10" type="button">
+                        上传规则
+                    </button>
+                    <div style="height: 20px;"></div>
+                    <div class="readme"><span class="note" style="left: 20px;">功能说明：</span>
+                    
+					<div>1、文件上传对应目录为，/etc/smartdns，名字和你上传的文件名为准如smartdns.conf，传就后就在系统的/etc/smartdns.conf,小白请忽略!!</div>
+					 <div style="height: 20px;"></div>
+					<div>2、请上传正确文件。如果上传错误，重新上传正确的文件或上传空文件覆盖。上传完成后，需要停止并重新启动。</div>
+                    </div>
+                </div>
+				
+				<div class="custom-input-field">
+					<label class="custom-input-label" for="fileContent">当前配置文件内容:</label>
+					<textarea id="fileContent" class="textarea-box" v-model="fileContent" placeholder="文件内容将显示在此"></textarea>
+				<!--	<button class="btn" @click="submitFile">提交修改</button> -->
+				</div>
+
+
+			</div>
+		<!-- 第三个选项卡结束 -->
+			
+            <!-- 上游服务器表格部分 -->
+
+
+					</div>
+
+            </div>
+        </div> 
+    </body>
+    <script type="module">
+			// 自定义 Switch 组件
+		Vue.component('custom-switch', {
+			props: {
+				value: Boolean
+			},
+			template: '<label class="switch">' +
+						'<input type="checkbox" :checked="localValue" @change="emitChange">' +
+						'<span class="slider"></span>' +
+					  '</label>',
+			data() {
+				return {
+					localValue: this.value
+				};
+			},
+			watch: {
+				value(newValue) {
+					this.localValue = newValue;
+				}
+			},
+			methods: {
+				emitChange(event) {
+					this.localValue = event.target.checked;
+					this.$emit('input', this.localValue);
+					this.$emit('change');  // 触发 change 事件
+				}
+			}
+		});
+	
+        var app = new Vue({
+            el: '#app',
+            data: { 
+				servers: [],
+				activeTab: 1,  // 默认显示选项卡1
+                result: "",
+                statusMessage: "未知",
+				statusclick: "安装",
+                statusClass: "status-unknown",
+				//LocalUrl: "",
+				//npsUrl: "", 
+				fileContent: '',  // 用于存储文件内容
+				uploadedFileName: "", // 存储上传的文件名
+                statusDetails: {},  // 初始化为对象，而不是 null
+				         servers: [
+								  {
+									//dnsName: '',
+									dnsIp: '',
+									dnsPort: '',
+									protocol: 'UDP',
+									group: '',
+									ipBlacklist: false,
+									extraParams: '',
+									isAdded: false // 是否已经添加到后台
+								  }
+								],
+		
+            formData: {
+                serverName: 'smartdns',            // 服务器名称
+                localPort: '6353',             // 本地端口，默认53
+                tcpServer: false,          // TCP 服务器
+                ipv6Server: false,         // IPV6 服务器
+                dualStackIP: false,        // 双栈 IP 优选
+                domainPreload: false,      // 域名预加载
+                cacheExpire: false,        // 缓存过期服务
+                cacheSize: '',             // 缓存大小
+                resolveLocalHost: false,   // 解析本地主机名
+                autoDnsmasq: false,        // 自动设置 Dnsmasq
+                disableIpv6: false,        // 停用 IPV6 地址解析
+                disableHttps: false,       // 停用 HTTPS 地址解析
+                domainTTL: '',             // 域名 TTL
+                domainTTLMin: '',          // 域名 TTL 最小值
+                domainTTLMax: '',          // 域名 TTL 最大值
+                responseTTLMax: ''         // 回应的域名 TTL 最大值
+            },
+		 formDataSecond: {
+            enable: false,
+            localPort2: '6363',
+            tcpServer2: false,
+            serverGroup: 'default',
+            skipTest: false,
+            skipAddressRule: false,
+            skipNameserverRule: false,
+            skipIPsetRule: false,
+            skipAddressSOARule: false,
+            skipDualStack: false,
+            skipCache: false,
+            disableIPv62: false
+        }
+     
+            },
+			
+            mounted() {
+                this.app_status();
+				//this.setLocalUrl();
+            },
+            methods: {
+			 changeTab(tabIndex) {
+                        this.activeTab = tabIndex;
+                    },
+				     addServer(index) {
+						  const server = this.servers[index];
+							if (!server.dnsIp) {
+									alert("请填写字段，服务器不能为空！");
+									return;  // 如果有字段为空，阻止继续执行
+								}
+							//	if (!server.dnsPort) {
+							//	server.dnsPort = '53';
+							//}
+						  // 构建payload数据
+						  
+						  if ( server.protocol == "UDP") {
+								server.protocol = 'server';
+							}
+						  if ( server.protocol == "TCP") {
+								server.protocol = 'server-tcp';
+							}
+						  if ( server.protocol == "TLS") {
+								server.protocol = 'server-tls';
+							}
+						  if ( server.protocol == "HTTPS") {
+								server.protocol = 'server-https';
+							}
+
+							if ( server.protocol == "DOH") {
+								server.protocol = 'nameserver';
+							}							
+
+						  const payload = {
+							func_name: 'plugin_smartdns',
+							action: 'update_server',  // 使用正确的 action，假设是 update_server
+							param: {
+							  //dnsName: server.dnsName,
+							  dnsIp: server.dnsIp,
+							  dnsPort: server.dnsPort,
+							  protocol: server.protocol,
+							  group: server.group,
+							  ipBlacklist: server.ipBlacklist,
+							  extraParams: server.extraParams
+							}
+						  };
+
+						  // 使用 AjaxPost 提交数据
+						  AjaxPost('/Action/call', payload, (response) => {
+							if (response && response.Result % 10000 === 0) {
+							this.app_status();
+							}
+							 
+						  });
+						},
+
+					deleteRow(index) {
+						const server = this.servers[index];
+
+						// 获取该行的数据
+						const dnsIp = server.dnsIp;
+						
+						const protocol = server.protocol;
+
+
+						 // 如果 dnsPort 是 "默认"，则设置为空值
+						const dnsPort = server.dnsPort === "默认" ? "" : server.dnsPort;
+						
+						// 构建删除的数据：传递行号和其他信息
+						const rowIndex = index + 1;  // 行号，后台要求从1开始
+						const payload = {
+							func_name: 'plugin_smartdns',
+							action: 'delete_server',  // 后台的删除动作
+							param: {
+								rowIndex: rowIndex,     // 传递当前行的索引
+								dnsIp: dnsIp,           // 服务器地址
+								protocol: protocol,     // 协议
+								dnsPort: dnsPort        // 端口号
+							}
+						};
+
+						// 发送删除请求给后台
+						AjaxPost('/Action/call', payload, (response) => {
+							if (response && response.Result % 10000 === 0) {
+								this.app_status();
+							}
+						});
+					},
+                app_start() {
+                    var payload = {
+                        func_name: 'plugin_smartdns',
+                        action: 'app_start',
+                        param: {}
+                    };
+					if (this.statusclick == "安装") {
+						alert('安装中');
+						AjaxPost('/Action/call', payload)
+						this.status();
+						return;
+					};
+                    AjaxPost('/Action/call', payload, (response) => {
+                        if(response.Result % 10000 == 0) {
+						
+						if(this.statusMessage == "已启动") {
+						this.statusMessage = "已停止";
+						this.statusClass = "status-stopped"; // 设置状态类
+						 alert('停止成功');
+						 this.statusclick = "启动";
+						} else {
+                            this.statusMessage = "已启动";
+                            this.statusClass = "status-started"; // 设置状态类
+                            alert('启动成功');
+                            MessageTip("NPS启动成功", "green");
+							this.statusclick = "停止";
+						  }
+                        }
+                    });
+                },
+				submitConfig() {
+				
+					if (!this.formDataSecond.localPort2) {
+						this.formDataSecond.localPort2 = 6363;  // 默认本地端口
+					}
+
+					if (!this.formDataSecond.serverGroup) {
+						this.formDataSecond.serverGroup = 'default';  // 默认服务器组
+					}
+					const payload = {
+						func_name: 'plugin_smartdns',
+						action: 'update_config',
+						param: {
+
+						//this.formData
+						//this.formDataSecond
+						...this.formData,      // 展开 formData 对象的属性
+						...this.formDataSecond // 展开 formDataSecond 对象的属性
+						} // 将表单数据传递到后台
+					};
+
+					// 使用 AjaxPost 提交数据
+					AjaxPost('/Action/call', payload, (response) => {
+						if (response && response.Result % 10000 === 0) {
+							alert('配置已成功更新');
+						} else {
+							alert('配置更新失败');
+						}
+						 this.app_status();
+					});
+				},
+				    // 提交第二个配置
+				submitSecondDNSConfig() {
+					const payload = {
+						func_name: 'plugin_smartdns',
+						action: 'update_config2',  // 假设的 action
+						param: this.formDataSecond  // 提交第二 DNS 配置的数据
+					};
+
+					// 提交请求
+					AjaxPost('/Action/call', payload, (response) => {
+						if (response && response.Result % 10000 === 0) {
+							alert('第二配置已成功更新');
+						} else {
+							alert('第二配置更新失败');
+						}
+						 this.app_status();
+					});
+				},
+					submitFile() {
+						// 将文件内容转换为 Base64 编码
+						var encodedContent = this.utf8ToBase64(this.fileContent);
+
+						var payload = {
+							func_name: 'plugin_smartdns',
+							action: 'saveFileContent',
+							param: {
+								fileContent: encodedContent // 提交 Base64 编码后的内容
+							}
+						};
+						AjaxPost('/Action/call', payload, (response) => {
+							if (response && response.Result % 10000 === 0) {
+								alert('文件内容已保存');
+							} else {
+								alert('保存文件内容失败');
+							}
+						});
+					},
+					utf8ToBase64(str) {
+						var utf8Bytes = new TextEncoder().encode(str); // 将 UTF-8 字符串转换为字节数组
+						return btoa(String.fromCharCode.apply(null, utf8Bytes)); // 将字节数组转换为 Base64 编码字符串
+					},
+                app_stop() {
+                    var payload = {
+                        func_name: 'plugin_smartdns',
+                        action: 'stop',
+                        param: {}
+                    };
+                    AjaxPost('/Action/call', payload, (response) => {
+                        if(response.Result % 10000 == 0) {
+                            this.statusMessage = "已停止";
+                            this.statusClass = "status-stopped";
+                            alert('停止成功');
+                            MessageTip("停止成功", "red");
+                        }
+                    });
+                },
+				base64ToUtf8(base64) {
+					var binary_string = atob(base64); // 解码 Base64 内容
+					var len = binary_string.length;
+					var bytes = new Uint8Array(len);
+
+					for (var i = 0; i < len; i++) {
+					  bytes[i] = binary_string.charCodeAt(i);
+					}
+
+					// 将字节数据解码成 UTF-8 字符串
+					return new TextDecoder('utf-8').decode(bytes);
+				  },
+                app_status() {
+                    var payload = {
+                        func_name: 'plugin_smartdns',
+                        action: 'show',
+                        param: {
+                            TYPE: 'status'
+                        }
+                    };
+                    AjaxPost('/Action/call', payload, (response) => {
+                        if (response.Result % 10000 == 0 && response.Data) {
+                            const data = response.Data;
+							// 转换布尔值函数
+							const toBoolean = (value) => value === 'true';
+	
+								   // 获取后台返回的数据，并转换成数组形式
+							const serverData = [];
+							for (let key in data) {
+								if (key.startsWith("id")) {
+									serverData.push(data[key]);
+								}
+							}
+
+							// 将获取到的数据赋值给 servers 数组
+							this.servers = serverData;
+
+							// 在最后添加一行空数据，用于用户输入
+							this.servers.push({
+								dnsIp: '',
+								dnsPort: '',
+								protocol: 'UDP', // 默认协议
+								group: '',
+								ipBlacklist: false,
+								extraParams: '',
+								isAdded: false // 新行默认未添加
+							});
+							
+							    // 获取后台返回的数据并更新 formData
+									this.formData.serverName = data.serverName; // 更新服务器名称
+
+									this.formData.cacheSize = data.cacheSize; // 更新缓存大小
+									this.formData.domainTTL = data.domainTTL
+									this.formData.domainTTLMin = data.domainTTLMin
+									this.formData.domainTTLMax = data.domainTTLMax
+									this.formData.responseTTLMax = data.responseTTLMax
+									this.formData.localPort = data.localPort
+						      
+							  // 将返回的字符串转换为布尔值
+								this.formData.dualStackIP = toBoolean(data.dualStackIP);
+								this.formData.ipv6Server = toBoolean(data.ipv6Server);
+								this.formData.tcpServer = toBoolean(data.tcpServer);
+								
+								
+
+								this.formData.domainPreload = toBoolean(data.domainPreload);
+								this.formData.cacheExpire = toBoolean(data.cacheExpire);
+								this.formData.resolveLocalHost = toBoolean(data.resolveLocalHost);
+								this.formData.autoDnsmasq = toBoolean(data.autoDnsmasq);
+								this.formData.disableIpv6 = toBoolean(data.disableIpv6);
+								this.formData.disableHttps = toBoolean(data.disableHttps);
+								
+								  this.formDataSecond.enable = toBoolean(data.enable);
+								  this.formDataSecond.skipTest = toBoolean(data.skipTest);
+								  this.formDataSecond.skipAddressRule = toBoolean(data.skipAddressRule);
+								  this.formDataSecond.skipNameserverRule = toBoolean(data.skipNameserverRule);
+								  this.formDataSecond.skipIPsetRule = toBoolean(data.skipIPsetRule);
+								  this.formDataSecond.skipAddressSOARule = toBoolean(data.skipAddressSOARule);
+								  this.formDataSecond.skipDualStack = toBoolean(data.skipDualStack);
+								  this.formDataSecond.skipCache = toBoolean(data.skipCache);
+								  
+								  
+								  this.formDataSecond.disableIPv62 = toBoolean(data.ipv6Server2);
+								  this.formDataSecond.localPort2 = data.localPort2;
+								  this.formDataSecond.serverGroup = data.serverGroup;
+								  this.formDataSecond.tcpServer2 = toBoolean(data.tcpServer2);
+						
+
+								// 解码 `encoded_content` 并更新 `fileContent`
+								//	if (data.encoded_content) {
+								//		this.fileContent = atob(data.encoded_content); // Base64 解码
+								//	}
+								// 如果有 encoded_content 字段，解码它
+								if (data.encoded_content) {
+								  this.fileContent = this.base64ToUtf8(data.encoded_content);  // 解码并赋值给 fileContent
+								}
+						
+								//ipBlacklist: server.ipBlacklist.toString(), // 转换布尔值为字符串
+			
+			
+                            if (data.status == 1) {
+                                this.statusMessage = "已启动";
+                                this.statusClass = "status-started";
+								this.statusclick = "停止";
+                            } else {
+                                this.statusMessage = "已停止";
+                                this.statusClass = "status-stopped";
+								this.statusclick = "启动";
+                            }
+
+                            this.statusDetails = data;
+                            console.log('状态信息:', this.statusDetails);
+
+                        } else {
+                            console.error('Status is undefined in the response', response);
+                            this.statusMessage = "状态未知";
+                            this.statusClass = "status-unknown";
+							this.statusclick = "安装";
+                        }
+                    });
+                },
+		 setLocalUrl() {
+                    var host = window.location.hostname;
+                    this.LocalUrl = `http://${host}/nps.conf`;
+                },
+			handleFileChange(event) {
+                    var file = event.target.files[0];
+                    if (file) {
+                        this.uploadedFileName = file.name; // 将文件名保存到Vue实例中
+                    }
+               },
+			uploadFile() {
+                var fileInput = document.getElementById('fileUpload');
+                var file = fileInput.files[0];
+
+                if (!file) {
+                    alert('请先选择一个文件');
+                    return;
+                }
+
+                var formData = new FormData();
+                formData.append('file', file);
+
+                var xhr = new XMLHttpRequest();
+                xhr.open('POST', '/Action/upload', true);
+                xhr.onload = function () {
+                    if (xhr.status == 200) {
+                        alert('文件上传成功');
+						this.uploadedFileName = file.name; // 上传成功后保存文件名
+                        app.app_config();
+                    } else {
+                        alert('上传失败');
+                    }
+                };
+                xhr.send(formData);
+            },
+		 app_config() {
+                var payload = {
+                    func_name: 'plugin_smartdns',
+                    action: 'config',
+                    param: {
+					 Filename: this.uploadedFileName // 使用保存的文件名
+					}
+                };
+                AjaxPost('/Action/call', payload, (response) => {
+                    if (response.Result % 10000 == 0) {
+                        alert('配置成功');
+                    } else {
+                        alert('配置失败');
+                    }
+                });
+            }
+            }
+        });
+    </script>
+</html>

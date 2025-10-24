@@ -1,0 +1,135 @@
+<html>
+    <head>
+        <script src="../../static/js/vue.js"></script>
+		<script src="../../static/css/app.js"></script>
+		<link rel="stylesheet" href="../../static/css/app.css" type="text/css">
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+        <style>
+            .status-started {
+                color: green;
+            }
+            .status-stopped {
+                color: red;
+            }
+            .status-unknown {
+                color: gray;
+            }
+            .status-value {
+                color: green;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="app">
+            <div>
+                <!-- 空行 -->
+                <div style="height: 20px;"></div>
+                <div class="status">
+                    Ttyd状态：<span :class="statusClass">{{ statusMessage }}</span>
+                </div>
+
+                <div style="height: 20px;"></div>
+                <div>访问面板：<a :href="YacdUrl" target="_blank">点击访问</a></div> 
+				<div style="height: 20px;"></div>
+				<div>用户名:admin密码:ttyd</div> 
+                <div style="height: 40px;"></div>
+				
+                <button @click="Ttyd_start" class="btn btn_green btn_confirm margin-l-10" type="button">
+                    运行Ttyd
+                </button>
+                <button @click="Ttyd_stop" class="btn btn_red btn_confirm margin-l-10" type="button">
+                    停止Ttyd
+                </button>
+            </div>
+			<!-- 空行 -->
+            <div style="height: 30px;"></div>
+		<div class="readme"><span class="note" style="left: 20px;">功能说明：</span>
+		<div>1、使用完请及时关闭服务，确保安全；</div> 
+		</div>
+ 
+        </div> 
+    </body>
+    <script type="module">
+        var app = new Vue({
+            el: '#app',
+            props: ["type"],
+            data: { 
+                result: "",
+                statusMessage: "未知",
+                statusClass: "status-unknown",
+				YacdUrl: ""
+				
+            },
+            mounted() {
+                this.Ttyd_status();
+                this.setYacdUrl();
+            },
+            methods: {
+                Ttyd_start() {
+                    var payload = {
+                        func_name: 'plugin_Ttyd',
+                        action: 'Ttyd_start',
+                        param: {}
+                    };
+                    AjaxPost('/Action/call', payload, (response) => {
+                        if(response.Result % 10000 == 0) {
+                            this.statusMessage = "已启动";
+                            this.statusClass = "status-started";
+                            alert('Ttyd启动成功');
+                         
+                        }
+                    });
+                },
+               Ttyd_stop() {
+                    var payload = {
+                        func_name: 'plugin_Ttyd',
+                        action: 'Ttyd_stop',
+                        param: {}
+                    };
+                    AjaxPost('/Action/call', payload, (response) => {
+                        if(response.Result % 10000 == 0) {
+                            this.statusMessage = "已停止";
+                            this.statusClass = "status-stopped";
+                            alert('Ttyd停止成功');
+                           
+                        }
+                    });
+                },
+                Ttyd_status() {
+                    var payload = {
+                        func_name: 'plugin_Ttyd',
+                        action: 'show',
+                        param: {
+                            TYPE: 'status'
+                        }
+                    };
+                    AjaxPost('/Action/call', payload, (response) => {
+                        if (response.Result % 10000 == 0 && response.Data) {
+                            const data = response.Data;
+
+                            if (data.status == 1) {
+                                this.statusMessage = "已启动";
+                                this.statusClass = "status-started";
+                            } else {
+                                this.statusMessage = "已停止";
+                                this.statusClass = "status-stopped";
+                            }
+                           
+
+                        } else {
+                           
+                            this.statusMessage = "状态未知";
+                            this.statusClass = "status-unknown";
+                        }
+                    });
+                },
+
+                setYacdUrl() {
+                    var port = 2222;
+                    var host = window.location.hostname;
+                    this.YacdUrl = `http://${host}:${port}`;
+                }
+            }
+        });
+    </script>
+</html>

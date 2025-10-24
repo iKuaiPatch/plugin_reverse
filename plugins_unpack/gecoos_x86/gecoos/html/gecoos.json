@@ -1,0 +1,15 @@
+{
+	"name": "gecoos",
+	"alias": "集客AC",
+	"manufacturer": "iKuai",
+	"version": "1.1.9",
+	"type": "external",
+    "description": "GecoOS 集客 AC 是 GecoOS 操作系统中的一部分，主要用于提供集成管理的 无线局域网控制器(AC, Access Controller)。",
+    "releasenotes": "更新说明：<br>1、新增",
+    "build": "202411240224",
+    "compatibility": [
+      "mt7621",
+      "mt798x",
+      "x86"
+    ]
+}

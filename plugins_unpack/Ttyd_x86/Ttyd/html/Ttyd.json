@@ -1,0 +1,15 @@
+{
+	"name": "Ttyd",
+	"alias": "Ttyd终端",
+	"manufacturer": "iKuai",
+	"version": "1.1.9",
+	"type": "external",
+    "description": "Ttyd 是一个用于将 命令行终端（TTY）共享到 Web 浏览器 中的开源工具。通过 Ttyd，用户可以将本地或远程的终端会话通过 Web 前端访问。",
+    "releasenotes": "更新说明：<br>1、新增",
+    "build": "202411240224",
+    "compatibility": [
+      "mt7621",
+      "mt798x",
+      "x86"
+    ]
+}

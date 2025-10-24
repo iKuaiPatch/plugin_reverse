@@ -1,0 +1,15 @@
+{
+	"name": "nginxWebUI",
+	"alias": "nginxWebUI",
+	"manufacturer": "iKuai",
+	"version": "1.1.9",
+	"type": "external",
+    "description": "Nginx Web UI 是指通过 Web 用户界面（UI）管理和配置 Nginx 服务器的一种方式。Nginx 本身是一个高效的 HTTP 服务器和反向代理服务器，它广泛用于 Web 服务和负载均衡。</a>",
+    "releasenotes": "更新说明：<br>1、新增",
+    "build": "202411240224",
+    "compatibility": [
+      "mt7621",
+      "mt798x",
+      "x86"
+    ]
+}

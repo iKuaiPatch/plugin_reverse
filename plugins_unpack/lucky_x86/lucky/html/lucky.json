@@ -1,0 +1,15 @@
+{
+	"name": "lucky",
+	"alias": "lucky",
+	"manufacturer": "iKuai",
+	"version": "1.1.9",
+    "type": "external",
+    "description": "Lucky(万吉)是软硬路由公网神器,功能包括：ipv6/ipv4端口转发、反向代理、DDNS、WOL、ipv4 stun内网穿透、cron、ACME证书自动续签,阿里云盘、ftp、webdav、filebrowser等众多功能  <br>详情访问：<a>https://lucky666.cn/</a>",
+    "releasenotes": "更新说明：<br>修复路由器重启无法保存配置的问题。",
+    "build": "202411240224",
+    "compatibility": [
+      "mt7621",
+      "mt798x",
+      "x86"
+    ]
+}

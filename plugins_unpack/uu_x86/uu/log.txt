@@ -1,0 +1,15 @@
+
+
+uname -m
+/bin/sh /tmp/uu_install.sh openwrt aarch64
+
+
+/bin/sh /usr/sbin/uu/uuplugin_monitor.sh
+
+uuplugin_monitor=`ps|grep "uuplugin_monitor"|grep -v "grep" | awk -F  " " '{print $1}'`
+kill $uuplugin_monitor
+killall uuplugin
+killall uuplugin
+
+rm /usr/sbin/uu -rf
+rm /tmp/uu -rf

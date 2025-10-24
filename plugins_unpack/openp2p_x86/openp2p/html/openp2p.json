@@ -1,0 +1,8 @@
+{
+  "name": "openp2p",
+  "alias": "OpenP2P",
+  "manufacturer": "iKuai",
+  "version": "2.0.0",
+  "type": "external",
+  "description": "OpenP2P是一个开源、免费、轻量级的P2P共享网络。你的设备将组成一个私有P2P网络，里面的设备可以直接访问其它成员，或者通过其它成员转发数据间接访问。 如果私有网络无法完成通信，将会到公有P2P网络寻找共享节点协助通信。 相比BT网络用来共享文件，OpenP2P网络用来共享带宽。<br>地址：<a>https://www.openp2p.cn/</a>"
+}

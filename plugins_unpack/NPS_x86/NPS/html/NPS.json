@@ -1,0 +1,15 @@
+{
+	"name": "NPS",
+	"alias": "NPS服务端",
+	"manufacturer": "iKuai",
+	"version": "1.1.9",
+	"type": "external",
+    "description": "NPS (Nginx Proxy Switcher)是一种流行的工具，通常用于通过反向代理管理和切换不同的网络代理设置。它允许用户在同一台机器上管理不同的代理服务器，轻松切换和配置。</a>",
+    "releasenotes": "更新说明：<br>1、新增",
+    "build": "202411240224",
+    "compatibility": [
+      "mt7621",
+      "mt798x",
+      "x86"
+    ]
+}

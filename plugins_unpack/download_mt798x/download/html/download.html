@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>URL下载任务调度</title>
+    <script src="../../static/js/vue.js"></script>
+    <script src="../../static/css/app.js"></script>
+    <link rel="stylesheet" href="../../static/css/app.css" type="text/css">
+    <style>
+        .status-started {
+            color: green;
+        }
+        .status-stopped {
+            color: red;
+        }
+        .status-unknown {
+            color: gray;
+        }
+        .status-value {
+            color: green;
+        }
+        .input-box {
+            padding: 6px;
+            margin: 0 5px;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+            width: 50px;
+        }
+        /* 调整表格列宽为百分比 */
+		table {
+			border-collapse: collapse;
+			width: 100%;
+		}
+
+		table, th, td {
+			border: 1px solid green;
+			text-align: center; /* 文本水平居中 */
+            vertical-align: middle; /* 文本垂直居中 */
+			
+		}
+
+		th, td {
+			padding: 8px;
+			text-align: left;
+			background-color: white;
+			font-size: 12px;
+			font-weight: normal;
+
+		}
+
+		th {
+			background-color: white;
+			/* 居中操作列标题 */
+			 white-space: nowrap; /* 确保内容不换行 */
+			text-align: center; /* 确保文本水平居中 */
+			vertical-align: middle; /* 确保文本垂直居中 */
+			}
+
+
+    /* 设置表头的最小宽度，以确保即使内容较长也能显示 */
+    th:nth-child(1) {
+        min-width: 50px; /* ID 列 */
+    }
+
+    th:nth-child(2) {
+        min-width: 100px; /* 任务名称 */
+    }
+
+    th:nth-child(3) {
+        min-width: 250px; /* URL */
+    }
+
+    th:nth-child(4) {
+        min-width: 100px; /* 调度时间 */
+    }
+
+    th:nth-child(5) {
+        min-width: 80px; /* 网卡接口 */
+		
+    }
+
+    th:nth-child(6) {
+        min-width: 100px; /* 速度限制 */
+    }
+
+    th:nth-child(7) {
+        min-width: 200px; /* 操作 */
+    }
+
+    /* 让调度时间显示为一行 */
+    .schedule-time {
+        display: flex;
+        gap: 5px;
+        align-items: center;
+        justify-content: center; /* 确保调度时间内容居中 */
+    }
+	    /* 让调度时间显示为一行 */
+    .interface {
+        display: flex;
+        gap: 5px;
+        align-items: center;
+        justify-content: center; /* 确保调度时间内容居中 */
+    }
+	
+	    .speedLimit {
+        display: flex;
+        gap: 5px;
+        align-items: center;
+        justify-content: center; /* 确保调度时间内容居中 */
+    }
+
+
+
+    /* 将操作按钮放在一行 */
+    .actions {
+        display: flex;
+        justify-content: center; /* 水平居中 */
+        gap: 10px; /* 按钮之间的间距 */
+    }
+
+    /* 保证表格和按钮自适应宽度 */
+    .actions button {
+        display: inline-block;
+        width: auto;
+        padding: 6px 12px;
+    }
+
+    </style>
+</head>
+<body>
+    <div id="app">
+        <h3>URL下载任务配置</h3>
+         <div style="height: 20px;"></div>
+        <!-- 显示URL任务 -->
+        <table>
+            <tr>
+                <th>ID</th>
+                <th>任务名称</th>
+                <th>URL</th>
+                <th>调度时间(间格规则)</th>
+                <th>网卡接口</th>
+                <th>速度限制</th>
+                <th>操作：(蓝色：启动，灰色：停止)</th>
+            </tr>
+            <tr v-for="(task, index) in urlTasks" :key="index">
+                <td>{{ task.id }}</td>
+                <td>{{ task.task_name }}</td>
+                <td>{{ task.url }}</td>
+                <td>
+                    <div class="schedule-time">
+                        <select v-model="task.scheduleMinute" class="input-box">
+                            <option value="*">每分</option>
+                            <option v-for="n in 60" :key="n" :value="n">{{ n }}分</option>
+                        </select>
+                        <select v-model="task.scheduleHour" class="input-box">
+                            <option value="*">每时</option>
+                            <option v-for="n in 24" :key="n" :value="n">{{ n }}时</option>
+                        </select>
+                        <select v-model="task.scheduleDay" class="input-box">
+                            <option value="*">每天</option>
+                            <option v-for="n in 31" :key="n" :value="n">{{ n }}日</option>
+                        </select>
+                    </div>
+                </td>
+                <td>
+				 <div class="interface">
+                    <select v-model="task.interface" class="input-box">
+                        <option v-for="interface in interfaces" :key="interface" :value="interface">{{ interface }}</option>
+                    </select>
+                </td>
+				</div>
+                <td>
+				<div class="speedLimit">
+				
+				<input v-model="task.speedLimit" class="input-box" placeholder="不限速"></td>
+				</div>
+				
+                <td>
+                    <div class="actions">
+                        <button @click="startDownload(index)" class="btn_blue">定时-接口</button>
+                        <button @click="stopDownload(index)" class="btn_reds">定时-接口</button>
+						<button @click="startDownloadnoe(index)" class="btn_blue">单接口-循环</button>
+                        <button @click="stopDownloadnoe(index)" class="btn_reds">单接口-循环</button>
+						<button @click="startDownloadALL(index)" class="btn_blue">全接口-循环</button>
+                        <button @click="stopDownloadALL(index)" class="btn_reds">全接口-循环</button>
+                    </div>
+                </td>
+            </tr>
+        </table>
+				 <div style="height: 20px;"></div>
+				<!-- 显示每个接口的流量 -->
+				 <h4>定时接口任务流量统计</h4>
+				  <div style="height: 20px;"></div>
+				<h5>{{ interfaceTrafficSummary }}</h5>
+				
+				
+				 
+						<div style="height: 20px;"></div>
+					<!-- 文件选择和上传按钮 -->
+				<div>
+
+				 <input type="text" id="fileName" readonly style="background-color: white; border: 1px solid blue; padding: 6px; border-radius: 4px;" >
+				<!-- 自定义的选择文件按钮 -->
+				<label for="fileUpload" class="btn btn_blue btn_confirm margin-l-10">
+					选择文件
+				</label>
+				
+				<!-- 隐藏的文件输入框 -->
+				<input type="file" id="fileUpload" style="display: none;" onchange="document.getElementById('fileName').value = this.files[0].name;">
+				
+				<!-- 上传 EEPROM 按钮 -->
+				<button @click="uploadFile" class="btn btn_green btn_confirm margin-l-10" type="button">
+					上传配置
+				</button>
+
+
+
+				 
+				
+				<div class="schedule-time">
+					<input v-model="stop_month" class="input-box" type="number" min="1" max="12" placeholder="月" @input="validateNumber('stop_month', 1, 12)">
+					<input v-model="stop_day" class="input-box" type="number" min="1" max="31" placeholder="日" @input="validateNumber('stop_day', 1, 31)">
+					<input v-model="stop_hour" class="input-box" type="number" min="0" max="23" placeholder="时" @input="validateNumber('stop_hour', 0, 23)">
+					<input v-model="stop_minute" class="input-box" type="number" min="0" max="59" placeholder="分" @input="validateNumber('stop_minute', 0, 59)">
+					<button @click="submitStopSchedule" class="btn btn_blue">定时结束</button>
+				</div>
+				
+				<div style="height: 10px;"></div>
+					<div class="schedule-time">
+					<input v-model="start_month" class="input-box" type="number" min="1" max="12" placeholder="月" @input="validateNumber('start_month', 1, 12)">
+					<input v-model="start_day" class="input-box" type="number" min="1" max="31" placeholder="日" @input="validateNumber('start_day', 1, 31)">
+					<input v-model="start_hour" class="input-box" type="number" min="0" max="23" placeholder="时" @input="validateNumber('start_hour', 0, 23)">
+					<input v-model="start_minute" class="input-box" type="number" min="0" max="59" placeholder="分" @input="validateNumber('start_minute', 0, 59)">
+					<button @click="submitStartSchedule" class="btn btn_blue">定时启动</button>
+				</div>
+
+
+				<button @click="task_clean" class="btn btn_green btn_confirm margin-l-10" type="button">
+					停址所有线程
+				</button>
+
+				<button @click="start_task" class="btn btn_green btn_confirm margin-l-10" type="button">
+					启动所有线程
+				</button>
+				
+				<button @click="task_delete" class="btn btn_green btn_confirm margin-l-10" type="button">
+					清理任务配置
+				</button>
+
+			</div>
+			 <div style="height: 30px;"></div>
+				<div class="readme"><span class="note" style="left: 20px;">功能说明：</span>
+				<div>1、本页流量统计为使用了定时功能的单独计录</div> 
+				<div>1、定时为间格时间下载：</div> 
+				<div>1、如每3分钟就是间格3分下一次流量</div> 
+				<div>1、如每3分1时就是间格1小时3分钟下一次流量</div> 
+				<div>1、取消定时任务：</div> 
+				<div>1、选相同任务ID,相同接口,点停止，即停止对应定时，清理定时任务将清理所有定时。</div> 
+				<div>2、单接口,为不间断,循环拉流，请选择接口，auto为接口随机，流量统计请在：状态监控 > 线路监控，观查实实流量</div> 
+				<div>3、全接口,为不间断,循环拉流，流量统计请在：状态监控 > 线路监控，观查实实流量</div> 
+				</div>
+				
+				<div class="readme"><span class="note" style="left: 20px;">连接说明：</span>
+				<div>1、连接文件,大小不于过小，太小下载完成的速度过快就当于反复启动进程，占用CPU，推荐下载50MB或500文件</div> 
+				<div>2、拉流速度，取决于您的下行带宽大小，是否限速，链接对端服务速度，请选优制链接</div> 
+				</div>
+				
+				<div class="readme"><span class="note" style="left: 20px;">定时与停址：</span>
+				<div>1、当你点然色按扭时，启动任务，并生成配置，点灰色按扭则停址对就任务，但配置还在，用于启动自己动下载或定时启动，点清理任务配置则停止清除配置</div> 
+				<div>2、当你配置完成后，如何想定时后在启动，请写入时间，后停止所有线程，后会在指定时间启动下载，同时配置了定时结束，则会在指定时间停止，在定时的启动时间在次启动。</div> 
+				</div>
+			
+    </div>
+
+    <script type="module">
+        new Vue({
+            el: '#app',
+            data: {
+                urlTasks: [],  // 用于存储从后端获取的任务数据
+                interfaces: [], // 用于存储网卡接口列表
+				interfaceTrafficSummary: '', // 接口流量汇总
+                totalTraffic: 0, // 存储总下载流量+
+				stop_month: '',
+                stop_day: '',
+                stop_hour: '',
+                stop_minute:'',
+				start_month: '月',
+                start_day: '',
+                start_hour: '',
+                start_minute:'' 
+            },
+            mounted() {
+                this.fetchTasks(); // 页面加载时读取任务数据
+                this.show_interface(); // 页面加载时获取网卡接口
+            },
+            methods: {
+                // 从后端获取URL任务列表
+                fetchTasks() {
+							var payload = {
+								func_name: 'plugin_download',
+								action: 'show',
+								param: { TYPE: 'urls'}
+										};
+
+							AjaxPost('/Action/call', payload, (response) => {
+								if (response.Result % 10000 === 0) {
+									const data = response.Data;
+									// 提取总流量
+									this.totalTraffic = this.formatGB(data.total_traffic);
+									
+									           // 提取定时停止参数
+											this.stop_month = data.stop_month || '';
+											this.stop_day = data.stop_day || '';
+											this.stop_hour = data.stop_hour || '';
+											this.stop_minute = data.stop_minute || '';
+											
+											// 提取定时启动参数
+											this.start_month = data.start_month || '';
+											this.start_day = data.start_day || '';
+											this.start_hour = data.start_hour || '';
+											this.start_minute = data.start_minute || '';
+										// 删除定时停止和定时启动相关字段
+										["stop_month", "stop_day", "stop_hour", "stop_minute", 
+										 "start_month", "start_day", "start_hour", "start_minute"].forEach(key => {
+											delete data[key];
+										});
+									// 提取每个接口的流量并将其拼接成一行
+									let trafficStr = Object.keys(data).filter(key => key.startsWith('face')).map(key => {
+										const interfaceData = data[key];
+										return `${interfaceData.interface} 接口流量: ${this.formatGB(interfaceData.traffic_str)}`;
+									}).join('，');  // 用 "，" 将多个接口流量信息连接起来
+
+									// 将拼接的流量信息和总流量合并为一行字符串
+									this.interfaceTrafficSummary = `${trafficStr}，总下载流量：${this.totalTraffic}`;
+
+									// 删除与流量统计相关的字段 (包括 face* 和 total_traffic)
+									Object.keys(data).forEach(key => {
+										if (key.startsWith('face') || key === 'total_traffic') {
+											delete data[key];
+										}
+									});
+									// 映射任务数据，默认设置网卡接口为 'auto'
+									this.urlTasks = Object.values(data).map(task => ({
+										id: task.id,
+										task_name: task.task_name,
+										url: task.url,
+										scheduleMinute: "*",
+										scheduleHour: "*",
+										scheduleDay: "*",
+										interface: 'auto',  // 默认设置为 auto
+										speedLimit: ''
+									}));
+								} else {
+									alert(`${response.ErrMsg}`);
+								}
+							});
+						},
+
+                // 获取网卡接口列表
+                show_interface() {
+                    var payload = {
+                        func_name: 'plugin_download',
+                        action: 'show',
+                        param: { TYPE: 'interface' }
+                    };
+
+                    AjaxPost('/Action/call', payload, (response) => {
+                        if (response.Result % 10000 === 0) {
+                            // 将网卡接口返回数据解析为数组
+                            this.interfaces = response.Data.interface.flat();
+                        } else {
+						 //self.$message.error(`插件安装失败！${response.ErrMsg}`);
+						 
+                            alert(`${response.ErrMsg}`);
+                        }
+                    });
+                },
+				submitStopSchedule() {
+
+					var payload = {
+						func_name: 'plugin_download',
+						action: 'stopSchedule',
+						param:{ 
+							month: this.stop_month,
+							day: this.stop_day,
+							hour: this.stop_hour,
+							minute: this.stop_minute
+
+						}
+					};
+					AjaxPost('/Action/call', payload, (response) => {
+						if (response.Result % 10000 === 0) {
+							alert('定时停止任务已设置');
+						} else {
+							alert(`设置失败: ${response.ErrMsg}`);
+						}
+					});
+				},
+				submitStartSchedule() {
+
+
+					var payload = {
+						func_name: 'plugin_download',
+						action: 'startSchedule',
+						param:{ 
+							month: this.start_month,
+							day: this.start_day,
+							hour: this.start_hour,
+							minute: this.start_minute
+
+						}
+					};
+					AjaxPost('/Action/call', payload, (response) => {
+						if (response.Result % 10000 === 0) {
+							alert('定时停止任务已设置');
+						} else {
+							alert(`设置失败: ${response.ErrMsg}`);
+						}
+					});
+				},
+                startDownload(index) {
+                    const task = this.urlTasks[index];
+
+                    var payload = {
+                        func_name: 'plugin_download',
+                        action: 'start',
+                        param: {
+                           
+                            interface: task.interface,
+                            speedLimit: task.speedLimit,
+                            scheduleMinute: task.scheduleMinute,
+                            scheduleHour: task.scheduleHour,
+                            scheduleDay: task.scheduleDay,
+                            taskid: task.id
+                        }
+                    };
+                    AjaxPost('/Action/call', payload, (response) => {
+                        if (response.Result % 10000 === 0) {
+                            alert('下载任务已启动');
+                        } else {
+                            alert(`下载启动失败: ${response.ErrMsg}`);
+                        }
+                    });
+                },
+
+                // 停止下载任务
+                stopDownload(index) {
+                    var payload = {
+                        func_name: 'plugin_download',
+                        action: 'stop',
+                        param: { 
+						taskid: this.urlTasks[index].id,
+						interface: this.urlTasks[index].interface
+						}
+                    };
+                    AjaxPost('/Action/call', payload, (response) => {
+                        if (response.Result % 10000 === 0) {
+                            alert('下载任务已停止');
+                        } else {
+                            alert('停止任务失败');
+                        }
+                    });
+                },
+				 // 启动所有接口
+                startDownloadALL(index) {
+                    const task = this.urlTasks[index];
+
+                    var payload = {
+                        func_name: 'plugin_download',
+                        action: 'startall',
+                        param: {
+                            speedLimit: task.speedLimit,
+                            scheduleMinute: task.scheduleMinute,
+                            scheduleHour: task.scheduleHour,
+                            scheduleDay: task.scheduleDay,
+                            taskid: task.id
+                        }
+                    };
+
+                    AjaxPost('/Action/call', payload, (response) => {
+                        if (response.Result % 10000 === 0) {
+                            alert('下载任务已启动');
+                        } else {
+                            alert(`下载启动失败: ${response.ErrMsg}`);
+                        }
+                    });
+                },
+
+                // 停止所有接口
+                stopDownloadALL(index) {
+                    var payload = {
+                        func_name: 'plugin_download',
+                        action: 'stopall',
+                        param: { 
+						taskid: this.urlTasks[index].id,
+						}
+                    };
+                    AjaxPost('/Action/call', payload, (response) => {
+                        if (response.Result % 10000 === 0) {
+                            alert('下载任务已停止');
+                        } else {
+                            alert('停止任务失败');
+                        }
+                    });
+                },
+				// 启动单接口
+                startDownloadnoe(index) {
+                    const task = this.urlTasks[index];
+
+                    var payload = {
+                        func_name: 'plugin_download',
+                        action: 'startnoe',
+                        param: {
+							interface: task.interface,
+                            speedLimit: task.speedLimit,
+                            taskid: task.id
+                        }
+                    };
+
+                    AjaxPost('/Action/call', payload, (response) => {
+                        if (response.Result % 10000 === 0) {
+                            alert('下载任务已启动');
+                        } else {
+                            alert(`下载启动失败: ${response.ErrMsg}`);
+                        }
+                    });
+                },
+
+                // 停止单接口
+                stopDownloadnoe(index) {
+					const task = this.urlTasks[index];
+                    var payload = {
+                        func_name: 'plugin_download',
+                        action: 'stopnoe',
+                        param: { 
+						taskid: task.id,
+						interface: task.interface
+						}
+                    };
+                    AjaxPost('/Action/call', payload, (response) => {
+                        if (response.Result % 10000 === 0) {
+                            alert('下载任务已停止');
+                        } else {
+                            alert('停止任务失败');
+                        }
+                    });
+                },
+			// 转换字节为 GB，保留两位小数
+				formatGB(bytes) {
+					if (bytes === 0) return '0 GB';
+					const gb = bytes / (1024 * 1024 * 1024);  // 转换为 GB
+					return gb.toFixed(2) + ' GB';  // 保留两位小数
+				},
+				//配置URL上传
+				uploadFile() {
+					var fileInput = document.getElementById('fileUpload');
+					var file = fileInput.files[0];
+
+					if (!file) {
+						alert('请先选择一个文件');
+						return;
+					}
+
+					var formData = new FormData();
+					formData.append('file', file);
+
+					var xhr = new XMLHttpRequest();
+					xhr.open('POST', '/Action/upload', true);
+
+					// 使用箭头函数，确保 this 指向 Vue 实例
+					xhr.onload = () => {
+						if (xhr.status == 200) {
+							alert('文件上传成功');
+							this.download_upconf();  // 确保调用成功
+						} else {
+							alert('上传失败');
+						}
+					};
+
+					xhr.send(formData);
+				},
+			download_upconf() {
+                var payload = {
+                    func_name: 'plugin_download',
+                    action: 'upconf',
+                    param: {}
+                };
+                AjaxPost('/Action/call', payload, (response) => {
+                    if (response.Result % 10000 == 0) {
+                        alert('rul 配置成功');
+                    } else {
+                        alert('url 配置失败');
+                    }
+					 this.fetchTasks();
+                });
+            },
+		task_clean() {
+                var payload = {
+                    func_name: 'plugin_download',
+                    action: 'task_clean',
+                    param: {}
+                };
+                AjaxPost('/Action/call', payload, (response) => {
+                    if (response.Result % 10000 == 0) {
+                        alert('停止成功');
+                    } else {
+                        alert('停止失败');
+                    }
+					 this.fetchTasks();
+                });
+            },
+			start_task() {
+                var payload = {
+                    func_name: 'plugin_download',
+                    action: 'start_task',
+                    param: {}
+                };
+                AjaxPost('/Action/call', payload, (response) => {
+                    if (response.Result % 10000 == 0) {
+                        alert('启动成功');
+                    } else {
+                        alert('启动失败');
+                    }
+					 this.fetchTasks();
+                });
+            },
+			task_delete() {
+                var payload = {
+                    func_name: 'plugin_download',
+                    action: 'task_delete',
+                    param: {}
+                };
+                AjaxPost('/Action/call', payload, (response) => {
+                    if (response.Result % 10000 == 0) {
+                        alert('清理成功');
+                    } else {
+                        alert('清理失败');
+                    }
+					 this.fetchTasks();
+                });
+            },
+                // 保存任务配置
+                saveTasks() {
+                    var payload = {
+                        func_name: 'plugin_download',
+                        action: 'save_tasks',
+                        param: { tasks: this.urlTasks }
+                    };
+
+                    AjaxPost('/Action/call', payload, (response) => {
+                        if (response.Result % 10000 === 0) {
+                            alert('任务配置已保存');
+                        } else {
+                            alert('保存任务配置失败');
+                        }
+                    });
+                }
+            }
+        });
+    </script>
+</body>
+</html>

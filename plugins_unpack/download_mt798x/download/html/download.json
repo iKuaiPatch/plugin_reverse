@@ -1,0 +1,10 @@
+{
+  "name": "download",
+  "alias": "闪电下载",
+  "manufacturer": "iKuai",
+  "version": "1.1.9",
+  "type": "external",
+  "description": "闪电下载是一个下载工具",
+  "releasenotes": "更新说明：",
+  "scripts":["service"]
+}

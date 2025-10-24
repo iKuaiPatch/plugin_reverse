@@ -1,0 +1,15 @@
+{
+	"name": "tailscale",
+	"alias": "Tailscale",
+	"manufacturer": "iKuai",
+	"version": "1.1.9",
+	"type": "external",
+    "description": "Tailscale 是一个基于 WireGuard 协议的 零配置 虚拟专用网络（VPN）解决方案，旨在为用户提供安全、简单和高效的网络连接。",
+    "releasenotes": "更新说明：<br>1、新增",
+    "build": "202411240224",
+    "compatibility": [
+      "mt7621",
+      "mt798x",
+      "x86"
+    ]
+}

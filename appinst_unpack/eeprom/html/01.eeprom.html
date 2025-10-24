@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <script src="../../static/js/vue.js"></script>
+    <script src="../../static/css/app.js"></script>
+    <link rel="stylesheet" href="../../static/css/app.css" type="text/css">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+     <style>
+        .status-started {
+            color: green;
+        }
+        .status-stopped {
+            color: red;
+        }
+        .status-unknown {
+            color: gray;
+        }
+        .status-value {
+            color: green;
+        }
+        /* 自定义 Switch 样式（调整按钮大小） */
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 40px;  /* 调小按钮的宽度 */
+            height: 20px; /* 调小按钮的高度 */
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 20px;  /* 较小的按钮圆角 */
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 16px;  /* 调小滑块的高度 */
+            width: 16px;   /* 调小滑块的宽度 */
+            left: 2px;
+            bottom: 2px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider {
+            background-color: #2196F3;
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(20px); /* 调整滑块滑动的距离 */
+        }
+
+        /* 新增的布局样式 */
+        .line_edit {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .input_tit {
+            margin-right: 10px; /* 控制文本和按钮之间的间距 */
+        }
+    </style>
+</head>
+<body>
+
+    <div id="app">
+        <div>
+				 <div v-if="statusMessage != '正常'">
+            <div class="line_edit">
+                <span class="input_tit">禁用云端远控：</span>
+                <!-- 使用自定义 Switch 组件 -->
+                <custom-switch v-model="rcTurnoffStatus" @change="switchRC"></custom-switch>
+            </div>
+		   
+			<div class="readme">
+				<span class="note">帮助提示：</span>
+				 <div style="height: 20px;"></div>
+				<div>1、无论是否绑定云服务，系统后台会有远控进程存在，“禁用云端远控”可以彻底关闭该远程控制通道。</div>
+				<div>2、禁用云端远控后将无法使用爱快云服务，若要使用云服务请先取消此功能。</div>
+			</div>
+			<div style="height: 10px;"></div>
+			
+			 <div class="line_edit">
+                <span class="input_tit">关闭固件更新：</span>
+                <!-- 使用自定义 Switch 组件 -->
+                <custom-switch v-model="closeup" @change="clseupdate"></custom-switch>
+			</div>
+			<div class="readme">
+				<span class="note">帮助提示：</span>
+				 <div style="height: 20px;"></div>
+				<div>1、仅为关闭固件在线提示更新，不读取官方更新，可更新特征库。</div>
+			</div>
+                  <div style="height: 10px;"></div>
+	        <div class="line_edit">
+                <span class="input_tit">体验企业版：</span>
+                <!-- 使用自定义 Switch 组件 -->
+                <custom-switch v-model="RomNames" @change="RomName"></custom-switch>
+			</div>
+			<div class="readme">
+				<span class="note">帮助提示：</span>
+				 <div style="height: 20px;"></div>
+				<div>1、仅为激活pro支持，云端显示为免费版，本地完整企业版功能，开启后重新启动生效！。</div>
+			</div>
+
+			<!-- 空行 -->
+			<div style="height: 30px;"></div>
+			 </div>
+
+			<div class="status">
+			   状态：<span :class="statusClass">{{ statusMessage }}</span>
+			</div>
+			<div style="height: 20px;"></div>
+			<div class="status">
+			   版本：<span :class="statusClass">{{ version }}</span>
+			</div>
+				
+        </div>
+
+			<div style="height: 30px;"></div>
+            <!-- 下载 EEPROM 按钮 -->
+            <button @click="test" class="btn btn_green btn_confirm margin-l-10" type="button">
+                下载备份
+            </button>
+		<div style="height: 40px;"></div>
+        <div class="readme"><span class="note" style="left: 20px;">功能说明：</span>
+        <div>1、备份当前硬件配置激活，信息，备份无忧；</div> 
+		 <div style="height: 20px;"></div>     
+        <div>2、您妥善保管您的备份信息，在不更换硬件前提下(主板)，以便日后恢复,丢失,不再重复激活!!；</div>
+        </div>
+
+        <div style="height: 40px;"></div>
+        
+        <!-- 文件选择和上传按钮 -->
+        <div>
+            <input type="text" id="fileName" readonly style="background-color: white; border: 1px solid blue; padding: 6px; border-radius: 4px;" >
+            <!-- 自定义的选择文件按钮 -->
+            <label for="fileUpload" class="btn btn_blue btn_confirm margin-l-10">
+                选择文件
+            </label>
+            
+            <!-- 隐藏的文件输入框 -->
+            <input type="file" id="fileUpload" style="display: none;" onchange="document.getElementById('fileName').value = this.files[0].name;">
+            
+            <!-- 上传 EEPROM 按钮 -->
+            <button @click="uploadFile" class="btn btn_green btn_confirm margin-l-10" type="button">
+                上传备份
+            </button>
+        </div>
+		 <div style="height: 20px;"></div>             
+        <div class="readme"><span class="note" style="left: 20px;">功能说明：</span>
+        <div>1、恢复您备份硬件配置激活信息；</div> 
+		 <div style="height: 20px;"></div>     
+        <div>2、恢复重启将执行恢复出厂设置，如有其它配置请提前备份!!，恢复之前请确是备份时的硬件，如不正确无法使用；</div>
+        </div>
+
+
+		<div style="height: 60px;"></div>
+        <!-- 插件选择和上传按钮 -->
+        <div>
+            <input type="text" id="fileNames" readonly style="background-color: white; border: 1px solid blue; padding: 6px; border-radius: 4px;" >
+            <!-- 自定义的选择文件按钮 -->
+            <label for="fileUploads" class="btn btn_blue btn_confirm margin-l-10">
+                选择插件
+            </label>
+            
+            <!-- 隐藏的文件输入框 -->
+            <input type="file" id="fileUploads" style="display: none;" onchange="document.getElementById('fileNames').value = this.files[0].name;">
+            
+            <!-- 上传 EEPROM 按钮 -->
+            <button @click="uploadFiles" class="btn btn_green btn_confirm margin-l-10" type="button">
+                上传插件
+            </button>
+        </div>
+
+        <!-- 空行 -->
+        <div style="height: 20px;"></div>             
+        <div class="readme"><span class="note" style="left: 20px;">功能说明：</span>
+        <div>1、上传您的软件包进行安装；</div> 
+        </div>
+
+        <!-- 空行 -->
+ 
+        <!-- 新增注册码输入框和提交按钮 -->
+        <div style="margin-top: 30px">
+            <input type="text" v-model="rmappname" placeholder="应用名称" style="background-color: white; border: 1px solid blue; padding: 6px; border-radius: 4px;width: 280px;">
+            <button @click="rmappnameCode" class="btn btn_blue btn_confirm margin-l-10" type="button">
+                删除应用
+            </button>
+        </div>
+
+
+        <!-- 空行 -->
+        <div style="height: 60px;"></div>
+		 <div class="status">
+            注册机器码：<span class="status-value">{{ machine }}</span>
+         </div>
+        <!-- 新增注册码输入框和提交按钮 -->
+        <div style="margin-top: 30px">
+            <input type="text" v-model="registrationCode" placeholder="输入注册码" style="background-color: white; border: 1px solid blue; padding: 6px; border-radius: 4px;width: 280px;">
+            <button @click="registerCode" class="btn btn_blue btn_confirm margin-l-10" type="button">
+                提交注册
+            </button>
+			    <button @click="registerCode_new" class="btn btn_blue btn_confirm margin-l-10" type="button">
+                刷新注册
+            </button>
+        </div>
+    </div>
+
+</body>
+<script type="module">
+		// 自定义 Switch 组件
+		Vue.component('custom-switch', {
+			props: {
+				value: Boolean
+			},
+			template: '<label class="switch">' +
+						'<input type="checkbox" :checked="localValue" @change="emitChange">' +
+						'<span class="slider"></span>' +
+					  '</label>',
+			data() {
+				return {
+					localValue: this.value
+				};
+			},
+			watch: {
+				value(newValue) {
+					this.localValue = newValue;
+				}
+			},
+			methods: {
+				emitChange(event) {
+					this.localValue = event.target.checked;
+					this.$emit('input', this.localValue);
+					this.$emit('change');  // 触发 change 事件
+				}
+			}
+		});
+		
+    var app = new Vue({
+        el: '#app',
+        data: { 
+            result: "",
+			rcTurnoffStatus:false,
+			statusMessage: "正常",
+			statusClass: "status-unknown",
+			machine : "未读取",
+			rmappname: "",
+			RomNames:false,
+			closeup:false,
+			version: "",
+            registrationCode: ""
+			
+        },
+		 mounted() {
+                this.machine_code();
+            },
+        methods: {
+            test() {
+                var payload = {
+                    func_name: 'plugin_eeprom',
+                    action: 'show',
+                    param: {
+					TYPE: 'eeprom'
+					}
+                };
+                AjaxPost('/Action/call', payload, (response) => {
+                    if (response.Result % 10000 == 0) {
+					      const data = response.Data;
+						  const eepFilename = data.eep; 
+						window.location.href = `/Action/download?filename=${eepFilename}`;
+                    }
+                });
+            },
+            uploadFile() {
+                var fileInput = document.getElementById('fileUpload');
+                var file = fileInput.files[0];
+                var targetSize = 5 * 1024 * 1024; // 2MB in bytes
+
+
+
+                if (!file) {
+                    alert('请先选择一个文件');
+                    return;
+                }
+
+                if (file.size !== targetSize) {
+                    alert('文件大小必须等于 5MB');
+                    return;
+                }
+
+                var formData = new FormData();
+                formData.append('file', file);
+
+                var xhr = new XMLHttpRequest();
+                xhr.open('POST', '/Action/upload', true);
+                xhr.onload = function () {
+                    if (xhr.status == 200) {
+                        alert('文件上传成功');
+                        app.restoreEEPROM();
+                    } else {
+                        alert('上传失败');
+                    }
+                };
+                xhr.send(formData);
+            },
+			 uploadFiles() {
+                var fileInput = document.getElementById('fileUploads');
+                var file = fileInput.files[0];
+				
+				if (this.statusMessage.includes("正常")){
+					alert("未激活,请激活后上传安装");
+					return;
+				}
+
+
+                if (!file) {
+                    alert('请先选择一个文件');
+                    return;
+                }
+
+                var formData = new FormData();
+                formData.append('file', file);
+
+                var xhr = new XMLHttpRequest();
+                xhr.open('POST', '/Action/upload', true);
+                xhr.onload = function () {
+                    if (xhr.status == 200) {
+                        alert('文件上传成功');
+                        app.install();
+                    } else {
+                        alert('上传失败');
+                    }
+                };
+                xhr.send(formData);
+            },
+			install() {
+                var payload = {
+                    func_name: 'plugin_eeprom',
+                    action: 'show',
+                    param: {
+					TYPE: 'app'
+					}
+                };
+                AjaxPost('/Action/call', payload, (response) => {
+                    if (response.Result % 10000 == 0) {
+					
+					
+					   if (response.Data.error == 1) {
+                                alert('APP安装成功');
+                            }
+						if (response.Data.error == 0) {
+                                alert('APP安装失败');
+                            }
+                        
+                    }
+                });
+            },
+            restoreEEPROM() {
+                var payload = {
+                    func_name: 'plugin_eeprom',
+                    action: 'restore',
+                    param: {}
+                };
+                AjaxPost('/Action/call', payload, (response) => {
+                    if (response.Result % 10000 == 0) {
+                        alert('激活信息-恢复成功，请自行重新启动');
+                    } else {
+                        alert('激活信息-恢复失败');
+                    }
+                });
+            },
+		 switchRC(){
+                var payload = {
+                    func_name: 'plugin_eeprom',
+                    action: 'set_rc_trunoff',
+                    param: {status:this.rcTurnoffStatus}
+                };
+                AjaxPost('/Action/call', payload, (response) => {
+                    if (response.Result % 10000 == 0) {
+                        // 执行成功后确保状态与实际保持同步
+						if (!this.rcTurnoffStatus == false) {
+						
+						 this.rcTurnoffStatus = true;
+
+						} else {
+						this.rcTurnoffStatus = false;
+						
+						}
+						
+						
+                    } else {
+                        // 如果出错，恢复之前的状态
+                        alert('操作失败，请重试');
+                    }
+		
+                });
+            },
+			RomName(){
+                var payload = {
+                    func_name: 'plugin_eeprom',
+                    action: 'RomName',
+                    param: {status:this.RomNames}
+                };
+                AjaxPost('/Action/call', payload, (response) => {
+                    if (response.Result % 10000 == 0) {
+                        // 执行成功后确保状态与实际保持同步
+						if (!this.RomNames == false) {
+						
+						 this.RomNames = true;
+
+						} else {
+						this.RomNames = false;
+						
+						}
+						
+						
+                    } else {
+                        // 如果出错，恢复之前的状态
+                        alert('操作失败，请重试');
+                    }
+		
+                });
+            },
+			clseupdate(){
+                var payload = {
+                    func_name: 'plugin_eeprom',
+                    action: 'closeups',
+                    param: {status:this.closeup}
+                };
+                AjaxPost('/Action/call', payload, (response) => {
+                    if (response.Result % 10000 == 0) {
+                        // 执行成功后确保状态与实际保持同步
+						if (!this.closeup == false) {
+						
+						 this.closeup = true;
+
+						} else {
+						this.closeup = false;
+						
+						}
+						
+						
+                    } else {
+                        // 如果出错，恢复之前的状态
+                        alert('操作失败，请重试');
+                    }
+		
+                });
+            },
+			machine_code() {
+                    var payload = {
+                        func_name: 'plugin_eeprom',
+                        action: 'show',
+                        param: {
+                            TYPE: 'machine,rcstatus'
+                        }
+                    };
+                    AjaxPost('/Action/call', payload, (response) => {
+                         if (response.Result % 10000 == 0 && response.Data) {
+                            const data = response.Data;
+							
+			if (data.regstatus == "off") {
+			    this.statusMessage = "正常";
+			    this.statusClass = "status-started";
+			} else {
+			    this.statusMessage = "已激活-" + data.regstatus;  // 动态拼接状态值
+			    this.statusClass = "status-started";
+			}
+							
+	
+
+                            this.machine = data.machine ? data.machine : "未读取";
+							
+						 if (data.rcstatus === "off") {
+                            this.rcTurnoffStatus = true;
+                        } else {
+                            this.rcTurnoffStatus = false;
+                        }
+						
+						if (data.RomNames === "yes") {
+                            this.RomNames = true;
+                        } else {
+                            this.RomNames = false;
+                        }
+
+
+						if (data.closeup === "yes") {
+                            this.closeup = true;
+                        } else {
+                            this.closeup = false;
+                        }
+						 this.version = data.version
+						
+                        } 
+                    });
+                },
+		 rmappnameCode() {
+                if (!this.rmappname) {
+                    alert('请输入应用名称');
+                    return;
+                }
+			    if (this.rmappname == "eeprom") {
+					alert('系统组件不能删除');
+					return;
+				}
+                var payload = {
+                    func_name: 'plugin_eeprom',
+                    action: 'uninstall',
+                    param: {
+                        app: this.rmappname
+                    }
+                };
+                AjaxPost('/Action/call', payload, (response) => {
+                    if (response.Result % 10000 == 0) {
+                        alert('删除成功');
+                    } else {
+                        alert('删除失败');
+                    }
+                });
+            },
+		registerCode_new() {
+
+                var payload = {
+                    func_name: 'plugin_eeprom',
+                    action: 'registerew',
+					 param: {                   
+                    }
+                };
+
+                AjaxPost('/Action/call', payload, (response) => {
+                    if (response.Result % 10000 == 0) {
+                        alert('刷新成功');
+                    } else {
+                        alert('刷新失败');
+                    }
+                });
+            },
+            registerCode() {
+                if (!this.registrationCode) {
+                    alert('请输入注册码');
+                    return;
+                }
+                var payload = {
+                    func_name: 'plugin_eeprom',
+                    action: 'register',
+                    param: {
+                        code: this.registrationCode
+                    }
+                };
+
+                AjaxPost('/Action/call', payload, (response) => {
+                    if (response.Result % 10000 == 0) {
+                        alert('注册码提交成功');
+                    } else {
+                        alert('注册码提交失败');
+                    }
+                    this.machine_code();
+                });
+            }
+        }
+    });
+
+</script>
+</html>

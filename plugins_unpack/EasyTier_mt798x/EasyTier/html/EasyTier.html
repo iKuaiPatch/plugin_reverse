@@ -1,0 +1,323 @@
+<html>
+    <head>
+        <script src="../../static/js/vue.js"></script>
+		<script src="../../static/css/app.js"></script>
+		<link rel="stylesheet" href="../../static/css/app.css" type="text/css">
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+        <style>
+            .status-started {
+                color: green;
+            }
+            .status-stopped {
+                color: red;
+            }
+            .status-unknown {
+                color: gray;
+            }
+            .status-value {
+                color: green;
+            }
+		.input-field {
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+        }
+        .input-label {
+            display: inline-block;
+            width: 80px;
+        }
+        .input-box {
+            width: 250px;
+            padding: 6px;
+            border: 1px solid blue;
+            border-radius: 4px;
+            height: 34px;
+            margin-right: 10px;
+        }
+        .submit-button {
+            height: 34px;
+            padding: 6px 12px;
+            background-color: green;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+		.frontend-lib .flex-col {
+		flex-direction: column;
+			}
+			.p-panel-title {
+    line-height: 1;
+    font-weight: var(--p-panel-title-font-weight);
+}
+        </style>
+    </head>
+    <body>
+       <div id="app">
+            <div>
+ 
+                <div class="status">
+
+				服务状态：<span :class="statusClass">{{ statusMessage }}</span>
+                </div>
+				
+				<div style="height: 30px;"></div>
+				<div class="status">
+			<!-- 	组网用户：<span class="status-value">{{ token }}</span>  -->
+            </div>
+			
+						<div style="margin-top: 10px;">
+				Web控制台：<a href="https://easytier.cn/web" target="_blank" style="color: blue; text-decoration: underline;">https://easytier.cn/web</a>
+			</div>
+
+				<div style="height: 30px;"></div>
+                <button @click="EasyTier_start" class="btn btn_green btn_confirm margin-l-10" type="button">
+                    {{ statusclick }}
+                </button>
+             <!--   <button @click="EasyTier_stop" class="btn btn_red btn_confirm margin-l-10" type="button">
+                    禁用
+                </button> -->
+				<div style="height: 20px;"></div>
+				<div class="readme"><span class="note" style="left: 20px;">功能说明：</span>
+				<div>1、状态:已启动，开机会自启动。禁用则清理配置；</div> 
+				</div>
+				<div style="height: 30px;"></div>
+				
+				
+				
+			<!-- 服务器和密钥输入框 -->
+            <div class="input-field">
+                <label class="input-label" for="server">自建服务IP:</label>
+                <input type="text" id="server" v-model="serverInput" class="input-box" :placeholder="serverInput" required>
+            </div>
+            <div class="input-field">
+                <label class="input-label" for="vkey">用户名:</label>
+                <input type="text" id="vkey" v-model="tokenInput" class="input-box" :placeholder="token" required>
+            </div>
+
+            <!-- 空行 -->
+            <div style="height: 20px;"></div>
+            <button @click="submitConfig" class="btn btn_green btn_confirm margin-l-10">提交</button>
+            <!-- 空行 -->
+
+			<div style="height: 30px;"></div>	
+				
+				
+			<!-- 文件选择和上传按钮 -->
+				<div>
+
+				 <input type="text" id="fileName" readonly style="background-color: white; border: 1px solid blue; padding: 6px; border-radius: 4px;" >
+				<!-- 自定义的选择文件按钮 -->
+				<label for="fileUpload" class="btn btn_blue btn_confirm margin-l-10">
+					选择文件
+				</label>
+				
+				<!-- 隐藏的文件输入框 -->
+				<input type="file" id="fileUpload" style="display: none;" onchange="document.getElementById('fileName').value = this.files[0].name;">
+				
+				<!-- 上传 EEPROM 按钮 -->
+				<button @click="uploadFile" class="btn btn_green btn_confirm margin-l-10" type="button">
+					上传配置
+				</button>
+				<div style="height: 20px;"></div>
+				<div class="readme"><span class="note" style="left: 20px;">功能说明：</span>
+				<div>1、高级配置请请使用上传配置文件，上传错误可禁用后重传即可，文本内空查看官方文档；</div>
+				<div style="height: 10px;"></div>
+				
+				</div>
+			</div>
+			
+            </div>
+        </div>
+    </body>
+    <script type="module">
+        var app = new Vue({
+            el: '#app',
+            data: { 
+                result: "",
+                statusMessage: "未知",
+                statusClass: "status-unknown",
+				LocalUrl: "",
+				statusclick: "启动",
+				Name : "未获取",
+				Virtual_ip : "未获取",
+				Virtual_gateway : "未获取",
+				Virtual_netmask : "未获取",
+				Connection_status : "未获取",
+				NAT_type : "未获取",
+				Relay_server : "未获取",
+				Public_ips : "未获取",
+				Local_addr : "未获取",
+				IPv6 : "未获取",
+				token : "未获取",
+				serverInput: "",  
+                tokenInput: "",   
+                passwordInput: "",  
+                dev_nameInput: "",    
+                Virtual_ipInput: "",
+				
+                statusDetails: {}  // 初始化为对象，而不是 null
+            },
+            mounted() {
+                this.EasyTier_status();
+				this.setLocalUrl();
+            },
+            methods: {
+                EasyTier_start() {
+                    var payload = {
+                        func_name: 'plugin_EasyTier',
+                        action: 'EasyTier_start',
+                        param: {}
+                    };
+                    AjaxPost('/Action/call', payload, (response) => {
+                    						if(this.statusMessage == "已启动") {
+						this.statusMessage = "已停止";
+						this.statusClass = "status-stopped"; // 设置状态类
+						 alert('停止成功');
+						 this.statusclick = "启动";
+						} else {
+                            this.statusMessage = "已启动";
+                            this.statusClass = "status-started"; // 设置状态类
+                            alert('启动成功');
+                            MessageTip("启动成功", "green");
+							this.statusclick = "停止";
+						  }
+						  this.EasyTier_status();
+                    });
+                },
+				submitConfig() {
+					 if (this.token.trim() === "") {
+                        alert("请输入有效的用户");
+                        return;
+                    }
+
+					var payload = {
+						func_name: 'plugin_EasyTier',
+						action: 'update_config',
+						param: {
+							server: this.serverInput,
+							token: this.tokenInput
+						}
+					};
+
+					AjaxPost('/Action/call', payload, (response) => {
+						if (response && response.Result % 10000 == 0) {
+							alert('配置已成功更新');
+							this.EasyTier_status(); // 重新获取状态，更新显示的  配置信息
+						} else {
+							alert('配置更新失败');
+						}
+						 this.EasyTier_status();
+					});
+				},
+                EasyTier_stop() {
+                    var payload = {
+                        func_name: 'plugin_EasyTier',
+                        action: 'stop',
+                        param: {}
+                    };
+                    AjaxPost('/Action/call', payload, (response) => {
+                        if(response.Result % 10000 == 0) {
+                            this.statusMessage = "已停止";
+                            this.statusClass = "status-stopped";
+                            alert('停止成功');
+                            MessageTip("停止成功", "red");
+							this.statusclick = "启动";
+                        }
+						 this.EasyTier_status();
+                    });
+                },
+                EasyTier_status() {
+                    var payload = {
+                        func_name: 'plugin_EasyTier',
+                        action: 'show',
+                        param: {
+                            TYPE: 'status'
+                        }
+                    };
+                    AjaxPost('/Action/call', payload, (response) => {
+                        if (response.Result % 10000 == 0 && response.Data) {
+                            const data = response.Data;
+
+                            if (data.status == 1) {
+                                this.statusMessage = "已启动";
+                                this.statusClass = "status-started";
+								this.statusclick = "停止";
+                            } else {
+                                this.statusMessage = "已停止";
+                                this.statusClass = "status-stopped";
+								this.statusclick = "启动";
+                            }
+							
+							this.Name = data.Name ? data.Name : "未获取";
+							this.Virtual_ip = data.Virtual_ip ? data.Virtual_ip : "未获取";
+							this.Virtual_gateway = data.Virtual_gateway ? data.Virtual_gateway : "未获取";
+							this.Virtual_netmask = data.Virtual_netmask ? data.Virtual_netmask : "未获取";
+							this.Connection_status = data.Connection_status ? data.Connection_status : "未获取";
+							this.NAT_type = data.NAT_type ? data.NAT_type : "未获取";
+							this.Relay_server = data.Relay_server ? data.Relay_server : "未获取";
+							this.Public_ips = data.Public_ips ? data.Public_ips : "未获取";
+							this.Local_addr = data.Local_addr ? data.Local_addr : "未获取";
+							this.IPv6 = data.IPv6 ? data.IPv6 : "未获取";
+							this.token = data.token ? data.token : "未获取";
+						
+			
+
+                            // 将 data 存储到 statusDetails 中
+                            this.statusDetails = data;
+                            console.log(' 状态信息:', this.statusDetails);
+
+                        } else {
+                            console.error('Status is undefined in the response', response);
+                            this.statusMessage = "状态未知";
+                            this.statusClass = "status-unknown";
+                        }
+                    });
+                },
+		 setLocalUrl() {
+                    var host = window.location.hostname;
+                    this.LocalUrl = `http://${host}/vnt-cli.txt`;
+                },
+			uploadFile() {
+                var fileInput = document.getElementById('fileUpload');
+                var file = fileInput.files[0];
+
+                if (!file) {
+                    alert('请先选择一个文件');
+                    return;
+                }
+
+                var formData = new FormData();
+                formData.append('file', file);
+
+                var xhr = new XMLHttpRequest();
+                xhr.open('POST', '/Action/upload', true);
+                xhr.onload = function () {
+                    if (xhr.status == 200) {
+                        alert('文件上传成功');
+                        app.EasyTier_config();
+                    } else {
+                        alert('上传失败');
+                    }
+                };
+                xhr.send(formData);
+            },
+		 EasyTier_config() {
+                var payload = {
+                    func_name: 'plugin_EasyTier',
+                    action: 'config',
+                    param: {}
+                };
+                AjaxPost('/Action/call', payload, (response) => {
+                    if (response.Result % 10000 == 0) {
+                        alert(' 配置成功');
+                    } else {
+                        alert(' 配置失败');
+                    }
+					 this.EasyTier_status();
+                });
+            }
+            }
+        });
+    </script>
+</html>

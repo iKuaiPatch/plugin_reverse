@@ -1,0 +1,14 @@
+{
+	"name": "xunyou",
+	"alias": "讯游加速器",
+	"manufacturer": "iKuai",
+	"version": "1.1.9",
+    "type": "external",
+    "description": "讯游加速器 是一款专注于 网络游戏加速 的软件工具，旨在通过优化用户的网络连接，减少延迟（ping）和卡顿，提升在线游戏的体验。<br>详情访问：<a>https://www.xunyou.com/</a>",
+    "build": "202411240224",
+    "compatibility": [
+      "mt7621",
+      "mt798x",
+      "x86"
+    ]
+}

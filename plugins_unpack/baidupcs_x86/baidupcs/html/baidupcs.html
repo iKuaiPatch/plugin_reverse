@@ -1,0 +1,229 @@
+<html>
+    <head>
+        <script src="../../static/js/vue.js"></script>
+        <script src="../../static/css/app.js"></script>
+        <link rel="stylesheet" href="../../static/css/app.css" type="text/css">
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+        <style>
+            .status-started {
+                color: green;
+            }
+            .status-stopped {
+                color: red;
+            }
+            .status-unknown {
+                color: gray;
+            }
+            .status-value {
+                color: green;
+            }
+            .input-field {
+                margin-bottom: 10px;
+                display: flex;
+                align-items: center;
+            }
+            .input-label {
+                display: inline-block;
+                width: 80px;
+            }
+            .input-box {
+                width: 250px;
+                padding: 6px;
+                border: 1px solid blue;
+                border-radius: 4px;
+                height: 34px;
+                margin-right: 10px;
+            }
+            .submit-button {
+                height: 34px;
+                padding: 6px 12px;
+                background-color: green;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                cursor: pointer;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="app">
+            <div>
+                <div class="status">
+                    服务状态：<span :class="statusClass">{{ statusMessage }}</span>
+                </div>
+                <div style="height: 20px;"></div>
+                <div class="status">
+                    用户名：<span class="status-value">{{ name }}</span>
+                </div>
+                <div style="height: 20px;"></div>
+                <div class="status">
+                    用户ID：<span class="status-value">{{ uid }}</span>
+                </div>
+                <div style="height: 20px;"></div>
+                <div class="status">
+                    下载并发：<span class="status-value">{{ max_parallel }}</span>
+                </div>
+                <div style="height: 20px;"></div>
+                <div class="status">
+                    上传并发：<span class="status-value">{{ max_upload_parallel }}</span>
+                </div>
+                <div style="height: 20px;"></div>
+                <div class="status">
+                    下载速度：<span class="status-value">{{ max_download_rate }}</span>
+                </div>
+                <div style="height: 20px;"></div>
+                <div class="status">
+                    上传速度：<span class="status-value">{{ max_upload_rate }}</span>
+                </div>
+                <div style="height: 20px;"></div>
+                <div class="status">
+                    下载目录：<span class="status-value">{{ savedir }}</span>
+                </div>
+                <div style="height: 30px;"></div>
+                
+                <div>自动登录：<button @click="autoLogin" class="submit-button">登录</button></div>
+                <div style="height: 30px;"></div>
+                
+                <button @click="start" class="btn btn_green btn_confirm margin-l-10" type="button">
+                    {{ statusclick }}
+                </button>
+                <button @click="stop" class="btn btn_red btn_confirm margin-l-10" type="button">
+                    禁用
+                </button>
+                <div style="height: 20px;"></div>
+                <div class="readme"><span class="note" style="left: 20px;">功能说明：</span>
+                    <div>1、请使用BDUSS登录即可,不会请在百试找教程；</div>
+                </div>
+                <div style="height: 30px;"></div>    
+            </div>
+        </div> 
+    </body>
+    <script type="module">
+        var app = new Vue({
+            el: '#app',
+            data: { 
+                result: "",
+                statusMessage: "未知",
+                statusClass: "status-unknown",
+                LocalUrl: "",
+                statusclick: "启动",
+                name : "未获取",
+                uid : "未获取",
+                bduss : "未获取",
+                max_parallel : "未获取",
+                max_upload_parallel : "未获取",
+                max_download_load : "未获取",
+                max_download_rate : "未获取",
+                max_upload_rate : "未获取",
+                savedir : "未获取",                
+                statusDetails: {}
+            },
+            mounted() {
+                this.status();
+               // this.setLocalUrl();
+            },
+            methods: {
+                autoLogin() {
+                    if (this.bduss !== "未获取") {
+                        const host = window.location.hostname;
+                        const loginUrl = `http://${host}:5299/api/v1/login?bduss=${this.bduss}`;
+                        const loginWindow = window.open(loginUrl, '_blank');
+
+                        setTimeout(() => {
+                            loginWindow.close();  // 关闭登录窗口
+                            const mainUrl = `http://${host}:5299/`;
+                            window.open(mainUrl, '_blank');  // 在新窗口中打开主页面
+                        }, 500);
+                    } else {
+							const host = window.location.hostname;
+                            const mainUrl = `http://${host}:5299/`;
+                            window.open(mainUrl, '_blank');  // 在新窗口中打开主页面
+                    }
+                },
+                start() {
+                    var payload = {
+                        func_name: 'plugin_baidupcs',
+                        action: 'bd_start',
+                        param: {}
+                    };
+                    AjaxPost('/Action/call', payload, (response) => {
+                        if(this.statusMessage == "已启动") {
+                            this.statusMessage = "已停止";
+                            this.statusClass = "status-stopped";
+                            alert('停止成功');
+                            this.statusclick = "启动";
+                        } else {
+                            this.statusMessage = "已启动";
+                            this.statusClass = "status-started";
+                            alert('启动成功');
+                            MessageTip("启动成功", "green");
+                            this.statusclick = "停止";
+                        }
+                        this.status();
+                    });
+                },
+                stop() {
+                    var payload = {
+                        func_name: 'plugin_baidupcs',
+                        action: 'stop',
+                        param: {}
+                    };
+                    AjaxPost('/Action/call', payload, (response) => {
+                        if(response.Result % 10000 == 0) {
+                            this.statusMessage = "已停止";
+                            this.statusClass = "status-stopped";
+                            alert('停止成功');
+                            MessageTip("停止成功", "red");
+                            this.statusclick = "启动";
+                        }
+                        this.status();
+                    });
+                },
+                status() {
+                    var payload = {
+                        func_name: 'plugin_baidupcs',
+                        action: 'show',
+                        param: {
+                            TYPE: 'status'
+                        }
+                    };
+                    AjaxPost('/Action/call', payload, (response) => {
+                        if (response.Result % 10000 == 0 && response.Data) {
+                            const data = response.Data;
+
+                            if (data.status == 1) {
+                                this.statusMessage = "已启动";
+                                this.statusClass = "status-started";
+                                this.statusclick = "停止";
+                            } else {
+                                this.statusMessage = "已停止";
+                                this.statusClass = "status-stopped";
+                                this.statusclick = "启动";
+                            }
+                            this.uid = data.uid ? data.uid : "未获取";
+                            this.name = data.name ? data.name : "未获取";
+                            this.bduss = data.bduss ? data.bduss : "未获取";
+                            this.max_parallel = data.max_parallel ? data.max_parallel : "未获取";
+                            this.max_upload_parallel = data.max_upload_parallel ? data.max_upload_parallel : "未获取";
+                            this.max_download_load = data.max_download_load ? data.max_download_load : "未获取";
+                            this.max_download_rate = data.max_download_rate ? data.max_download_rate : "未获取";
+                            this.max_upload_rate = data.max_upload_rate ? data.max_upload_rate : "未获取";
+                            this.savedir = data.savedir ? data.savedir : "未获取";
+
+                            this.statusDetails = data;
+                            console.log(' 状态信息:', this.statusDetails);
+                        } else {
+                            console.error('Status is undefined in the response', response);
+                            this.statusMessage = "状态未知";
+                            this.statusClass = "status-unknown";
+                        }
+                    });
+                },
+                setLocalUrl() {
+                    var host = window.location.hostname;
+                    this.LocalUrl = `http://${host}:5299/`;
+                }
+            }
+        });
+    </script>
+</html>

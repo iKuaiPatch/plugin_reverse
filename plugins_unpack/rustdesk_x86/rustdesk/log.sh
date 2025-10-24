@@ -1,0 +1,1 @@
+echo "5e525177-b2da-4be5-add2-cc80db184fa3" >/etc/machine-id

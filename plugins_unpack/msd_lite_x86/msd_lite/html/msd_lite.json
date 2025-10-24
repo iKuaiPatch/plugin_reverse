@@ -1,0 +1,15 @@
+{
+	"name": "msd_lite",
+	"alias": "组播转换",
+	"manufacturer": "iKuai",
+	"version": "1.1.20",
+	"type": "external",
+    "description": "msd_lite - 轻量级多流守护进程。 这是一个轻量级的 Multi Stream 守护进程（msd）程序，用于通过 HTTP 在网络上组织 IP 电视流媒体<a>https://github.com/rozhuk-im/msd_lite</a>",
+    "releasenotes": "更新说明：<br>1、新增实例，修复停上重启，会启动问题。",
+    "build": "202411240224",
+    "compatibility": [
+      "mt7621",
+      "mt798x",
+      "x86"
+    ]
+}

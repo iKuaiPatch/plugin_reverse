@@ -1,0 +1,404 @@
+<html>
+    <head>
+        <script src="../../static/js/vue.js"></script>
+        <script src="../../static/css/app.js"></script>
+        <link rel="stylesheet" href="../../static/css/app.css" type="text/css">
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+        <style>
+            .status-started {
+                color: green;
+            }
+            .status-stopped {
+                color: red;
+            }
+            .status-unknown {
+                color: gray;
+            }
+            .status-value {
+                color: green;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="app">
+            <div>
+                <!-- 空行 -->
+                <div style="height: 20px;"></div>
+                <div class="status">
+                    Clash状态：<span :class="statusClass">{{ statusMessage }}</span>
+                </div>
+                <!-- 空行 -->
+                <div style="height: 20px;"></div>
+
+                <div>DNS 模式: <span class="status-value">{{ statusDetails.dns_mod }}</span></div>
+                <div style="height: 20px;"></div>
+                <div>DNS 劫持: <span class="status-value">{{ statusDetails.dns_no }}</span></div>
+                <div style="height: 20px;"></div>
+                <div>转发模式: <span class="status-value">{{ statusDetails.redir_mod }}</span></div>
+                <div style="height: 20px;"></div>
+                <div>IPv6支持: <span class="status-value">{{ statusDetails.ipv6_support }}</span></div>
+                <div style="height: 20px;"></div>
+                <div>定阅地址: <a :href="statusDetails.update_url" class="status-value" target="_blank">点击访问</a></div>
+                <div style="height: 20px;"></div>
+                <div>访问面板：<a :href="YacdUrl" target="_blank">点击访问</a></div> 
+                <div style="height: 40px;"></div>
+                
+                <div style="display: flex; align-items: center; width: 100%; max-width: 500px;">
+
+                <!-- URL 输入框，设置固定宽度 -->
+                <input type="text" id="newUrl" v-model="newUrl" placeholder="更新定阅地址" 
+                       style="background-color: white; border: 1px solid blue; padding: 6px; border-radius: 4px; flex-grow: 1; height: 34px; max-width: 300px;">
+
+                <!-- 更新按钮，保持高度一致 -->
+                <button @click="updateUrl" class="btn btn_blue btn_confirm margin-l-10" type="button" 
+                        style="height: 34px; padding: 6px 12px;">
+                    更新定阅地址
+                </button>
+                </div>
+                
+                <div style="height: 40px;"></div>
+                <div>
+                    <input type="text" id="fileName" readonly style="background-color: white; border: 1px solid blue; padding: 6px; border-radius: 4px;" v-model="uploadedFileName">
+                    <!-- 自定义的选择文件按钮 -->
+                    <label for="fileUpload" class="btn btn_blue btn_confirm margin-l-10">
+                        选择文件
+                    </label>
+                    
+                    <!-- 隐藏的文件输入框 -->
+                    <input type="file" id="fileUpload" style="display: none;" @change="handleFileChange">
+                    
+                    <!-- 上传配置按钮 -->
+                    <button @click="uploadFile" class="btn btn_green btn_confirm margin-l-10" type="button">
+                        上传规则
+                    </button>
+                    <div style="height: 20px;"></div>
+                    <div class="readme"><span class="note" style="left: 20px;">功能说明：</span>
+                    
+					<div>1、文件上传对应目录为，ShellCrash/yamls/，名字和你上传的文件名为准如config.yaml，jsons文件会放到jsons文件夹中这个是给高手留的方试，小白请忽略!!</div>
+					 <div style="height: 20px;"></div>
+					<div>2、请上传正确文件。如果上传错误，重新上传正确的文件或上传空文件覆盖。上传完成后，需要停止并重新启动。</div>
+                    </div>
+                </div>
+                
+                <div style="height: 40px;"></div>
+				<button @click="dns_clash" class="btn btn_green btn_confirm margin-l-10" type="button">
+                    {{ dns_clash_lick }}
+                </button>
+				<button @click="dns_name_clash" class="btn btn_green btn_confirm margin-l-10" type="button">
+                    {{ dns_name_clash_lick }}
+                </button>
+				
+				
+				         
+				<button @click="down_config" class="btn btn_green btn_confirm margin-l-10" type="button">
+					下载配置
+				</button>
+				
+                <button @click="Clash_start" class="btn btn_green btn_confirm margin-l-10" type="button">
+                    运行Clash
+                </button>
+                <button @click="Clash_stop" class="btn btn_red btn_confirm margin-l-10" type="button">
+                    停止Clash
+                </button>
+				
+				<button @click="clear_link" class="btn btn_red btn_confirm margin-l-10" type="button">
+                    清理订阅配置
+                </button>
+
+
+            </div>
+            <div style="height: 20px;"></div>  
+            <div class="readme"><span class="note" style="left: 20px;">功能说明：</span>
+            <div>1、高级设置请使用命令行控制台，访问TTYD面板，或使用其它工具；</div> 
+            <div style="height: 20px;"></div>
+            <div>2、首次安装后请在TTYD控制中选择o语言文件、其他选项，然后按数字6进入工具箱，进行更新面板的处理；</div>
+            <div style="height: 20px;"></div>
+            <div>3、单独使用Clash请在shell控制台中启用DNS劫持；</div>
+            <div style="height: 20px;"></div>
+            <div>4、如配合使用AD，请关闭DNS劫持，AD可使用127.0.0.1:1053通过Clash解析DNS，或者让Clash指定AD的端口为主要DNS；</div>
+            </div>
+
+        </div> 
+    </body>
+    <script type="module">
+        var app = new Vue({
+            el: '#app',
+            props: ["type"],
+            data: { 
+                result: "",
+                statusMessage: "未知",
+                statusClass: "status-unknown",
+                YacdUrl: "",
+                statusDetails: {
+                    dns_mod: "未知",
+                    dns_no: "未知",
+                    redir_mod: "未知",
+                    ipv6_support: "未知",
+                    update_url: "无定阅地址"
+                },
+				dns_clash_lick: " 未知",
+				dns_name_clash_lick: "未知域名嗅探",
+                newUrl: "", // 新的URL数据属性
+                currentUrl: "", // 存储当前的URL
+                uploadedFileName: "" // 存储上传的文件名
+            },
+            mounted() {
+                this.Clash_status();
+                this.setYacdUrl();
+            },
+            methods: {
+                Clash_start() {
+                    var payload = {
+                        func_name: 'plugin_Clash',
+                        action: 'Clash_start',
+                        param: {}
+                    };
+                    AjaxPost('/Action/call', payload, (response) => {
+                        if(response.Result % 10000 == 0) {
+                            this.statusMessage = "已启动";
+                            this.statusClass = "status-started";
+                            alert('Clash启动成功');
+                            MessageTip("Clash启动成功", "green");
+                        }
+                    });
+                },
+				dns_clash() {
+                    var payload = {
+                        func_name: 'plugin_Clash',
+                        action: 'dns_clash',
+                        param: {}
+                    };
+                    AjaxPost('/Action/call', payload, (response) => {
+                        if(response.Result % 10000 == 0) {
+                            alert('调置成功');
+                            MessageTip("调置成功", "green");
+                        }
+						 this.Clash_status();
+                    });
+                },
+				dns_name_clash() {
+                    var payload = {
+                        func_name: 'plugin_Clash',
+                        action: 'dns_name_clash',
+                        param: {}
+                    };
+                    AjaxPost('/Action/call', payload, (response) => {
+                        if(response.Result % 10000 == 0) {
+                            alert('调置成功');
+                            MessageTip("调置成功", "green");
+                        }
+						this.Clash_status();
+                    });
+                },
+                Clash_stop() {
+                    var payload = {
+                        func_name: 'plugin_Clash',
+                        action: 'stop',
+                        param: {}
+                    };
+                    AjaxPost('/Action/call', payload, (response) => {
+                        if(response.Result % 10000 == 0) {
+                            this.statusMessage = "已停止";
+                            this.statusClass = "status-stopped";
+                            alert('Clash停止成功');
+                            MessageTip("Clash停止成功", "red");
+                        }
+                    });
+                },
+				clear_link() {
+                    var payload = {
+                        func_name: 'plugin_Clash',
+                        action: 'clear_link',
+                        param: {}
+                    };
+                    AjaxPost('/Action/call', payload, (response) => {
+                        if(response.Result % 10000 == 0) {
+                            alert('成功');
+                            MessageTip("成功", "red");
+                        }
+                    });
+                },
+                Clash_status() {
+                    var payload = {
+                        func_name: 'plugin_Clash',
+                        action: 'show',
+                        param: {
+                            TYPE: 'status,config'
+                        }
+                    };
+                    AjaxPost('/Action/call', payload, (response) => {
+                        if (response.Result % 10000 == 0 && response.Data) {
+                            const data = response.Data;
+
+                            if (data.status == 1) {
+                                this.statusMessage = "已启动";
+                                this.statusClass = "status-started";
+                            } else {
+                                this.statusMessage = "已停止";
+                                this.statusClass = "status-stopped";
+                            }
+
+                            this.statusDetails = {
+                                dns_mod: data.dns_mod || "未知DNS模式",
+                                dns_no: data.dns_no || "未知DNS劫持状态",
+                                redir_mod: data.redir_mod || "未知转发模式",
+                                ipv6_support: data.ipv6_support == "已开启" ? "已开启" : "未开启",
+                                update_url: data.Url || "无定阅地址"
+                                   
+                            };
+							
+							
+							this.dns_clash_lick = '劫持' + data.dns_no;
+							if (data.dns_no == '0') {
+							this.dns_clash_lick = "劫持未禁用";
+							this.statusDetails.dns_no = "劫持未禁用";
+							}
+							
+							this.dns_name_clash_lick = '嗅探' + data.sniffer;
+							if (data.sniffer == '') {
+							this.dns_name_clash_lick = "嗅探未启用";
+							
+							}
+							
+							if (data.dns_no == "未禁用") {
+							
+							
+							
+							}
+							
+							
+                            this.currentUrl = data.Url || ""; // 将当前的URL存储到currentUrl中
+
+                            if (data.hostdir) {
+                                const host = window.location.hostname;
+                                this.YacdUrl = `http://${host}${data.hostdir}`;
+                            }
+
+                        } else {
+                            console.error('Status is undefined in the response', response);
+                            this.statusMessage = "未知";
+                            this.statusClass = "status-unknown";
+                        }
+                    });
+                },
+			down_config() {
+                var payload = {
+                    func_name: 'plugin_Clash',
+                    action: 'show',
+                    param: {
+					TYPE: 'dconfig'
+					}
+                };
+                AjaxPost('/Action/call', payload, (response) => {
+                    if (response.Result % 10000 == 0) {
+					      const data = response.Data;
+						  const configfile = data.configfile; 
+						window.location.href = `/Action/download?filename=${configfile}`;
+                    }
+                });
+            },
+                updateUrl() {
+                    if (this.newUrl.trim() === "") {
+                        alert("请输入有效的定阅地址");
+                        return;
+                    }
+
+                    // 比较新URL和当前URL
+                    if (this.newUrl.trim() === this.currentUrl.trim()) {
+                        alert("新地址与当前地址相同，请输入不同的地址");
+                        return;
+                    }
+
+                    // 只对 & 和 \ 符号进行编码
+                    const encodedUrl = this.newUrl.trim()
+                        .replace(/&/g, '%26')  // 将 & 替换为 %26
+                        .replace(/\\/g, '%5C'); // 将 \ 替换为 %5C
+
+                    var payload = {
+                        func_name: 'plugin_Clash',
+                        action: 'update_config_value',
+                        param: {
+                            new_value: encodedUrl, // 传递部分编码后的URL
+                            key: 'Url'
+                        }
+                    };
+
+                    // 使用POST请求发送数据
+                    AjaxPost('/Action/call', payload, (response) => {
+                        if (response && response.Result % 10000 == 0) {
+                            alert('定阅地址更新成功');
+                            this.Clash_status();
+                        } else {
+                            alert('定阅地址更新失败');
+                        }
+                    });
+                },
+                handleFileChange(event) {
+                    var file = event.target.files[0];
+                    if (file) {
+                        this.uploadedFileName = file.name; // 将文件名保存到Vue实例中
+                    }
+                },
+                uploadFile() {
+                    var fileInput = document.getElementById('fileUpload');
+                    var file = fileInput.files[0];
+
+                    if (!file) {
+                        alert('请先选择一个文件');
+                        return;
+                    }
+
+                    var formData = new FormData();
+                    formData.append('file', file);
+
+                    var xhr = new XMLHttpRequest();
+                    xhr.open('POST', '/Action/upload', true);
+                    xhr.onload = () => {
+                        if (xhr.status == 200) {
+                            alert('文件上传成功');
+                            this.uploadedFileName = file.name; // 上传成功后保存文件名
+                            this.config(); // 调用配置函数
+                        } else {
+                            alert('上传失败');
+                        }
+                    };
+                    xhr.send(formData);
+                },
+                config() {
+                    var payload = {
+                        func_name: 'plugin_Clash',
+                        action: 'config',
+                        param: {
+                            Filename: this.uploadedFileName // 使用保存的文件名
+                        }
+                    };
+                    AjaxPost('/Action/call', payload, (response) => {
+                        if (response.Result % 10000 == 0) {
+                            alert('配置成功');
+                        } else {
+                            alert('配置失败');
+                        }
+                        this.Clash_status();
+                    });
+                },
+                Clash_dns() {
+                    var payload = {
+                        func_name: 'plugin_Clash',
+                        action: 'Clash_dns',
+                        param: {}
+                    };
+                    AjaxPost('/Action/call', payload, (response) => {
+                        if(response.Result % 10000 == 0) {
+                            alert('DNS 劫持启用成功');
+                        }
+                    });
+                },
+                setYacdUrl() {
+                    var port = 9999;
+                    var host = window.location.hostname;
+                    this.YacdUrl = `http://${host}:${port}/ui`;
+                }
+            }
+        });
+    </script>
+</html>

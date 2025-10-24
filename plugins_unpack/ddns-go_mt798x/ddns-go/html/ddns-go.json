@@ -1,0 +1,15 @@
+{
+	"name": "ddns-go",
+	"alias": "ddns-go",
+	"manufacturer": "iKuai",
+	"version": "1.1.9",
+    "type": "external",
+    "description": "ddns-go自动获得你的公网 IPv4 或 IPv6 地址，并解析到对应的域名服务。<br>详情访问：<a>https://github.com/jeessy2/ddns-go/</a>",
+    "releasenotes": "更新说明：<br>修复路由器重启无法保存配置的问题。",
+    "build": "202411240224",
+    "compatibility": [
+      "mt7621",
+      "mt798x",
+      "x86"
+    ]
+}

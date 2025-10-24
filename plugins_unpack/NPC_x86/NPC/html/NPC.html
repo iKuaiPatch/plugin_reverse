@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>NPC 配置</title>
+    <script src="../../static/js/vue.js"></script>
+    <script src="../../static/css/app.js"></script>
+    <link rel="stylesheet" href="../../static/css/app.css" type="text/css">
+    <style>
+        .status-started {
+            color: green;
+        }
+        .status-stopped {
+            color: red;
+        }
+        .status-unknown {
+            color: gray;
+        }
+        .status-value {
+            color: green;
+        }
+        .input-field {
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+        }
+        .input-label {
+            display: inline-block;
+            width: 80px;
+        }
+        .input-box {
+            width: 250px;
+            padding: 6px;
+            border: 1px solid blue;
+            border-radius: 4px;
+            height: 34px;
+            margin-right: 10px;
+        }
+        .submit-button {
+            height: 34px;
+            padding: 6px 12px;
+            background-color: green;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <div>
+            <!-- 空行 -->
+            <div style="height: 20px;"></div>
+            <div class="status">
+                NPC状态：<span :class="statusClass">{{ statusMessage }}</span>
+            </div>
+            <div style="height: 20px;"></div>
+            <!-- 显示 NPC 地址和密钥，并设置为绿色，如果为空则显示“未配置” -->
+            <div class="status">
+                NPC地址：<span class="status-value">{{ server }}</span>
+            </div>
+            <div style="height: 20px;"></div>
+            <div class="status">
+                NPC密钥：<span class="status-value">{{ vkey }}</span>
+            </div>
+            <div style="height: 20px;"></div>
+            <div class="status">
+                NPC密码：<span class="status-value">{{ password }}</span>
+            </div>
+            <div style="height: 20px;"></div>
+            <div class="status">
+                NPC目标：<span class="status-value">{{ target }}</span>
+            </div>
+            <div style="height: 20px;"></div>
+            <div class="status">
+                NPC本地类型：<span class="status-value">{{ local_type }}</span>
+            </div>
+
+            <div style="height: 40px;"></div>
+
+            <!-- 服务器和密钥输入框 -->
+            <div class="input-field">
+                <label class="input-label" for="server">服务器:</label>
+                <input type="text" id="server" v-model="serverInput" class="input-box" placeholder="输入服务器地址" required>
+            </div>
+            <div class="input-field">
+                <label class="input-label" for="vkey">密钥:</label>
+                <input type="text" id="vkey" v-model="vkeyInput" class="input-box" placeholder="输入密钥" required>
+            </div>
+            <!-- 密码、目标和本地类型为可选字段 -->
+            <div class="input-field">
+                <label class="input-label" for="password">密码:</label>
+                <input type="text" id="password" v-model="passwordInput" class="input-box" placeholder="输入密码">
+            </div>
+            <div class="input-field">
+                <label class="input-label" for="target">目标:</label>
+                <input type="text" id="target" v-model="targetInput" class="input-box" placeholder="输入目标">
+            </div>
+            <div class="input-field">
+                <label class="input-label" for="local_type">本地类型:</label>
+                <input type="text" id="local_type" v-model="localTypeInput" class="input-box" placeholder="输入本地类型">
+				 <button @click="submitConfig" class="btn btn_green btn_confirm margin-l-10">提交</button>
+            </div>
+            
+            <div style="height: 20px;"></div>
+            <button @click="NPC_start" class="btn btn_green btn_confirm margin-l-10" type="button">
+                {{ statusclick }}
+            </button>
+            <button @click="NPC_disable" class="btn btn_red btn_confirm margin-l-10" type="button">
+                禁用
+            </button>
+        </div>
+		
+            <!-- 空行 -->
+            <div style="height: 20px;"></div>
+        <div class="readme"><span class="note" style="left: 20px;">功能说明：</span> 
+		<div>1、服务器（server） ，密钥（vkey）----必填；</div> 
+		 <div style="height: 20px;"></div>     
+        <div>2、密码（password），目标（target），本地类型（local_type）---可选填；</div>
+        </div>
+
+    </div>
+    
+    <script type="module">
+        var app = new Vue({
+            el: '#app',
+            data: { 
+                result: "",
+                statusMessage: "未知",
+                statusClass: "status-unknown",
+                server: "未配置",  
+                vkey: "未配置",    
+                password: "未配置",  
+                target: "未配置",    
+                local_type: "未配置", 
+				statusclick: "启动",
+                serverInput: "",  
+                vkeyInput: "",   
+                passwordInput: "",  
+                targetInput: "",    
+                localTypeInput: ""  
+            },
+            mounted() {
+                this.NPC_status();
+            },
+            methods: {
+                validateInput(input, regex) {
+                    return regex.test(input);
+                },
+				submitConfig() {
+					// 过滤正则表达式
+					const serverRegex = /^[a-zA-Z0-9\.]+(:[0-9]+)?$/;  // 允许字母、数字、点，且仅允许服务器中使用冒号
+					const vkeyAndLocalTypeRegex = /^[a-zA-Z0-9\.]+$/; // 仅允许字母、数字、点
+					const targetRegex = /^[a-zA-Z0-9\.\:\s]+$/; // 允许字母、数字、点、冒号和空格，仅目标允许空格
+
+					// 验证服务器
+					if (!this.validateInput(this.serverInput.trim(), serverRegex)) {
+						alert("服务器只能包含字母、数字、点和冒号，且冒号仅用于服务器地址中的端口");
+						return;
+					}
+
+					// 验证密钥和本地类型
+					if (!this.validateInput(this.vkeyInput.trim(), vkeyAndLocalTypeRegex)) {
+						alert("密钥只能包含字母、数字和点");
+						return;
+					}
+					if (this.localTypeInput && !this.validateInput(this.localTypeInput.trim(), vkeyAndLocalTypeRegex)) {
+						alert("本地类型只能包含字母、数字和点");
+						return;
+					}
+
+					// 验证 target 字段
+					if (this.targetInput && !this.validateInput(this.targetInput.trim(), targetRegex)) {
+						alert("目标只能包含字母、数字、点、冒号和空格");
+						return;
+					}
+
+					// 自定义编码逻辑，只编码空格为 %20，冒号保持原样
+					let encodedTarget = this.targetInput.trim().replace(/ /g, '%20');
+
+
+
+					var payload = {
+						func_name: 'plugin_NPC',
+						action: 'update_config',
+						param: {
+							server: this.serverInput.trim(),
+							vkey: this.vkeyInput.trim(),
+							password: this.passwordInput.trim(),
+							target: encodedTarget, // 使用自定义编码后的 target
+							local_type: this.localTypeInput.trim()
+						}
+					};
+
+					AjaxPost('/Action/call', payload, (response) => {
+						if (response && response.Result % 10000 == 0) {
+							alert('配置已成功更新');
+							this.NPC_status(); // 重新获取状态，更新显示的 NPC 配置信息
+						} else {
+							alert('配置更新失败');
+						}
+					});
+				},
+                NPC_start() {
+                    var payload = {
+                        func_name: 'plugin_NPC',
+                        action: 'start',
+                        param: {}
+                    };
+                    AjaxPost('/Action/call', payload, (response) => {
+                    	if(this.statusMessage == "已启动") {
+						this.statusMessage = "已停止";
+						this.statusClass = "status-stopped"; // 设置状态类
+						 alert('NPC停止成功');
+						 this.statusclick = "启动";
+						} else {
+                            this.statusMessage = "已启动";
+                            this.statusClass = "status-started"; // 设置状态类
+                            alert('NPC启动成功');
+                            MessageTip("NPC启动成功", "green");
+							this.statusclick = "停止";
+						  }
+                    });
+                },
+                NPC_stop() {
+                    var payload = {
+                        func_name: 'plugin_NPC',
+                        action: 'stop',
+                        param: {}
+                    };
+                    AjaxPost('/Action/call', payload, (response) => {
+                        if(response.Result % 10000 == 0) {
+                            this.statusMessage = "已停止";
+                            this.statusClass = "status-stopped";
+                            alert('NPC停止成功');
+                            MessageTip("NPC停止成功", "red");
+                        }
+                    });
+                },
+                NPC_disable() {
+                    var payload = {
+                        func_name: 'plugin_NPC',
+                        action: 'disable',
+                        param: {}
+                    };
+                    AjaxPost('/Action/call', payload, (response) => {
+                        if(response.Result % 10000 == 0) {
+                            this.statusMessage = "已停止";
+                            this.statusClass = "status-stopped";
+                            alert('NPC禁用成功');
+                            MessageTip("NPC禁用成功", "red");
+                        }
+                    });
+                },
+                NPC_status() {
+                    var payload = {
+                        func_name: 'plugin_NPC',
+                        action: 'show',
+                        param: {
+                            TYPE: 'status,config'
+                        }
+                    };
+                    AjaxPost('/Action/call', payload, (response) => {
+                        if (response.Result % 10000 == 0 && response.Data) {
+                            const data = response.Data;
+
+                            if (data.status == 1) {
+                                this.statusMessage = "已启动";
+                                this.statusClass = "status-started";
+								this.statusclick = "停止";
+                            } else {
+                                this.statusMessage = "已停止";
+                                this.statusClass = "status-stopped";
+								this.statusclick = "启动";
+                            }
+
+                            this.server = data.server ? data.server : "未配置";
+                            this.vkey = data.vkey ? data.vkey : "未配置";
+                            this.password = data.password ? data.password : "未配置";
+                            this.target = data.target ? data.target : "未配置";
+                            this.local_type = data.local_type ? data.local_type : "未配置";
+
+                            console.log('NPC 状态信息:', data);
+
+                        } else {
+                            console.error('Status is undefined in the response', response);
+                            this.statusMessage = "状态未知";
+                            this.statusClass = "status-unknown";
+                        }
+                    });
+                },
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,139 @@
+<html>
+    <head>
+        <script src="../../static/js/vue.js"></script>
+		<script src="../../static/css/app.js"></script>
+		<link rel="stylesheet" href="../../static/css/app.css" type="text/css">
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+        <style>
+            .status-started {
+                color: green;
+            }
+            .status-stopped {
+                color: red;
+            }
+            .status-unknown {
+                color: gray;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="app">
+            <div>
+                <!-- 空行 -->
+                <div style="height: 20px;"></div>
+                <div class="status">
+                    Jellyfin-状态：<span :class="statusClass">{{ statusMessage }}</span>
+                </div>
+                <!-- 空行 -->
+				<div style="height: 40px;"></div>
+				 <div>Jellyfin-面板：<a :href="adGuardUrl" target="_blank">点击访问</a></div> 
+                <div style="height: 20px;"></div>
+                <!-- 删除了检查状态按钮 -->
+                <!-- <button @click="AD_status" class="btn btn_blue btn_confirm margin-l-10" type="button">检查状态</button> -->
+                <div style="height: 60px;"></div>
+                <button @click="start" class="btn btn_green btn_confirm margin-l-10" type="button">
+                    {{ statusclick }}
+                </button>
+				 <button @click="stop" class="btn btn_red btn_confirm margin-l-10" type="button">
+                    禁用
+                </button>
+            </div>
+            <div style="height: 20px;"></div>			 
+			<div class="readme">
+                <span class="note" style="left: 20px;">功能说明：</span>
+                <div>1、Jellyfin-首次启动，请访问等待30秒访问后台即可。</a></div> 
+			
+            </div>
+        </div> 
+    </body>
+    <script type="module">
+        var app = new Vue({
+            el: '#app',
+            props: ["type"],
+            data: { 
+                result:"",
+                statusMessage: "未知",
+                statusClass: "status-unknown", // 添加 statusClass 数据属性
+				statusclick: "安装",
+                adGuardUrl: "" // 添加 adGuardUrl 数据属性
+            },
+            mounted() {
+                this.status(); // 页面加载时自动调用 AD_status 方法
+                this.setAdGuardUrl(); // 页面加载时设置 AdGuard URL
+            },
+            methods: {
+                start() {
+                    var payload = {
+                        func_name: 'plugin_Jellyfin',
+                        action: 'jellyfin_start',
+                        param: {}
+                    };
+                    AjaxPost('/Action/call', payload, (response) => {
+                        if(response.Result % 10000 == 0) {
+						
+						if(this.statusMessage == "已启动") {
+						this.statusMessage = "已停止";
+						this.statusClass = "status-stopped"; // 设置状态类
+						 alert('停止成功');
+						 this.statusclick = "启动";
+						} else {
+                            this.statusMessage = "已启动";
+                            this.statusClass = "status-started"; // 设置状态类
+                            alert('启动成功');
+                            MessageTip("启动成功", "green");
+							this.statusclick = "停止";
+						  }
+                        }
+                    });
+                },
+                status() {
+                    var payload = {
+                        func_name: 'plugin_Jellyfin',
+                        action: 'show',
+                        param: {
+                            TYPE: 'status'
+                        }
+                    };
+                    AjaxPost('/Action/call', payload, (response) => {
+                        if (response.Data && response.Data.status !== undefined) {
+                            if (response.Data.status == 1) {
+                                this.statusMessage = "已启动";
+                                this.statusClass = "status-started"; // 设置状态类
+								this.statusclick = "停止";
+                            } else {
+                                this.statusMessage = "已停止";
+                                this.statusClass = "status-stopped"; // 设置状态类
+								 this.statusclick = "启动";
+                            }
+							
+                        } else {
+                            console.error('Status is undefined in the response', response);
+                            this.statusMessage = "状态未知";
+                            this.statusClass = "status-unknown"; // 设置状态类
+                        }
+                    });
+                },
+                stop() {
+                    var payload = {
+                        func_name: 'plugin_Jellyfin',
+                        action: 'stop',
+                        param: {}
+                    };
+                    AjaxPost('/Action/call', payload, (response) => {
+                        if(response.Result % 10000 == 0) {
+                            this.statusMessage = "已停止";
+                            this.statusClass = "status-stopped"; // 设置状态类
+                            alert('禁用成功');
+                            MessageTip("停止成功", "red");
+                        }
+                    });
+                },
+                setAdGuardUrl() {
+                    var port = 8096; // AdGuardHome 端口号
+                    var host = window.location.hostname; // 获取当前访问的主机名
+                    this.adGuardUrl = `http://${host}:${port}`; // 设置 AdGuard URL
+                }
+            }
+        });
+    </script>
+</html>

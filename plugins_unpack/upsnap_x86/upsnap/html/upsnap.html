@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <script src="../../static/js/vue.js"></script>
+    <script src="../../static/js/plugin.js"></script>
+    <script src="../../static/js/element.js"></script>
+    <link rel="stylesheet" href="../../static/css/plugin.css" type="text/css">
+    <link rel="stylesheet" href="../../static/css/element.css">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <style>
+        .status-started {
+            color: green;
+        }
+        .status-stopped {
+            color: red;
+        }
+        .status-unknown {
+            color: gray;
+        }
+    </style>
+</head>
+<body>
+    <div id="app" class="wrapper row" v-loading="loading" :element-loading-text="loading_text">
+        <div class="box clearfix">
+            <div class="box_block">
+                <div class="clearfix margin_phone col-lg-11 col-lg-offset-1">
+                    <div class="line_edit">
+                        <span class="input_tit">开机自启动：</span> 
+                        <div class="input_group">
+                            <el-switch @change="set_auto_start" v-model="autostart"></el-switch>
+                        </div>
+                    </div>
+                    <div class="line_edit">
+                        <span class="input_tit">UpSnap状态：</span> 
+                        <div class="input_group">
+                            <span :class="statusClass">{{ statusMessage }}</span>
+                        </div>
+                    </div>
+                    <div class="line_edit">
+                        <span class="input_tit">访问控制台：</span> 
+                        <div class="input_group">
+                            <a :href="upsnapUrl" target="_blank" style="color: blue; text-decoration: underline;">{{ upsnapUrl }}</a>
+                        </div>
+                    </div>
+                    <div class="h20"></div>
+                    <div class="line_edit">
+                        <div class="input_group">
+                            <button type="button" @click="upsnap_start" class="btn btn_green btn_confirm">
+                                {{ statusclick }}
+                            </button>
+                            <button type="button" @click="upsnap_disable" class="btn btn_red btn_confirm margin-l-10">
+                                禁用
+                            </button>
+                        </div>
+                    </div>
+                    <div class="h20"></div>
+                    <div class="readme col-lg-11 col-xs-12">
+                        <span class="note">功能说明：</span>
+                        <div>1、UpSnap状态启动后，请访问：<a :href="upsnapUrl" target="_blank">{{ upsnapUrl }}</a></div>
+                        <div>2、禁用将删除配置</div>
+                    </div>
+                    <div class="h40"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+            
+    <script type="module">
+        var app = new Vue({
+            el: '#app',
+            data: {                
+                autostart: false,
+                result: "",
+                statusMessage: "未知",
+                statusClass: "status-unknown",
+                statusclick: "安装",
+                upsnapUrl: "",
+                loading: false,
+                loading_text: ""
+            },
+            mounted() {
+                this.upsnap_status();
+                this.setupsnapUrl();
+            },
+            methods: {
+                set_auto_start() {
+                    var payload = {
+                        func_name: 'plugin_upsnap',
+                        action: 'set_auto_start',
+                        param: {autostart: this.autostart}
+                    };
+                    AjaxPost('/Action/call', payload, (response) => {
+                        if(response.Result % 10000 == 0) {
+                            this.$message({message: `UpSnap已${this.autostart ? '设为开机自启动' : '取消开机自启动'}！`, type: 'success'});
+                        } else {
+                            this.autostart = !this.autostart;
+                            this.$message.error(`操作失败！${response.ErrMsg}`);
+                        }
+                    });
+                },
+                upsnap_start() {
+                    this.loading = true;
+                    this.loading_text = "正在处理...";
+                    
+                    var payload = {
+                        func_name: 'plugin_upsnap',
+                        action: 'start',
+                        param: {}
+                    };
+                    AjaxPost('/Action/call', payload, (response) => {
+                        this.loading = false;
+                        if(response.Result % 10000 == 0) {
+                            if(this.statusMessage == "已启动") {
+                                this.statusMessage = "已停止";
+                                this.statusClass = "status-stopped";
+                                this.$message.success('UpSnap停止成功');
+                                this.statusclick = "启动";
+                            } else {
+                                this.statusMessage = "已启动";
+                                this.statusClass = "status-started";
+                                if(this.statusclick == "安装") {this.$message.success('UpSnap安装成功');}else{
+                                this.$message.success('UpSnap启动成功');}
+                                this.statusclick = "停止";
+                            }
+                        } else {
+                            this.$message.error(`操作失败！${response.ErrMsg}`);
+                        }
+                            this.upsnap_status();
+                    });
+                },
+                upsnap_status() {
+                    var payload = {
+                        func_name: 'plugin_upsnap',
+                        action: 'show',
+                        param: {
+                            TYPE: 'data'
+                        }
+                    };
+                    AjaxPost('/Action/call', payload, (response) => {
+                        if (response.Data && response.Data.status !== undefined) {
+                            if (response.Data.status == 1) {
+                                this.statusMessage = "已启动";
+                                this.statusClass = "status-started";
+                                this.statusclick = "停止";
+                            } else {
+                                this.statusMessage = "已停止";
+                                this.statusClass = "status-stopped";
+                                this.statusclick = "启动";
+                            }
+                            
+                            if (response.Data.status == 2) {
+                                this.statusMessage = "已停止";
+                                this.statusClass = "status-stopped";
+                                this.statusclick = "安装";
+                            }
+
+                            if (response.Data.autostart !== undefined) {
+                                this.autostart = response.Data.autostart == 1;
+                            }
+                        } else {
+                            console.error('Status is undefined in the response', response);
+                            this.statusMessage = "状态未知";
+                            this.statusClass = "status-unknown";
+                        }
+                    });
+                },
+                upsnap_disable() {
+                    this.loading = true;
+                    this.loading_text = "正在禁用...";
+                    
+                    var payload = {
+                        func_name: 'plugin_upsnap',
+                        action: 'stop',
+                        param: {}
+                    };
+                    AjaxPost('/Action/call', payload, (response) => {
+                        this.loading = false;
+                        if(response.Result % 10000 == 0) {
+                            this.statusMessage = "已停止";
+                            this.statusClass = "status-stopped";
+                            this.$message.success('UpSnap禁用成功');
+                            this.upsnap_status();
+                        } else {
+                            this.$message.error(`禁用失败！${response.ErrMsg}`);
+                        }
+                    });
+                },
+                setupsnapUrl() {
+                    var port = 8090;
+                    var host = window.location.hostname;
+                    this.upsnapUrl = `http://${host}:${port}`;
+                }
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>frpc 配置</title>
+    <script src="../../static/js/vue.js"></script>
+    <script src="../../static/css/app.js"></script>
+    <link rel="stylesheet" href="../../static/css/app.css" type="text/css">
+    <style>
+        .status-started {
+            color: green;
+        }
+        .status-stopped {
+            color: red;
+        }
+        .status-unknown {
+            color: gray;
+        }
+        .status-value {
+            color: green;
+        }
+        .input-field {
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+        }
+        .input-label {
+            display: inline-block;
+            width: 80px;
+        }
+        .input-box {
+            width: 250px;
+            padding: 6px;
+            border: 1px solid blue;
+            border-radius: 4px;
+            height: 34px;
+            margin-right: 10px;
+        }
+        .submit-button {
+            height: 34px;
+            padding: 6px 12px;
+            background-color: green;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <div>
+            <!-- 空行 -->
+            <div style="height: 20px;"></div>
+            <div class="status">
+                服务状态：<span :class="statusClass">{{ statusMessage }}</span>
+            </div>
+            <div style="height: 20px;"></div>
+            <!-- 显示 frpc 地址和密钥，并设置为绿色，如果为空则显示“未配置” -->
+            <div class="status">
+                服务地址：<span class="status-value">{{ server_addr }}</span>
+            </div>
+            <div style="height: 20px;"></div>
+            <div class="status">
+                服务端口：<span class="status-value">{{ server_port }}</span>
+            </div>
+            <div style="height: 20px;"></div>
+            <div class="status">
+                程序版本：<span class="status-value">{{ version }}</span>
+            </div>
+
+
+          	<div style="height: 20px;"></div>
+			<div>当前配置：<a :href="LocalUrl" target="_blank">访问文件</a></div>
+ 
+          	<div style="height: 20px;"></div>
+			<div>配置例子：<a :href="LocalUrlmd" target="_blank">访问文件</a></div>
+ 
+
+            <div style="height: 30px;"></div>
+            <button @click="frpc_start" class="btn btn_green btn_confirm margin-l-10" type="button">
+               {{ statusclick }} 
+            </button>
+
+            <button @click="frpc_disable" class="btn btn_red btn_confirm margin-l-10" type="button">
+                禁用
+            </button>
+        </div>
+		
+			<div style="height: 40px;"></div>
+		
+					<!-- 文件选择和上传按钮 -->
+				<div>
+
+				 <input type="text" id="fileName" readonly style="background-color: white; border: 1px solid blue; padding: 6px; border-radius: 4px;" >
+				<!-- 自定义的选择文件按钮 -->
+				<label for="fileUpload" class="btn btn_blue btn_confirm margin-l-10">
+					选择文件
+				</label>
+				
+				<!-- 隐藏的文件输入框 -->
+				<input type="file" id="fileUpload" style="display: none;" onchange="document.getElementById('fileName').value = this.files[0].name;">
+				
+				<!-- 上传 EEPROM 按钮 -->
+				<button @click="uploadFile" class="btn btn_green btn_confirm margin-l-10" type="button">
+					上传配置
+				</button>
+				<div style="height: 20px;"></div>
+				<div class="readme"><span class="note" style="left: 20px;">功能说明：</span>
+				<div>1、高级配置请请使用上传配置文件，上传错误可禁用frpc后重传即可，文本内空查看frpc官方文档，</div>
+				<div style="height: 10px;"></div>
+				<div>2、frpc官方文档，https://gofrp.org/zh-cn/；</div>
+				</div>
+			</div>
+
+    </div>
+    
+    <script type="module">
+        var app = new Vue({
+            el: '#app',
+            data: { 
+                result: "",
+                statusMessage: "未知",
+				statusclick: "安装",
+                statusClass: "status-unknown",
+                server_addr: "未获取",  
+                server_port: "未获取",    
+                version: "未获取",  
+                serverInput: "",  
+                vkeyInput: "",   
+                passwordInput: "",  
+                targetInput: "",   
+				LocalUrl: "",			
+				LocalUrlmd: "",						
+                localTypeInput: ""  
+            },
+            mounted() {
+                this.frpc_status();
+				this.setLocalUrl();
+            },
+            methods: {
+                validateInput(input, regex) {
+                    return regex.test(input);
+                },
+				submitConfig() {
+					// 过滤正则表达式
+					const serverRegex = /^[a-zA-Z0-9\.]+(:[0-9]+)?$/;  // 允许字母、数字、点，且仅允许服务器中使用冒号
+					const vkeyAndLocalTypeRegex = /^[a-zA-Z0-9\.]+$/; // 仅允许字母、数字、点
+					const targetRegex = /^[a-zA-Z0-9\.\:\s]+$/; // 允许字母、数字、点、冒号和空格，仅目标允许空格
+
+					// 验证服务器
+					if (!this.validateInput(this.serverInput.trim(), serverRegex)) {
+						alert("服务器只能包含字母、数字、点和冒号，且冒号仅用于服务器地址中的端口");
+						return;
+					}
+
+					// 验证密钥和本地类型
+					if (!this.validateInput(this.vkeyInput.trim(), vkeyAndLocalTypeRegex)) {
+						alert("密钥只能包含字母、数字和点");
+						return;
+					}
+					if (this.localTypeInput && !this.validateInput(this.localTypeInput.trim(), vkeyAndLocalTypeRegex)) {
+						alert("本地类型只能包含字母、数字和点");
+						return;
+					}
+
+					// 验证 target 字段
+					if (this.targetInput && !this.validateInput(this.targetInput.trim(), targetRegex)) {
+						alert("目标只能包含字母、数字、点、冒号和空格");
+						return;
+					}
+
+					// 自定义编码逻辑，只编码空格为 %20，冒号保持原样
+					let encodedTarget = this.targetInput.trim().replace(/ /g, '%20');
+
+
+
+					var payload = {
+						func_name: 'plugin_frpc',
+						action: 'update_config',
+						param: {
+							server: this.serverInput.trim(),
+							vkey: this.vkeyInput.trim(),
+							password: this.passwordInput.trim(),
+							target: encodedTarget, // 使用自定义编码后的 target
+							local_type: this.localTypeInput.trim()
+						}
+					};
+
+					AjaxPost('/Action/call', payload, (response) => {
+						if (response && response.Result % 10000 == 0) {
+							alert('配置已成功更新');
+							this.frpc_status(); // 重新获取状态，更新显示的 frpc 配置信息
+						} else {
+							alert('配置更新失败');
+						}
+					});
+				},
+                frpc_start() {
+                    var payload = {
+                        func_name: 'plugin_frpc',
+                        action: 'start',
+                        param: {}
+						
+                    };
+					if (this.statusclick == "安装") {
+						alert('安装中');
+						AjaxPost('/Action/call', payload)
+						this.frpc_status();
+						return;
+					};
+                    AjaxPost('/Action/call', payload, (response) => {
+                    	if(this.statusMessage == "已启动") {
+						this.statusMessage = "已停止";
+						this.statusClass = "status-stopped"; // 设置状态类
+						 alert('frpc停止成功');
+						 this.statusclick = "启动";
+						} else {
+                            this.statusMessage = "已启动";
+                            this.statusClass = "status-started"; // 设置状态类
+                            alert('frpc启动成功');
+                            MessageTip("frpc启动成功", "green");
+							this.statusclick = "停止";
+						  }
+						  this.frpc_status();
+                    });
+                },
+                frpc_stop() {
+                    var payload = {
+                        func_name: 'plugin_frpc',
+                        action: 'stop',
+                        param: {}
+                    };
+                    AjaxPost('/Action/call', payload, (response) => {
+                        if(response.Result % 10000 == 0) {
+                            this.statusMessage = "已停止";
+                            this.statusClass = "status-stopped";
+                            alert('frpc停止成功');
+                            MessageTip("frpc停止成功", "red");
+                        }
+                    });
+                },
+                frpc_disable() {
+                    var payload = {
+                        func_name: 'plugin_frpc',
+                        action: 'disable',
+                        param: {}
+                    };
+                    AjaxPost('/Action/call', payload, (response) => {
+                        if(response.Result % 10000 == 0) {
+                            this.statusMessage = "已停止";
+                            this.statusClass = "status-stopped";
+                            alert('frpc禁用成功');
+                            MessageTip("frpc禁用成功", "red");
+                        }
+                    });
+                },
+				setLocalUrl() {
+                    var host = window.location.hostname;
+                    this.LocalUrl = `http://${host}/frpc.txt`;
+					this.LocalUrlmd = `http://${host}/frpc.txt`;
+                },
+			uploadFile() {
+                var fileInput = document.getElementById('fileUpload');
+                var file = fileInput.files[0];
+
+                if (!file) {
+                    alert('请先选择一个文件');
+                    return;
+                }
+
+                var formData = new FormData();
+                formData.append('file', file);
+
+                var xhr = new XMLHttpRequest();
+                xhr.open('POST', '/Action/upload', true);
+                xhr.onload = function () {
+                    if (xhr.status == 200) {
+                        alert('文件上传成功');
+                        app.frpc_config();
+                    } else {
+                        alert('上传失败');
+                    }
+                };
+                xhr.send(formData);
+            },
+			frpc_config() {
+                var payload = {
+                    func_name: 'plugin_frpc',
+                    action: 'config',
+                    param: {}
+                };
+                AjaxPost('/Action/call', payload, (response) => {
+                    if (response.Result % 10000 == 0) {
+                        alert('frpc 配置成功');
+                    } else {
+                        alert('frpc 配置失败');
+                    }
+					 this.frpc_status();
+                });
+            },
+                frpc_status() {
+                    var payload = {
+                        func_name: 'plugin_frpc',
+                        action: 'show',
+                        param: {
+                            TYPE: 'status,config'
+                        }
+                    };
+                    AjaxPost('/Action/call', payload, (response) => {
+                        if (response.Result % 10000 == 0 && response.Data) {
+                            const data = response.Data;
+
+                            if (data.status == 1) {
+                                this.statusMessage = "已启动";
+                                this.statusClass = "status-started";
+								this.statusclick = "停止";
+                            } else {
+                                this.statusMessage = "已停止";
+                                this.statusClass = "status-stopped";
+								this.statusclick = "启动";
+                            }
+							
+							  if (data.status == 2) {
+                                this.statusMessage = "安装中";
+                                this.statusClass = "status-started";
+                            }
+							
+							if (data.status == 3) {
+                                this.statusMessage = "已停止";
+                                this.statusClass = "status-stopped";
+								this.statusclick = "安装";
+                            }
+
+                            this.server_addr = data.server_addr ? data.server_addr : "未获取";
+                            this.server_port = data.server_port ? data.server_port : "未获取";
+                            this.version = data.version ? data.version : "未获取";
+
+                            console.log('frpc 状态信息:', data);
+
+                        } else {
+                            console.error('Status is undefined in the response', response);
+                            this.statusMessage = "状态未知";
+                            this.statusClass = "status-unknown";
+                        }
+                    });
+                },
+            }
+        });
+    </script>
+</body>
+</html>

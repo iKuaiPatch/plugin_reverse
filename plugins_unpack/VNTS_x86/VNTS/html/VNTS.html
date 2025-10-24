@@ -1,0 +1,354 @@
+<html>
+    <head>
+        <script src="../../static/js/vue.js"></script>
+		<script src="../../static/css/app.js"></script>
+		<link rel="stylesheet" href="../../static/css/app.css" type="text/css">
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+        <style>
+            .status-started {
+                color: green;
+            }
+            .status-stopped {
+                color: red;
+            }
+            .status-unknown {
+                color: gray;
+            }
+            .status-value {
+                color: green;
+            }
+		.input-field {
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+        }
+        .input-label {
+            display: inline-block;
+            width: 80px;
+        }
+        .input-box {
+            width: 250px;
+            padding: 6px;
+            border: 1px solid blue;
+            border-radius: 4px;
+            height: 34px;
+            margin-right: 10px;
+        }
+        .submit-button {
+            height: 34px;
+            padding: 6px 12px;
+            background-color: green;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        </style>
+    </head>
+    <body>
+        <div id="app">
+            <div>
+ 
+                <div class="status">
+
+				服务状态：<span :class="statusClass">{{ statusMessage }}</span>
+                </div>
+				  <div style="height: 20px;"></div>
+				 <div class="status">
+				服务端口：<span :class="statusClass">{{ vnts_port_log }}</span>
+                </div>
+				  <div style="height: 20px;"></div>
+				 <div class="status">
+				WEB端口：<span :class="statusClass">{{ web_port_log }}</span>
+                </div>
+				  <div style="height: 20px;"></div>
+				 <div class="status">
+				WEB用户：<span :class="statusClass">{{ web_user_log }}</span>
+                </div>
+				  <div style="height: 20px;"></div>
+				 <div class="status">
+				WEB密码：<span :class="statusClass">{{ web_pwd_log }}</span>
+                </div>
+
+				  <div style="height: 20px;"></div>
+					 <div class="status">
+				网关：<span :class="statusClass">{{ gateway_log }}</span>
+                </div>	
+				  <div style="height: 20px;"></div>
+					 <div class="status">
+				掩码：<span :class="statusClass">{{ netmask_log }}</span>
+                </div>		
+				  <div style="height: 20px;"></div>
+					 <div class="status">
+				密钥：<span :class="statusClass">{{ key_log }}</span>
+                </div>	
+				  <div style="height: 20px;"></div>
+				 <div class="status">
+				Token白名单：<span :class="statusClass">{{ token_name_log }}</span>
+                </div>
+				  <div style="height: 20px;"></div>
+				 <div class="status">
+				程序版本：<span :class="statusClass">{{ version }}</span>
+                </div>		
+				<div style="height: 20px;"></div>
+				 <div>VNTS面板：<a :href="`${LocalUrl}${web_port_log}`" target="_blank">点击访问</a></div> 		
+				<div style="height: 30px;"></div>
+			<!-- 服务器和密钥输入框 -->
+			 <div class="input-field">
+                <label class="input-label" for="port">服务端口:</label>
+                <input type="text" id="port" v-model="portInput" class="input-box" placeholder="默为空为29872" required>
+            </div>
+            <div class="input-field">
+                <label class="input-label" for="user">WEB用户:</label>
+                <input type="text" id="server" v-model="userInput" class="input-box" placeholder="默为空为admin" required>
+            </div>
+            <div class="input-field">
+                <label class="input-label" for="pwd">WEB密码:</label>
+                <input type="text" id="pwd" v-model="pwdInput" class="input-box" placeholder="默为空为admin" required>
+            </div>
+			  <div class="input-field">
+                <label class="input-label" for="port">WEB端口:</label>
+                <input type="text" id="port" v-model="portInput" class="input-box" placeholder="默为空为29870" required>
+            </div>
+            <!-- 密码、目标和本地类型为可选字段 -->
+   
+            <div class="input-field">
+                <label class="input-label" for="Virtual_ip">组网子网:</label>
+                <input type="text" id="Virtual_ip" v-model="Virtual_ipInput" class="input-box" placeholder="10.26.0.1">
+            </div>
+			  <div class="input-field">
+                <label class="input-label" for="netmask">子网掩码:</label>
+                <input type="text" id="netmask" v-model="netmask_Input" class="input-box" placeholder="255.255.255.0">
+            </div>
+			<div class="input-field">
+                <label class="input-label" for="token"> Token白名单:</label>
+                <input type="text" id="token" v-model="token_Input" class="input-box" placeholder="默为空不开启">
+				  <button @click="submitConfig" class="btn btn_green btn_confirm margin-l-10">提交</button>
+            </div>
+            <!-- 空行 -->
+            <div style="height: 20px;"></div>
+
+
+				<div style="height: 30px;"></div>
+
+                <button @click="VNTS_start" class="btn btn_green btn_confirm margin-l-10" type="button">
+                    {{ statusclick }}
+                </button>
+                <button @click="VNTS_stop" class="btn btn_red btn_confirm margin-l-10" type="button">
+                    禁用
+                </button>
+				<div style="height: 20px;"></div>
+				<div class="readme"><span class="note" style="left: 20px;">功能说明：</span>
+				<div>1、状态:已启动，开机会自启动。禁用则清理配置；</div> 
+				</div>
+				<div style="height: 30px;"></div>
+
+			<div style="height: 30px;"></div>	
+
+			
+            </div>
+        </div> 
+    </body>
+    <script type="module">
+        var app = new Vue({
+            el: '#app',
+            data: { 
+                result: "",
+                statusMessage: "未知",
+                statusClass: "status-unknown",
+				LocalUrl: "",
+				statusclick: "启动",
+				version: "未获取",
+				vnts_port_log: "未获取",
+				web_port_log: "未获取",
+				token_name_log: "未获取",
+				gateway_log: "未获取",
+				netmask_log: "未获取",
+				web_user_log: "未获取",
+				web_pwd_log: "未获取",
+				key_log: "未获取",
+				userInput: "", 
+				pwdInput: "", 
+				portInput: "",    
+                Virtual_ipInput: "",
+				netmask_Input: "",
+				token_Input: "",
+
+                statusDetails: {}  // 初始化为对象，而不是 null
+            },
+            mounted() {
+                this.VNTS_status();
+				this.setLocalUrl();
+            },
+            methods: {
+                VNTS_start() {
+                    var payload = {
+                        func_name: 'plugin_VNTS',
+                        action: 'VNTS_start',
+                        param: {}
+                    };
+					if (this.statusclick == "安装") {
+						alert('安装中');
+						AjaxPost('/Action/call', payload)
+						this.NPS_status();
+						return;
+					};
+                    AjaxPost('/Action/call', payload, (response) => {
+                    	if(this.statusMessage == "已启动") {
+						this.statusMessage = "已停止";
+						this.statusClass = "status-stopped"; // 设置状态类
+						 alert('VNTS停止成功');
+						 this.statusclick = "启动";
+						} else {
+                            this.statusMessage = "已启动";
+                            this.statusClass = "status-started"; // 设置状态类
+                            alert('VNTS启动成功');
+                            MessageTip("VNTS启动成功", "green");
+							this.statusclick = "停止";
+						  }
+						  this.VNTS_status();
+                    });
+                },
+				submitConfig() {
+					var payload = {
+						func_name: 'plugin_VNTS',
+						action: 'update_config',
+						param: {
+
+							user: this.userInput.trim(),
+							pwd: this.pwdInput.trim(),
+							port: this.portInput.trim(),
+							Virtual: this.Virtual_ipInput.trim(),
+							netmask: this.netmask_Input.trim(),
+							token: this.token_Input.trim()
+						}
+					};
+
+					AjaxPost('/Action/call', payload, (response) => {
+						if (response && response.Result % 10000 == 0) {
+							alert('配置已成功更新');
+							this.VNTS_status(); // 重新获取状态，更新显示的 VNTS 配置信息
+						} else {
+							alert('配置更新失败');
+						}
+						 this.VNTS_status();
+					});
+				},
+                VNTS_stop() {
+                    var payload = {
+                        func_name: 'plugin_VNTS',
+                        action: 'stop',
+                        param: {}
+                    };
+                    AjaxPost('/Action/call', payload, (response) => {
+                        if(response.Result % 10000 == 0) {
+                            this.statusMessage = "已停止";
+                            this.statusClass = "status-stopped";
+                            alert('VNTS停止成功');
+                            MessageTip("VNTS停止成功", "red");
+							this.statusclick = "启动";
+                        }
+						 this.VNTS_status();
+                    });
+                },
+                VNTS_status() {
+                    var payload = {
+                        func_name: 'plugin_VNTS',
+                        action: 'show',
+                        param: {
+                            TYPE: 'status'
+                        }
+                    };
+                    AjaxPost('/Action/call', payload, (response) => {
+                        if (response.Result % 10000 == 0 && response.Data) {
+                            const data = response.Data;
+
+                            if (data.status == 1) {
+                                this.statusMessage = "已启动";
+                                this.statusClass = "status-started";
+								this.statusclick = "停止";
+                            } else {
+                                this.statusMessage = "已停止";
+                                this.statusClass = "status-stopped";
+								this.statusclick = "启动";
+                            }
+							 if (data.status == 2) {
+                                this.statusMessage = "安装中";
+                                this.statusClass = "status-started";
+                            }
+							
+							if (data.status == 3) {
+                                this.statusMessage = "已停止";
+                                this.statusClass = "status-stopped";
+								this.statusclick = "安装";
+                            }
+							
+							this.version = data.version ? data.version : "未获取";
+							this.vnts_port_log = data.vnts_port_log ? data.vnts_port_log : "未获取";
+							this.token_name_log = data.token_name_log ? data.token_name_log : "未获取";
+							this.gateway_log = data.gateway_log ? data.gateway_log : "未获取";
+							this.key_log = data.key_log ? data.key_log : "未获取";
+							this.web_port_log = data.web_port_log ? data.web_port_log : "未获取";
+							this.netmask_log = data.netmask_log ? data.netmask_log : "未获取";
+							this.web_user_log = data.web_user_log ? data.web_user_log : "admin";
+							this.web_pwd_log = data.web_pwd_log ? data.web_pwd_log : "admin";
+
+
+                            // 将 data 存储到 statusDetails 中
+                            this.statusDetails = data;
+                            console.log('VNTS 状态信息:', this.statusDetails);
+
+                        } else {
+                            console.error('Status is undefined in the response', response);
+                            this.statusMessage = "状态未知";
+                            this.statusClass = "status-unknown";
+                        }
+                    });
+                },
+		 setLocalUrl() {
+                    var host = window.location.hostname;
+                    this.LocalUrl = `http://${host}:`;
+                },
+			uploadFile() {
+                var fileInput = document.getElementById('fileUpload');
+                var file = fileInput.files[0];
+
+                if (!file) {
+                    alert('请先选择一个文件');
+                    return;
+                }
+
+                var formData = new FormData();
+                formData.append('file', file);
+
+                var xhr = new XMLHttpRequest();
+                xhr.open('POST', '/Action/upload', true);
+                xhr.onload = function () {
+                    if (xhr.status == 200) {
+                        alert('文件上传成功');
+                        app.VNTS_config();
+                    } else {
+                        alert('上传失败');
+                    }
+                };
+                xhr.send(formData);
+            },
+		 VNTS_config() {
+                var payload = {
+                    func_name: 'plugin_VNTS',
+                    action: 'config',
+                    param: {}
+                };
+                AjaxPost('/Action/call', payload, (response) => {
+                    if (response.Result % 10000 == 0) {
+                        alert('VNTS 配置成功');
+                    } else {
+                        alert('VNTS 配置失败');
+                    }
+					 this.VNTS_status();
+                });
+            }
+            }
+        });
+    </script>
+</html>

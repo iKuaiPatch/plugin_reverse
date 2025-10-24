@@ -1,0 +1,41 @@
+/tmp/xunyou/bin/xunyou -c /tmp/xunyou/conf/plugin.conf &
+sh /tmp/xunyou1/xunyou_daemon.sh simple
+
+
+https://router.xunyou.com/dist/control-pc.html?partner=&salesid=358766552?from=router_web&lanmac=00:0C:29:CC:1F:75
+
+
+/bin/sh xyinstall.sh openwrt $(uname -m) -i lan1
+
+
+
+
+
+sed -i 's|PLUGIN_DIR="/xunyou"|PLUGIN_DIR="/tmp/data/xunyou"|' /tmp/data/xunyou/xunyou_daemon.sh
+
+sed -i 's/br-lan/lan1/g' /tmp/data/xunyou/xunyou_daemon.sh
+
+
+sh  /tmp/data/xunyou/xunyou_daemon.sh simple
+
+
+/bin/sh ${PLUGIN_DIR}/xunyou_daemon.sh start
+
+
+https://router.xunyou.com/dist/control-pc.html?partner=&salesid=358766552?from=router_web&lanmac=08:9e:4b:10:4b:de
+
+
+
+
+for pid in $(ps | grep "xunyou" | grep -v "grep" | awk '{print $1}'); do
+kill -9 $pid
+rm /tmp/xunyou -rf
+rm /tmp/.xunyou_install -rf
+done
+
+for pid in $(ps | grep "xunyou" | grep -v "grep" | awk '{print $1}'); do
+kill -9 $pid
+echo "结束成功$pid"
+done
+
+cat /etc/release|grep "LINUX_VERSION"|awk -F "=" '{print $2}' >/etc/openwrt_version

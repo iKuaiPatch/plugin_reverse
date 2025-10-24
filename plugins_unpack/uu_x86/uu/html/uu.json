@@ -1,0 +1,15 @@
+{
+	"name": "uu",
+	"alias": "UU加速器",
+	"manufacturer": "iKuai",
+	"version": "1.1.9",
+	"type": "external",
+    "description": "UU游戏加速器（或简称 UU）推出的网络加速工具，主要用于帮助用户在进行 在线游戏、视频观看、远程办公 等网络活动时，解决延迟和网络不稳定的问题。",
+    "releasenotes": "更新说明：<br>1、新增",
+    "build": "202411240224",
+    "compatibility": [
+      "mt7621",
+      "mt798x",
+      "x86"
+    ]
+}

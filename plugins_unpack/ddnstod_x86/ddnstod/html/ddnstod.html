@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>zerotier 配置</title>
+    <script src="../../static/js/vue.js"></script>
+    <script src="../../static/css/app.js"></script>
+    <link rel="stylesheet" href="../../static/css/app.css" type="text/css">
+    <style>
+        .status-started {
+            color: green;
+        }
+        .status-stopped {
+            color: red;
+        }
+        .status-unknown {
+            color: gray;
+        }
+        .status-value {
+            color: green;
+        }
+        .input-field {
+      
+            display: flex;
+            align-items: center;
+			
+        }
+        .input-label {
+            display: inline-block;
+            width: 70px;
+        }
+		.input-labels {
+            display: inline-block;
+            width: 80px;
+        }
+        .input-box {
+            width: 250px;
+            padding: 6px;
+            border: 1px solid blue;
+            border-radius: 4px;
+            height: 34px;
+            margin-right: 10px;
+        }
+        .submit-button {
+            height: 34px;
+            padding: 6px 12px;
+            background-color: green;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+		.input-box.device-id {
+			width: 60px; /* 设置宽度为 50px，可以根据需要调整 */
+			 margin-left: 5px;
+		}
+    </style>
+</head>
+<body>
+    <div id="app">
+        <div>
+            <!-- 空行 -->
+            <div style="height: 20px;"></div>
+            <div class="status">
+               服务状态：<span :class="statusClass">{{ statusMessage }}</span>
+            </div>
+			 <div style="height: 20px;"></div>
+			 
+			<div style="margin-top: 10px;">
+               设备ID：<span :class="statusClass">{{ dev_ids }} 设备编号 {{ id }}</span>
+            </div>
+			 <div style="height: 20px;"></div>
+			 
+			 
+			<!-- 访问控制台链接 -->
+			<div style="margin-top: 10px;">
+				访控制台：<a href="https://www.ddnsto.com/app/#/login" target="_blank" style="color: blue; text-decoration: underline;">www.ddnsto.com</a>
+			</div>
+
+
+            <div style="height: 30px;"></div>
+
+            <!-- 服务器和密钥输入框 -->
+            <div class="input-field">
+                <label class="input-label" for="server">用户Token:</label>
+                <input type="text" id="server" v-model="serverInput" class="input-box" :placeholder="toke" required>
+				<label class="input-labels" for="deviceId" style="margin-left: 0px;">设备编号ID:</label>
+                <input type="text" id="deviceId" v-model="devid" class="input-box device-id" :placeholder="id"  size="3" maxlength="3" required>
+				 <button @click="submitConfig" class="btn btn_green btn_confirm margin-l-10">提交</button>
+            </div>
+            <!-- 空行 -->
+            <div style="height: 20px;"></div>
+           
+            <div style="height: 20px;"></div>
+            <button @click="start" class="btn btn_green btn_confirm margin-l-10" type="button">
+                 {{ statusclick }}
+            </button>
+            <button @click="disable" class="btn btn_red btn_confirm margin-l-10" type="button">
+                禁用
+            </button>
+        </div>
+
+    </div>
+    
+    <script type="module">
+        var app = new Vue({
+            el: '#app',
+            data: { 
+                result: "",
+                statusMessage: "未知",
+                statusClass: "status-unknown",
+				statusclick: "启动",
+				toke : "输入Token",
+				id : "设备ID",
+				dev_ids :  "未获取",
+				devid: "",
+                serverInput: ""  
+            },
+            mounted() {
+                this.status();
+            },
+            methods: {
+                validateInput(input, regex) {
+                    return regex.test(input);
+                },
+				submitConfig() {
+					var payload = {
+						func_name: 'plugin_ddnstod',
+						action: 'update_config',
+						param: {
+							toke: this.serverInput,id: this.devid
+						}
+					};
+					AjaxPost('/Action/call', payload, (response) => {
+						if (response && response.Result % 10000 == 0) {
+							alert('配置已成功更新');
+						} else {
+							alert('配置更新失败');
+						}
+					});
+				},
+               start() {
+                    var payload = {
+                        func_name: 'plugin_ddnstod',
+                        action: 'start',
+                        param: {}
+                    };
+                    AjaxPost('/Action/call', payload, (response) => {
+						if(this.statusMessage == "已启动") {
+						this.statusMessage = "已停止";
+						this.statusClass = "status-stopped"; // 设置状态类
+						 alert('停止成功');
+						 this.statusclick = "启动";
+						} else {
+                            this.statusMessage = "已启动";
+                            this.statusClass = "status-started"; // 设置状态类
+                            alert('启动成功');
+                            MessageTip("启动成功", "green");
+							this.statusclick = "停止";
+						  } 
+                    });
+                },
+               stop() {
+                    var payload = {
+                        func_name: 'plugin_ddnstod',
+                        action: 'stop',
+                        param: {}
+                    };
+                    AjaxPost('/Action/call', payload, (response) => {
+                        if(response.Result % 10000 == 0) {
+                            this.statusMessage = "已停止";
+                            this.statusClass = "status-stopped";
+                            alert('停止成功');
+                            MessageTip("停止成功", "red");
+							 this.status();
+                        }
+						 
+                    });
+                },
+               disable() {
+                    var payload = {
+                        func_name: 'plugin_ddnstod',
+                        action: 'disable',
+                        param: {}
+                    };
+                    AjaxPost('/Action/call', payload, (response) => {
+                        if(response.Result % 10000 == 0) {
+                            this.statusMessage = "已停止";
+                            this.statusClass = "status-stopped";
+                            alert('禁用成功');
+                            MessageTip("禁用成功", "red");
+							 this.status();
+                        }
+						 
+                    });
+                },
+               status() {
+                    var payload = {
+                        func_name: 'plugin_ddnstod',
+                        action: 'show',
+                        param: {
+                            TYPE: 'status,config'
+                        }
+                    };
+                    AjaxPost('/Action/call', payload, (response) => {
+                        if (response.Result % 10000 == 0 && response.Data) {
+                            const data = response.Data;
+
+                            if (data.status == 1) {
+                                this.statusMessage = "已启动";
+                                this.statusClass = "status-started";
+								this.statusclick = "停止";
+                            } else {
+                                this.statusMessage = "已停止";
+                                this.statusClass = "status-stopped";
+								this.statusclick = "启动";
+                            }
+
+                            console.log('状态信息:', data);
+							this.toke = data.toke ? data.toke : "输入Token";
+							this.id = data.id ? data.id : "设备ID";
+							this.dev_ids = data.dev_ids ? data.dev_ids : "未获取";
+							
+
+                        } else {
+                            console.error('Status is undefined in the response', response);
+                            this.statusMessage = "状态未知";
+                            this.statusClass = "status-unknown";
+                        }
+                    });
+                },
+            }
+        });
+    </script>
+</body>
+</html>

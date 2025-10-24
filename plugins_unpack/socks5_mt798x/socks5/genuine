@@ -1,0 +1,471 @@
+#!/bin/bash
+
+# debug_verify_device.sh
+# 带调试输出的签名验证脚本
+#/bin/busybox md5sum public.pem
+#11d701f576859b206a632b86eb0db48b  public.pem
+# 定义到期时间
+#expire_time="2025-07-06 20:22:35"
+# 获取当前时间戳（秒）
+# 将到期时间转换为时间戳
+#expire_timestamp=$(date -d "$expire_time" +%s)
+
+# 为文件签名
+#openssl dgst -sha256 -sign private_key.pem -out signature.bin file.txt
+# 验证签名
+#openssl dgst -sha256 -verify public_key.pem -signature signature.bin file.txt
+
+
+debug() {
+    if [ "$1" = "clear" ]; then
+        rm -f /tmp/debug.log && return
+    fi
+
+    if [ -f /tmp/debug_on ]; then
+        TIME_STAMP=$(date +"%Y%m%d %H:%M:%S")
+        echo "[$TIME_STAMP]: $1" >>/tmp/debug.log
+    fi
+}
+
+
+
+
+debug "==============程序开始===========8.1.31"
+
+
+
+if [ ! -f /tmp/iktmp/ikntpget ];then
+
+	ikntpget -s >/dev/null &
+	debug "执行时间同步"
+	echo 1 >/tmp/iktmp/ikntpget
+
+fi
+
+# 1. 检查 openssl 是否存在
+
+openssl_md5=`md5sum /usr/bin/openssl|awk -F " " '{print $1}'`
+if [ "$openssl_md5" != "8dc48f57409edca7a781e6857382687b" ] && [ "$openssl_md5" != "73b27bccb24fbf235e4cbe0fe80944b1" ] && [ "$openssl_md5" != "0b2d2d5711ffdff90d54853ca0ce990f" ];then
+	debug "存在问题"
+	exit 1
+fi
+
+# 检查网络状态，直到网络连接成功才继续向下执行
+check_network() {
+    debug "开始检查网络状态"
+    while true; do
+        ping -c2 8.8.8.8 >/dev/null 2>&1 && break
+        ping -c2 qq.com >/dev/null 2>&1 && break
+        ping -c2 163.com >/dev/null 2>&1 && break
+        ping -c2 baidu.com >/dev/null 2>&1 && break
+        network_check=1
+        debug "网络连接不正常!!!!!"
+        break
+    done
+     network_check=0
+    debug "网络连接正常，继续运行"
+
+}
+
+
+PUBLIC_KEY(){
+debug "调用KEY"
+PUBKEY_STR="-----BEGIN PUBLIC KEY-----
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAuP41dFb3szZrSbTGnPk6
+OKbJEZXJJi1T4S4GjnjIqzrfX+cV7wz5vF705jxij6KGAGZkGBQ2BRZsLghT+7nw
+KoEC99iHaj1QlfKkikS4b9x+SJbumZUHFh77P7Ir18C8Kjet8QrgyObu3R1NuRCy
+o86bbGgax0brO0w0aTSnw3vWbt9UVns9mPc9BekVM5vy97c12T4ijjgNRtwcGorP
+rCfQGo3Ff8QD5YPqKBA8mRYK96dm/SOxWEH63lwWDOp1rD240Oh1jaoRajMh03Ym
+Q0mwPf26qwMoiKAER+397J0vifnLLcI8Oik6vy4Xyrob5ie5g5ko48tUdf+4IFfF
+OQIDAQAB
+-----END PUBLIC KEY-----"
+PUBKEY=$(mktemp)
+echo "$PUBKEY_STR" > "$PUBKEY"
+}
+
+
+
+
+# 获取参数个数
+param_count=$#
+
+
+#PUBKEY="/root/public.pem"
+
+payload="/etc/mnt/ikuai/payload.json"
+signature="/etc/mnt/ikuai/signature.bin"
+response="/etc/mnt/ikuai/response.json"
+api_server='http://bdoptical2.vicp.cc:8881/devices2.php'
+
+
+if [ $param_count -eq 1 ]; then
+    if [ "$1" == "machine" ];then
+		echo_machine="ok"
+	fi
+fi
+
+
+if [ $param_count -eq 2 ]; then
+
+    if [ "$1" == "check_app" ];then
+			name_app=$2
+		else
+			sn=$2
+	fi
+ 
+fi
+
+
+decrypt_file=0
+if [ $param_count -eq 3 ]; then
+	decrypt_file=1
+    scrfile=$2
+    detsfile=$3
+fi
+
+
+clear_app(){
+
+debug "清理APP"
+rm /etc/log/ikipk -rf
+rm /etc/log/IPK -rf
+rm /etc/log/app_dir -rf
+rm /tmp/ikipk -rf
+rm /etc/log/ShellCrash -rf
+rm /tmp/genuine -rf
+
+}
+
+
+date_verify(){
+	expire_timestamp=$(jq -r '.date' $payload)
+	expire_time=$(jq -r '.expire_at'  $payload)
+        current_timestamp=$(date +%s)
+	
+    # 比较时间戳
+    if [ "$current_timestamp" -gt "$expire_timestamp" ]; then
+		debug "状态：已到期,当前时间：$(date '+%Y-%m-%d %H:%M:%S'),到期时间：$expire_time"
+		clear_app
+		rm $PUBKEY -f
+        exit 1  # 返回非0状态码表示异常
+    else
+		debug "状态：使用中,到期时间：$expire_time"
+		rm $PUBKEY -f
+		if [ $decrypt_file -eq 1 ];then
+		 return 0
+		
+		fi
+        exit 0  # 返回0状态码表示正常
+    fi
+}
+
+. /etc/release
+
+
+machine(){
+
+debug "机器码计算"
+if [ "$ARCH" == "x86" ];then
+    if [ -f "/sys/class/dmi/id/product_uuid" ]; then
+        product_uuid=$(tr -d '\n\r' < /sys/class/dmi/id/product_uuid)
+        elif [ -f "/sys/class/dmi/id/product_serial" ]; then
+        product_uuid=$(tr -d '\n\r' < /sys/class/dmi/id/product_serial)
+    fi
+    
+    temp="${GWID}${VIRTUAL_DEVICE}${DEVICE_MAC}${product_uuid}"
+    machines=$(printf "%s" "$temp" | md5sum | awk '{print $1}')
+    
+fi
+
+
+if [ "$ARCH" == "arm" ];then
+    
+    if [ "$MODELTYPE" != "Q3600" ];then
+        
+        # 读取GWID (从/dev/mtd3)
+        GWID=$(hexdump -v -s 65544 -n 16 -e '"" 1/1 "%02x"' /dev/mtd3 2>/dev/null)
+        product_uuid=$(tr -d '\n\r' < /sys/class/mtd/mtd0/uniqueid)
+        # 组合字符串
+        temp="${GWID}${product_uuid}"
+        # 计算MD5哈希
+        machines=$(printf "%s" "$temp" | md5sum | awk '{print $1}')
+        
+    fi
+    
+    if [ "$MODELTYPE" == "Q3600" ];then
+        GWID=$(hexdump -v -s 524296 -n 16 -e '"" 1/1 "%02x"' /dev/mtdblock16 2>/dev/null)
+        temp="${GWID}${GWID}"
+        machines=$(printf "%s" "$temp" | md5sum | awk '{print $1}')
+    fi
+    
+fi
+
+if [ "$echo_machine" == "ok" ];then
+echo "$machines"
+exit 0
+fi
+
+}
+
+
+hardwares(){
+
+debug "硬件类型"
+if [ `grep "VIRTUAL_DEVICE" /etc/release|wc -l` -ne 0 ];then
+    hardware="VMware"
+else
+    
+    if [ "$ARCH" == "x86" ];then
+        hardware="Route"
+		debug "Route"
+    fi
+    
+    if [ "$ARCH" == "arm" ];then
+        
+        if [ "$MODELTYPE" != "Q3600" ];then
+            
+            #官方设备识别
+            eep_mtd=/dev/$(cat /proc/mtd | grep "Factory" | cut -d ":" -f 1)
+            magic1=$(hexdump -v -s 0x10500 -n 6 $eep_mtd -e '1/6 "%s"')
+            magic2=$(hexdump -v -s 0x10100 -n 6 $eep_mtd -e '1/6 "%s"')
+            
+            if [ "$magic1" = ":>-<:" ] || [ "$magic2" = ":>-<:" ]; then
+                hardware="官方$MODELTYPE"
+				debug "官方$MODELTYPE"
+            else
+                hardware="三方$MODELTYPE"
+				debug "三方$MODELTYPE"
+            fi
+        fi
+        if [ "$MODELTYPE" == "Q3600" ];then
+            
+            eep_mtd=/dev/`cat /proc/mtd|grep "ETHPHYFW"|cut -d ":" -f 1`
+            magic3=$(hexdump -v -s 0x80100 -n 6 $eep_mtd -e '1/6 "%s"')
+            if [ "$magic3" = ":>-<:" ];then
+                hardware="官方$MODELTYPE"
+				debug "官方$MODELTYPE"
+            else
+                hardware="三方$MODELTYPE"
+				debug "三方$MODELTYPE"
+            fi
+        fi
+        
+    fi
+     
+fi
+
+}
+
+
+if [ "$ARCH" == "x86" ];then
+    version=$(cat /tmp/ikpkg/appinst/version)
+else
+    version=$(cat /tmp/data/app/IPK/eeprom/version)
+fi
+
+activate_clear(){
+	debug "清理验证文件"
+	killall CrashCore >/dev/null 2>&1
+    rm $payload -f
+    rm $signature -f
+	rm $response -f
+}
+
+Downloading_JSON(){
+    debug "访问JSON"
+    encoded_url=$(echo "$raw_url" | sed 's/ /%20/g')
+    URL=${encoded_url}
+	debug "$URL"
+    TMPDIR=$(mktemp -d)
+    trap 'rm -rf "$TMPDIR"' EXIT
+	
+	 # curl -sSf "$URL" -o "$TMPDIR/response.json"
+	if ! curl -sSf "$URL" -o "$TMPDIR/response.json"; then
+		debug "访问JSON失败"
+		 exit 1
+	fi
+  
+    status=$(jq -r '.status' "$TMPDIR/response.json")
+	
+	debug "收到回复为$status"
+	
+	if [ "$status" == "clear" ]; then
+		activate_clear
+		clear_app
+		exit 1
+	fi
+	
+	if [ "$status" == "activated" ]; then
+		cp "$TMPDIR/response.json" "$response"
+		base64 -d <(jq -r '.data' "$TMPDIR/response.json") > "$payload"
+		base64 -d <(jq -r '.signature' "$TMPDIR/response.json") > "$signature"
+		debug "确认为$status后在输出证书！！"
+		PUBLIC_KEY
+		    if /usr/bin/openssl dgst -sha256  -verify "$PUBKEY"   -signature "$signature" "$payload" >/dev/null 2>&1; then
+				debug "校验成功"
+				date_verify
+			else
+				debug "校验失败"
+				activate_clear
+				rm $PUBKEY -f
+				clear_app
+				exit 1
+			fi
+			
+	else
+	activate_clear
+	exit 1
+	fi
+
+}
+
+
+activate_sn(){
+	check_network
+	machine
+	hardwares
+	
+	debug "新激活$sn"
+	
+	if [ -z "$sn" ] || [ $network_check -eq 1 ];then
+		debug "注册码为空"
+	    if [ -s "$payload" ] && [ -s "$signature" ];then
+			debug "存在验证文件"
+			sn=$(jq -r '.sn' $payload)
+			expire_timestamp=$(jq -r '.date' $payload)
+			expire_time=$(jq -r '.expire_at' $payload)
+			machine_json=$(jq -r '.machine' $payload)
+			date=$(jq -r '.date' $payload)
+			debug "当前到期时间：$expire_time"
+			debug "文件机器码  ：$machine_json"
+			if [ "$machine_json" != "$machines" ];then
+				debug "验证文件-机器码对不上"
+				activate_clear
+				clear_app
+				exit 1
+			fi
+			
+			
+			
+			if [ $network_check -eq 1 ];then
+			
+				debug "activate_sn--无网络--存在验证文件"
+					PUBLIC_KEY
+			        if /usr/bin/openssl dgst -sha256  -verify "$PUBKEY"   -signature "$signature" "$payload" >/dev/null 2>&1; then
+						date_verify
+					else
+						debug "activate验证失败"
+						activate_clear
+						rm $PUBKEY -f
+						clear_app
+						exit 1
+			     	fi
+
+			fi
+			
+			
+			    raw_url="$api_server?sn=${sn}&gwid=${GWID}&device_mac=${DEVICE_MAC}&machine=${machines}&osver=${VERSTRING}&modeltype=${MODELTYPE}&hardware=${hardware}&date=${date}&version=${version}"
+			else
+			
+			
+			if [ $network_check -eq 0 ];then
+				debug "activate_sn--有网络--不存在验证文件"
+				
+				raw_url="$api_server?gwid=${GWID}&device_mac=${DEVICE_MAC}&machine=${machines}&osver=${VERSTRING}&modeltype=${MODELTYPE}&hardware=${hardware}&version=${version}"
+				
+			else
+			 debug "activate_sn--无网络--不存在文件--退出"
+
+			 exit 1
+			
+			fi
+
+		fi
+		
+		else
+		
+		
+		 raw_url="$api_server?sn=${sn}&gwid=${GWID}&device_mac=${DEVICE_MAC}&machine=${machines}&osver=${VERSTRING}&modeltype=${MODELTYPE}&hardware=${hardware}&version=${version}"
+	
+	fi
+	
+  
+	debug "$raw_url"
+    Downloading_JSON
+
+}
+
+activate(){
+    PUBLIC_KEY
+    machine
+	hardwares
+    
+    if [ -s "$payload" ] && [ -s "$signature" ];then
+		debug "activate存在验证文件"
+        sn=$(jq -r '.sn' $payload)
+        expire_timestamp=$(jq -r '.date' $payload)
+        expire_time=$(jq -r '.expire_at' $payload)
+        machine_json=$(jq -r '.machine' $payload)
+        
+        if [ "$machine_json" != "$machines" ];then
+            activate_clear
+			debug "activate验证文件错误"
+            rm $PUBKEY -f
+			clear_app
+            exit 1
+        fi
+
+        if /usr/bin/openssl dgst -sha256  -verify "$PUBKEY"   -signature "$signature" "$payload" >/dev/null 2>&1; then
+            date_verify
+        else
+		debug "activate验证失败"
+            activate_clear
+            rm $PUBKEY -f
+			clear_app
+            exit 1
+        fi
+	else	
+		rm $PUBKEY -f
+		debug "activate不存在验证文件"
+		exit 1
+    fi
+    
+}
+
+check_app(){
+
+	debug "APP验证$name_app"
+	#if jq -e ".app | split(\",\") | index(\"$name_app\")" /etc/mnt/payload.json >/dev/null; then
+	if jq --arg app "$name_app" -e '.app | split(",") | index($app)' $payload >/dev/null; then
+		debug "APP验证通过$name_app"
+		activate
+	else
+		debug "APP验证未通过！！！$name_app"
+		exit 1
+	fi
+
+}
+
+
+decrypt(){
+    	debug "解密文件"
+	activate
+	debug "解密文件111"
+
+    if ! echo -n "kingGC@21#13!888" | /usr/bin/openssl aes-128-cbc -in "$scrfile" -out "$detsfile" -pass stdin -d >/dev/null 2>&1; then
+	debug "IPK解密失败"
+	rm $PUBKEY -f
+        rm verifys -rf
+        rm $scrfile -rf
+        exit 1
+    fi
+
+
+	debug "解密成功"
+	debug "文件输出到$detsfile"
+    exit 0
+    
+}
+
+
+$@

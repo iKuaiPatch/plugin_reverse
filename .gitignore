@@ -1,0 +1,20 @@
+./*.exe
+__pycache__
+
+*.ext2
+source_dump
+
+dump/**
+
+source*.bin
+
+decrypt_rootfs.exe
+*.i64
+
+# File too large
+plugins_unpack/nginxWebUI_x86/nginxWebUI/data/nginxWebUI.gz
+backup_files/plugins/releasev8/ipk/x86/Jellyfin.ipk        
+backup_files/plugins/releasev8/ipk/x86/nginxWebUI.ipk
+plugins_unpack/Jellyfin_x86/Jellyfin/data/jellyfin.gz
+plugins/Jellyfin_x86.ipk
+plugins/nginxWebUI_x86.ipk

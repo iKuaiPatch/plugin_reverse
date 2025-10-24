@@ -1,0 +1,15 @@
+{
+	"name": "Jellyfin",
+	"alias": "Jellyfin",
+	"manufacturer": "iKuai",
+	"version": "1.1.9",
+	"type": "external",
+    "description": "Jellyfin 是一个开源的媒体服务器软件，允许用户在本地设备上存储、管理和流式传输视频、音频和电视节目等媒体内容。",
+    "releasenotes": "更新说明：<br>1、新增",
+    "build": "202411240224",
+    "compatibility": [
+      "mt7621",
+      "mt798x",
+      "x86"
+    ]
+}

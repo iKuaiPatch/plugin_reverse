@@ -1,0 +1,9 @@
+{
+	"name": "01.eeprom",
+	"alias": "系统工具",
+	"manufacturer": "iKuai",
+	"version": "1.1.9",
+	"type": "internal",
+	"description": "Eeprom Plugin",
+	"description": "插件市场是系统内置集成插件，支持其他插件的查看、安装、删除、更新等相关操作。"
+}

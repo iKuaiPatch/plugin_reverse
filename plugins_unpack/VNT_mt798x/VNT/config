@@ -1,0 +1,18 @@
+token: 26e843c45f598951a13fa52fceff9755
+name: Q3000
+device_id: 30e82e8ad9a230cf9fb9b0aab86b6268
+server_address: bdoptical2.vicp.cc:29872
+password: ikwbd
+server_encrypt: true
+stun_server:
+  - stun.miwifi.com
+  - stun.chat.bilibili.com
+parallel: 1
+cipher_model: aes_gcm
+dns:
+  - 223.5.5.5
+  - 8.8.8.8
+in_ips:
+  - 192.168.188.0/24,10.25.0.253
+out_ips:
+  - 0.0.0.0/0

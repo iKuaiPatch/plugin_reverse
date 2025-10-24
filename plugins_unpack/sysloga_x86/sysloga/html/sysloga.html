@@ -1,0 +1,274 @@
+<html>
+<head>
+    <script src="../../static/js/vue.js"></script>
+    <script src="../../static/css/app.js"></script>
+    <link rel="stylesheet" href="../../static/css/app.css" type="text/css">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <style>
+        .status-started {
+            color: green;
+        }
+        .status-stopped {
+            color: red;
+        }
+        .status-unknown {
+            color: gray;
+        }
+        .input-field {
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+        }
+        .input-label {
+            display: inline-block;
+            width: 80px;
+        }
+        .input-box, .input-select {
+            width: 250px;
+            padding: 6px;
+            border: 1px solid blue;
+            border-radius: 4px;
+            height: 34px;
+            margin-right: 10px;
+        }
+        .submit-button {
+            height: 34px;
+            padding: 6px 12px;
+            background-color: green;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .log-selection-container {
+            display: flex;
+            flex-wrap: wrap;
+        }
+        .log-selection-item {
+            width: 30%;  /* 控制每行最多显示三个 */
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <div>
+            <div class="status">
+                服务状态：<span :class="statusClassa">{{ statusMessage }}</span>
+            </div>
+            <div style="height: 13px;"></div>
+            <div class="status">
+                服务地址：<span :class="statusClass">{{ ipInput }}</span>
+            </div>
+            <div style="height: 13px;"></div>
+            <div class="status">
+                协议类型：<span :class="statusClass">{{ protocolDisplay }}</span>
+            </div>
+            <div style="height: 13px;"></div>
+            <div class="status">
+                服务端口：<span :class="statusClass">{{ portInput }}</span>
+            </div>
+            <div style="height: 13px;"></div>
+            <div class="status">
+                分-隔-符：<span :class="statusClass">{{ separatorDisplay }}</span>
+            </div>
+            <div style="height: 20px;"></div>
+            <div class="status">
+                当前日志：<span :class="statusClass">{{ formattedLogSelections }}</span>
+            </div>
+            <div style="height: 20px;"></div>
+
+            <!-- 服务IP输入框 -->
+            <div class="input-field">
+                <label class="input-label" for="ip">服务地址:</label>
+                <input type="text" id="ip" v-model="ipInput" class="input-box" placeholder="日志服务IP" required />
+            </div>
+
+            <!-- 协议类型下拉选择，样式与输入框一致 -->
+            <div class="input-field">
+                <label class="input-label" for="protocol">协议类型:</label>
+                <select id="protocol" v-model="protocolInput" class="input-select">
+                    <option value="TCP">TCP</option>
+                    <option value="UDP">UDP</option>
+                </select>
+            </div>
+
+            <!-- 端口输入框 -->
+            <div class="input-field">
+                <label class="input-label" for="port">服务端口:</label>
+                <input type="text" id="port" v-model="portInput" class="input-box" placeholder="9933" required />
+            </div>
+
+            <!-- 分隔符下拉选择，样式与输入框一致 -->
+            <div class="input-field">
+                <label class="input-label" for="separator">分-隔-符:</label>
+                <select id="separator" v-model="separatorInput" class="input-select">
+                    <option value="n">\n</option>
+                    <option value="o">\o</option>
+                    <option value="r">\r</option>
+                </select>
+            </div>
+			<div style="height: 20px;"></div>
+            <!-- 发送日志多选框，6 个一行 -->
+            <div class="input-field">
+                <label class="input-label">设置日志:</label>
+                <div class="log-selection-container">
+                    <div v-for="(log, index) in logTypes" :key="index" class="log-selection-item">
+                        <label><input type="checkbox" v-model="logSelections[index]" /> {{ log }}</label>
+                    </div>
+                </div>
+            </div>
+				<button @click="submitConfig" class="btn btn_green btn_confirm margin-l-10" type="button">
+				提交
+				</button>
+			    <button @click="sysloga_stop" class="btn btn_red btn_confirm margin-l-10" type="button">
+                    禁用
+                </button>
+        </div>
+    </div> 
+</body>
+<script type="module">
+    var app = new Vue({
+        el: '#app',
+        data: { 
+            result: "",
+            statusMessage: '未知',
+            statusClassa: 'status-unknown',
+			statusClass: 'status-unknown',
+            protocolInput: 'TCP',  // 设置协议类型选择框的初始值为 TCP
+            protocolDisplay: '',  // 用于显示后台返回的协议类型
+            portInput: '9933',
+            separatorInput: 'n',  // 设置分隔符的默认值为 n
+            ipInput: '',
+            logSelections: Array(13).fill(true), // 初始化为全选
+            logTypes: [  // 定义发送日志的所有类型
+                'IM记录', '认证日志', '无线终端', '网面浏览', 'NAT日志', '操作日志',
+                '外网拨号', 'DNS请求', 'DHCP日志', '系统日志', '动态或名', '络端日志', 'ARP日志'
+            ],
+            statusDetails: {},
+            logSelectionsString: '',  // 用于发送的日志字符串形式
+            formattedLogSelections: '',  // 用于显示的日志类型选项
+            separatorDisplay: '\\n'  // 显示为 \n
+        },
+        watch: {
+            // 监听 separatorInput 的变化来更新 separatorDisplay
+            separatorInput(newValue) {
+                if (newValue === 'n') {
+                    this.separatorDisplay = '\\n';
+                } else if (newValue === 'o') {
+                    this.separatorDisplay = '\\o';
+                } else if (newValue === 'r') {
+                    this.separatorDisplay = '\\r';
+                }
+            },
+            // 监听 logSelections 的变化，实时更新 formattedLogSelections
+            logSelections: {
+                handler() {
+                    this.updateFormattedLogSelections();
+                },
+                deep: true
+            }
+        },
+        mounted() {
+            // 确保在加载时显示默认协议类型为 TCP
+            this.protocolInput = 'TCP';
+            this.separatorInput = 'n';
+            this.sysloga_status(); // 页面加载时自动获取状态
+        },
+        methods: {
+            submitConfig() {
+                const logSelectionString = this.logSelections
+                    .map((selected) => (selected ? '1' : '0'))
+                    .join('');
+
+                var payload = {
+                    func_name: 'plugin_sysloga',
+                    action: 'update_config',
+                    param: {
+                        protocol: this.protocolInput,
+                        port: this.portInput,
+                        separator: this.separatorInput,
+                        ip: this.ipInput,
+                        logs: logSelectionString,
+                    },
+                };
+
+                // 使用你原来的 AjaxPost 调用
+                AjaxPost('/Action/call', payload, (response) => {
+                    if (response && response.Result % 10000 == 0) {
+                        alert('配置已成功更新');
+                        this.sysloga_status(); // 重新获取状态，更新显示的 sysloga 配置信息
+                    } else {
+                        alert('配置更新失败');
+                    }
+                    this.sysloga_status();
+                });
+            },
+            sysloga_status() {
+                var payload = {
+                    func_name: 'plugin_sysloga',
+                    action: 'show',
+                    param: {
+                        TYPE: 'status'
+                    }
+                };
+                AjaxPost('/Action/call', payload, (response) => {
+                    if (response.Result % 10000 == 0 && response.Data) {
+                        const data = response.Data;
+
+                        // 更新状态信息
+                        this.statusMessage = data.enabled == "yes" ? "已启动" : "已停止";
+                        this.statusClassa = data.enabled == "yes" ? "status-started" : "status-stopped";
+						this.statusClass = "status-started";
+                        // 更新协议和其他数据
+                        this.ipInput = data.server || '';
+                        this.protocolInput = data.protocol ? data.protocol.toUpperCase() : 'TCP';  // 更新下拉框协议值
+                        this.protocolDisplay = data.protocol ? data.protocol.toUpperCase() : 'TCP'; // 用于显示后台返回协议值
+                        this.portInput = data.port || '9933';
+                        this.separatorInput = data.delimiter === 10 ? 'n' : (data.delimiter === 15 ? 'o' : 'r');  // 修正分隔符映射
+
+                        // 更新复选框状态
+                        this.logSelections = [
+                            data.open_im, data.open_pppauth, data.open_iktimerd_ac, data.open_nat,
+                            data.open_opt, data.open_offline, data.open_ddns, data.open_dns,
+                            data.open_dhcp, data.open_sys, data.open_pppd, data.open_url,
+                            data.open_arp
+                        ].map(val => val == 1);
+
+                        // 更新显示字符串
+                        this.updateFormattedLogSelections();
+                    } else {
+                        console.error('Status is undefined in the response', response);
+                        this.statusMessage = '状态未知';
+                        this.statusClass = 'status-unknown';
+                    }
+                });
+            },
+		 sysloga_stop() {
+                    var payload = {
+                        func_name: 'plugin_sysloga',
+                        action: 'stop',
+                        param: {}
+                    };
+                    AjaxPost('/Action/call', payload, (response) => {
+                        if(response.Result % 10000 == 0) {
+                            this.statusMessage = "已停止";
+                            this.statusClass = "status-stopped";
+                            alert('sysloga停止成功');
+                            MessageTip("sysloga停止成功", "red");
+							this.statusclick = "启动";
+                        }
+						 this.sysloga_status();
+                    });
+                },
+            updateFormattedLogSelections() {
+                // 根据 logSelections 数组，生成选中的日志类型，以分号分隔
+                this.formattedLogSelections = this.logSelections
+                    .map((selected, index) => selected ? this.logTypes[index] : null)
+                    .filter(type => type !== null)
+                    .join(';');
+            }
+        }
+    });
+</script>
+</html>

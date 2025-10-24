@@ -1,0 +1,14 @@
+{
+	"name": "xunlei",
+	"alias": "讯雷下载",
+	"manufacturer": "iKuai",
+	"version": "1.1.9",
+    "type": "external",
+    "description": "讯雷下载 是一款专为 BT 下载设计的客户端，常用于高速下载电影、音乐、软件、电子书等内容。它支持多种文件格式的下载。<br>详情访问：<a>https://pc.xunlei.com/</a>",
+    "build": "202411240224",
+    "compatibility": [
+      "mt7621",
+      "mt798x",
+      "x86"
+    ]
+}

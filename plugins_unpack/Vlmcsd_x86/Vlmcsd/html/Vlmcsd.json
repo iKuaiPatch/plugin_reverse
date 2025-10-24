@@ -1,0 +1,15 @@
+{
+	"name": "Vlmcsd",
+	"alias": "Win激活",
+	"manufacturer": "iKuai",
+	"version": "1.1.9",
+	"type": "external",
+    "description": "KMS 激活是微软的一种 批量激活 技术，允许通过公司或组织的内部服务器进行操作系统和软件的激活，而不是依赖微软的官方激活服务器。",
+    "releasenotes": "更新说明：<br>1、新增",
+    "build": "202411240224",
+    "compatibility": [
+      "mt7621",
+      "mt798x",
+      "x86"
+    ]
+}

@@ -1,0 +1,218 @@
+#!/bin/bash /etc/ikcommon
+. /etc/setup/console_banner
+Include ifether.sh,brctl.sh
+
+touch /tmp/console.lock
+STTY_DEFAULT=$(stty -g)
+READ_INPUT_WAIT=86400
+DEVTTY=$(readlink /proc/$$/fd/1)
+
+
+passwd_auth() {
+	while : ;do
+		clear
+		if read -t 180 -p "$(Iecho i18n_console_auth_username_desc)" user ;then
+			if read -s -t 180 -p "$(Iecho i18n_console_auth_passwd_desc)" pwd ;then
+				echo
+				password="$(printf "$pwd"|md5sum)"
+			else
+				exit
+			fi
+		else
+			exit
+		fi
+		user=${user//[\'\";$\`\(\)]/}
+		group_id="$(sqlite3 $IK_DB_CONFIG  "select group_id from webuser where username='$user' and passwd='${password:0:32}' ")"
+		if [ "$group_id" = "" ] ;then
+			Iecho i18n_console_auth_passwd_err
+		else
+			
+			if [ "$group_id" != "1" ] ;then
+				Iecho i18n_console_auth_user_deny
+			else
+				break
+			fi
+		fi
+		error=$((error+1))
+		[ "$error" = 10 ]&&{
+			Iecho i18n_console_auth_tryout
+			sleep 3
+			exit
+		}
+		read -t 2 -p "" a
+
+	done
+}
+if [ "$TELNETD" ];then
+	I18nload console.json.telnet
+	stty erase ^H
+	passwd_auth
+else
+	I18nload console.json
+	stty erase ^?
+fi
+
+
+menu_auto_create()
+{
+	webport=$(sqlite3 $IK_DB_CONFIG "select http_port from remote_control")
+	lan_addr="$(get_lan_addr)"
+
+	num=0
+	unset a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14
+	while read eth mac drv model ;do
+		[ "$eth" = "vnet" ]&&continue
+
+		interface="$(br_get_eth_master $eth)"
+		if [ "$eth" = "wifi" ]; then
+			local car_2g=$(cat /sys/class/net/wifi2g/carrier 2>/dev/null)
+			local car_5g=$(cat /sys/class/net/wifi5g/carrier 2>/dev/null)
+			if [ "$car_2g" = 1 -o "$car_5g" = 1 ]; then
+				LINK_STAT=1
+			else
+				LINK_STAT=0
+			fi
+		else
+			if [ "$ARCH" = "x86" -o "$ARCH" = "arm" -o "$SUPPORT_DSA" -o "$ARCH" = "loongarch" ]; then
+				LINK_STAT=$(cat /sys/class/net/$eth/carrier 2>/dev/null)
+			else
+				LINK_STAT=$(cat /tmp/iktmp/monitor-iface/updown/$num 2>/dev/null)
+			fi
+		fi
+		num=$((num+1))
+		if [ "$LINK_STAT" = "1" ];then
+			local eth$num="$(Iecho i18n_console_ether_link_up "$interface" "$eth" "$mac")"
+		else
+			local eth$num="$(Iecho i18n_console_ether_link_down "$interface" "$eth" "$mac")"
+		fi
+	done<$ETHER_INFO_FILE
+
+	Iecho i18n_console_menu_list_main_0 "http://$lan_addr:$webport"
+	Iecho i18n_console_menu_list_main_1 "$eth1"
+	Iecho i18n_console_menu_list_main_2 "$eth2"
+	Iecho i18n_console_menu_list_main_3 "$eth3"
+	Iecho i18n_console_menu_list_main_4 "$eth4"
+	Iecho i18n_console_menu_list_main_5 "$eth5"
+	Iecho i18n_console_menu_list_main_6 "$eth6"
+	Iecho i18n_console_menu_list_main_7 "$eth7"
+	Iecho i18n_console_menu_list_main_8 "$eth8"
+	Iecho i18n_console_menu_list_main_9 "$eth9"
+	Iecho i18n_console_menu_list_main_o "$eth10"
+
+	if [ "$ARCH" = "x86" -a "$X86_ETH_PHY_NUM" = "1" ];then
+		Iecho i18n_console_menu_list_main_v "$eth11"
+		Iecho i18n_console_menu_list_main_q "$eth12"
+	else
+		Iecho i18n_console_menu_list_main_q "$eth11"
+	fi
+	echo ""
+}
+
+get_lan_addr()
+{
+	ip -4 addr |awk '$1=="inet"{
+		gsub("/[0-9]+","",$2)
+		if(!ip[$NF])ip[$NF]=$2
+	} END {
+		if(ip["lan1"])print ip["lan1"]
+		else if(ip["lan2"])print ip["lan2"]
+		else if(ip["lan3"])print ip["lan3"]
+	}'
+}
+
+console_lock()
+{
+	##ssh/telnet登录忽略控制台密码功能
+	if [ "${DEVTTY:0:8}" != "/dev/tty" ];then
+		return
+	fi
+	while [ -e "/tmp/console.lock" ];do
+		local console_passwd="$(cat /etc/mnt/ikuai/console_passwd 2>/dev/null)"
+		[ -z "$console_passwd" ] && return
+
+		read -s -p "$(Iecho i18n_console_passwd_input): " password
+		passwd_md5=$(echo -n "$password"|md5sum)
+		if [ "${passwd_md5// *}" = "$console_passwd" ]; then
+			rm -f /tmp/console.lock
+		else
+			Iecho i18n_console_passwd_err	
+			sleep 0.3
+		fi
+		clear
+		console_banner
+	done
+}
+
+switch_apmodel()
+{
+	if ! [ "$ENTERPRISE" -a "$ARCH" = "x86" ];then
+		return
+	fi
+
+	Include sys/hdd_control.sh
+	local status=$(hdd_set_hide_apmodel $BOOTHDD)
+	$IK_DIR_SCRIPT/utils/hide_apmodel.sh >/dev/null 2>&1
+	echo "  $status"
+	read -n1
+}
+
+main(){
+	while : ; do
+	stty stop ^.,.,.,.,.,
+	stty quit ^,,,,,,,,,,,,,,
+	stty intr ^.............
+	stty susp ^............
+	stty echo
+	clear
+	
+	console_banner
+	console_lock
+	menu_auto_create
+
+
+	if [ "$__login_console__" = "1" ];then
+		stty -echo
+	fi
+
+	if [ "$__update_console__" -o "$SSH_CLIENT" ];then
+		local wait_time=$READ_INPUT_WAIT
+	else
+		local wait_time=5
+	fi
+
+	if ! read -t $wait_time -p "  $(Iecho i18n_console_menu_choose_num)" opmode ;then
+		opmode=q
+	fi
+
+	__update_console__=1
+
+	if [ "$__login_console__" = "1" ];then
+		__login_console__=0
+		if [ "$(echo "$opmode"|md5sum)" = "e7c5ef3127b0764468df2a7a441d7165  -" ];then
+			stty $STTY_DEFAULT
+			clear
+			console_banner
+			ash --login
+		fi
+	else
+		case ${opmode} in
+		q|Q) touch /tmp/console.lock ;;
+		"dmi..")
+			if [ "$TELNETD" = "" -a "$SSH_CLIENT" = "" -a "${MODELNAME::5}" = "IK-" ];then
+				dmidecode -t 1
+				read -n1
+			fi
+		;;
+		*)
+			local hide_key="$(echo "$opmode"|md5sum)"
+			case "${hide_key:0:32}" in
+			"72c5fe66e904745607b30bff453bb75c")
+				__login_console__=1 ;;
+			esac
+		;;
+		esac
+	fi
+
+	done
+}
+main

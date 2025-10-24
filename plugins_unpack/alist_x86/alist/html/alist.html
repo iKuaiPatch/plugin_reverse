@@ -1,0 +1,222 @@
+<html>
+    <head>
+        <script src="../../static/js/vue.js"></script>
+		<script src="../../static/css/app.js"></script>
+		<link rel="stylesheet" href="../../static/css/app.css" type="text/css">
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+        <style>
+            .status-started {
+                color: green;
+            }
+            .status-stopped {
+                color: red;
+            }
+            .status-unknown {
+                color: gray;
+            }
+            .status-value {
+                color: green;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="app">
+            <div>
+                <!-- 空行 -->
+                <div style="height: 20px;"></div>
+                <div class="status">
+                    alist状态：<span :class="statusClass">{{ statusMessage }}</span>
+                </div>
+				<div style="height: 40px;"></div>
+				 <div>alist面板：<a :href="npsUrl" target="_blank">点击访问</a></div> 
+              
+
+                <div style="height: 60px;"></div>
+                <button @click="alist_start" class="btn btn_green btn_confirm margin-l-10" type="button">
+                    {{ statusclick }}
+                </button>
+                <button @click="alist_stop" class="btn btn_red btn_confirm margin-l-10" type="button">
+                    禁用
+                </button>
+				
+				  <button @click="alist_passwd" class="btn btn_red btn_confirm margin-l-10" type="button">
+                    重置密码
+                </button>
+				<div style="height: 30px;"></div>
+				<div class="readme"><span class="note" style="left: 20px;">功能说明：</span>
+				<div>1、默认用户admin 密码admin</div> 
+				<div style="height: 20px;"></div>
+				<div>2、禁用alist则并清理所有信息</div> 
+				</div>
+				<div style="height: 80px;"></div>
+
+            </div>
+        </div> 
+    </body>
+    <script type="module">
+        var app = new Vue({
+            el: '#app',
+            data: { 
+                result: "",
+                statusMessage: "未知",
+				statusclick: "安装",
+                statusClass: "status-unknown",
+				LocalUrl: "",
+				npsUrl: "",
+                statusDetails: {}  // 初始化为对象，而不是 null
+            },
+            mounted() {
+                this.alist_status();
+            },
+            methods: {
+                alist_start() {
+                    var payload = {
+                        func_name: 'plugin_alist',
+                        action: 'alist_start',
+                        param: {}
+                    };
+					if (this.statusclick == "安装") {
+						alert('安装中');
+						AjaxPost('/Action/call', payload)
+						this.alist_status();
+						return;
+					};
+                    AjaxPost('/Action/call', payload, (response) => {
+                        if(response.Result % 10000 == 0) {
+                       if(this.statusMessage == "已启动") {
+						this.statusMessage = "已停止";
+						this.statusClass = "status-stopped"; // 设置状态类
+						 alert('alist停止成功');
+						 this.statusclick = "启动";
+						} else {
+                            this.statusMessage = "已启动";
+                            this.statusClass = "status-started"; // 设置状态类
+                            alert('alist启动成功');
+                            MessageTip("alist启动成功", "green");
+							this.statusclick = "停止";
+						  }
+                        }
+                    });
+                },
+				alist_stop() {
+                    var payload = {
+                        func_name: 'plugin_alist',
+                        action: 'stop',
+                        param: {}
+                    };
+                    AjaxPost('/Action/call', payload, (response) => {
+                        if(response.Result % 10000 == 0) {
+                            this.statusMessage = "已停止";
+                            this.statusClass = "status-stopped";
+                            alert('alist停止成功');
+                            MessageTip("alist停止成功", "red");
+                        }
+                    });
+                },
+                alist_status() {
+                    var payload = {
+                        func_name: 'plugin_alist',
+                        action: 'show',
+                        param: {
+                            TYPE: 'status'
+                        }
+                    };
+                    AjaxPost('/Action/call', payload, (response) => {
+                        if (response.Result % 10000 == 0 && response.Data) {
+                            const data = response.Data;
+
+                            if (data.status == 1) {
+                                this.statusMessage = "已启动";
+                                this.statusClass = "status-started";
+								this.statusclick = "停止";
+                            } else {
+                                this.statusMessage = "已停止";
+                                this.statusClass = "status-stopped";
+								this.statusclick = "启动";
+                            }
+                            if (data.status == 2) {
+                                this.statusMessage = "安装中";
+                                this.statusClass = "status-started";
+                            }
+							
+							if (data.status == 3) {
+                                this.statusMessage = "已停止";
+                                this.statusClass = "status-stopped";
+								this.statusclick = "安装";
+                            }
+							
+
+							var host = window.location.hostname; // 获取当前访问的主机名
+							this.npsUrl = `http://${host}:5244`; // 设置 alist URL
+                            // 将 data 存储到 statusDetails 中
+                            this.statusDetails = data;
+                            console.log('alist 状态信息:', this.statusDetails);
+
+                        } else {
+                            console.error('Status is undefined in the response', response);
+                            this.statusMessage = "状态未知";
+                            this.statusClass = "status-unknown";
+							this.statusclick = "安装";
+                        }
+                    });
+                },
+		 setLocalUrl() {
+                    var host = window.location.hostname;
+                    this.LocalUrl = `http://${host}/nps.conf`;
+                },
+			uploadFile() {
+                var fileInput = document.getElementById('fileUpload');
+                var file = fileInput.files[0];
+
+                if (!file) {
+                    alert('请先选择一个文件');
+                    return;
+                }
+
+                var formData = new FormData();
+                formData.append('file', file);
+
+                var xhr = new XMLHttpRequest();
+                xhr.open('POST', '/Action/upload', true);
+                xhr.onload = function () {
+                    if (xhr.status == 200) {
+                        alert('文件上传成功');
+                        app.alist_config();
+                    } else {
+                        alert('上传失败');
+                    }
+                };
+                xhr.send(formData);
+            },
+		 alist_config() {
+                var payload = {
+                    func_name: 'plugin_alist',
+                    action: 'config',
+                    param: {}
+                };
+                AjaxPost('/Action/call', payload, (response) => {
+                    if (response.Result % 10000 == 0) {
+                        alert('alist 配置成功');
+                    } else {
+                        alert('alist 配置失败');
+                    }
+                });
+            },
+			 alist_passwd() {
+                var payload = {
+                    func_name: 'plugin_alist',
+                    action: 'alist_passwd',
+                    param: {}
+                };
+                AjaxPost('/Action/call', payload, (response) => {
+                    if (response.Result % 10000 == 0) {
+                        alert('alist 重置密码成功');
+                    } else {
+                        alert('alist 重置密码失败');
+                    }
+                });
+            }
+            }
+        });
+    </script>
+</html>
