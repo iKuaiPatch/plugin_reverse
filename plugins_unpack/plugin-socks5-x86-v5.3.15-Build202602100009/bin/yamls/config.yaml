@@ -1,0 +1,42 @@
+proxies:
+proxy-groups:
+  - name: all-proxies
+    type: select
+    proxies: ['DIRECT']
+  - name: dns-proxies
+    type: url-test
+    url: http://www.gstatic.com/generate_204
+    interval: 300
+    tolerance: 50
+    proxies: ['DIRECT']
+rule-providers:
+  DirectDomains:
+    type: 'file'
+    format: 'text'
+    behavior: 'domain'
+    path: ./ruleset/direct_domains.txt
+  DirectIps:
+    type: 'file'
+    format: 'text'
+    behavior: 'ipcidr'
+    path: ./ruleset/direct_ips.txt
+  ProxyIps:
+    type: 'file'
+    format: 'text'
+    behavior: 'ipcidr'
+    path: ./ruleset/proxy_ips.txt
+  BlockRules:
+    type: http
+    behavior: classical
+    url: "https://routerostop.oss-cn-shanghai.aliyuncs.com/plugins/clash-ruleset/sk5_block_rules.yaml"
+    path: ./ruleset/block_rules.yaml
+    interval: 86400
+  cn:
+    type: http
+    behavior: domain
+    format: mrs
+    url: "https://routerostop.oss-cn-shanghai.aliyuncs.com/resources/ShellCrash-master/bin/geodata/mrs_geosite_cn.mrs"
+    path: ./ruleset/cn.mrs
+    interval: 86400
+rules:
+  - MATCH,REJECT

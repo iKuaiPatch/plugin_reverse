@@ -1,0 +1,10 @@
+{
+  "name": "socks5",
+  "alias": "SK5分流",
+  "manufacturer": "iKuai",
+  "version": "5.3.15",
+  "type": "external",
+  "description": "Socks5 插件支持连接远程多个socks5服务器，同时支持本地设备进行分流",
+  "releasenotes": "更新说明：<br>1、性能优化，导入的节点和分流规则数超千条也能秒加载。<br>2、节点管理和分流规则页面允许按关键字搜索。<br>3、UI体验优化，节点管理和分流规则页面支持分页显示。<br>4、订阅导入链接新增支持vless和vmess格式。<br><br>详情说明和版本历史请访问：<a href='https://feiyu2483.feishu.cn/wiki/DgSaw56XCic0wJkRIj8ceKsenzg' target='_blank'>WIFI文档页面</a>",
+  "scripts":["service"]
+}

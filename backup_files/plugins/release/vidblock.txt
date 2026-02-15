@@ -4,3 +4,46 @@ yximgs.com      #多个平台，快手、映客等（尤其是短视频类）使
 #xhscdn.com      #小红书使用的内容分发 CDN 域名，用于加载图片、视频。
 #hdslb.com       #B站用于视频内容分发的域名
 #bilivideo.com   #B站的视频加速分发域名，常用于播放器的视频资源请求。
+mi.gdt.qq.com
+v2.gdt.qq.com
+v3.gdt.qq.com
+rpt.gdt.qq.com
+win.gdt.qq.com
+c.gdt.qq.com
+a.gdt.qq.com
+ipv4.gdt.qq.com
+v.gdt.qq.com
+xc.gdt.qq.com
+rtb.gdt.qq.com
+cbk.gdt.qq.com
+sv.gdt.qq.com
+c4.gdt.qq.com
+c3.gdt.qq.com
+nc.gdt.qq.com
+vr.gdt.qq.com
+xs.gdt.qq.com
+h5.gdt.qq.com
+open.e.kuaishou.com
+open.e.kuaishou.cn
+wanxiang.e.kuaishou.com
+kssyt.e.kuaishou.com
+xiansuo.kuaishou.com
+log-sdk.ksapisrv.com
+api-access.pangolin-sdk-toutiao-b.com
+log-api.pangolin-sdk-toutiao-b.com
+log-api.pangolin-sdk-toutiao.com
+ether-pack.pangolin-sdk-toutiao.com
+mobads.baidu.com
+v3-be-pack.pglstatp-toutiao.com
+p3-be-pack-sign.pglstatp-toutiao.com
+v9-be-pack.pglstatp-toutiao.com
+v6-be-pack.pglstatp-toutiao.com
+v5-be-pack.pglstatp-toutiao.com
+qzs.gdtimg.com
+adashx.ut.uc.cn
+h-adashx.ut.uc.cn
+v2mi.gdt.qq.com
+pgdt.ugdtimg.com
+applog.uc.cn
+px.ucweb.com
+s-adashx.ut.uc.cn

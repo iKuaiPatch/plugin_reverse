@@ -1,8 +1,51 @@
 payload:
-  - DOMAIN-SUFFIX,google.com
   - DOMAIN-SUFFIX,douyincdn.com   #抖音的内容分发域名，用于视频加载
   - DOMAIN-SUFFIX,douyinvod.com   #抖音的视频点播服务器（VOD：Video on Demand）
   - DOMAIN-SUFFIX,yximgs.com      #多个平台，快手、映客等（尤其是短视频类）使用的 CDN 资源域名，用于加载图像或视频。
   - DOMAIN-SUFFIX,xhscdn.com      #小红书使用的内容分发 CDN 域名，用于加载图片、视频。
   - DOMAIN-SUFFIX,hdslb.com       #B站用于视频内容分发的域名
   - DOMAIN-SUFFIX,bilivideo.com   #B站的视频加速分发域名，常用于播放器的视频资源请求。
+  # UC浏览器极速版优化过滤
+  - DOMAIN-KEYWORD,mi.gdt.qq.com
+  - DOMAIN-KEYWORD,v2.gdt.qq.com
+  - DOMAIN-KEYWORD,v3.gdt.qq.com
+  - DOMAIN-KEYWORD,rpt.gdt.qq.com
+  - DOMAIN-KEYWORD,win.gdt.qq.com
+  - DOMAIN-KEYWORD,c.gdt.qq.com
+  - DOMAIN-KEYWORD,a.gdt.qq.com
+  - DOMAIN-KEYWORD,ipv4.gdt.qq.com
+  - DOMAIN-KEYWORD,v.gdt.qq.com
+  - DOMAIN-KEYWORD,xc.gdt.qq.com
+  - DOMAIN-KEYWORD,rtb.gdt.qq.com
+  - DOMAIN-KEYWORD,cbk.gdt.qq.com
+  - DOMAIN-KEYWORD,sv.gdt.qq.com
+  - DOMAIN-KEYWORD,c4.gdt.qq.com
+  - DOMAIN-KEYWORD,c3.gdt.qq.com
+  - DOMAIN-KEYWORD,nc.gdt.qq.com
+  - DOMAIN-KEYWORD,vr.gdt.qq.com
+  - DOMAIN-KEYWORD,xs.gdt.qq.com
+  - DOMAIN-KEYWORD,h5.gdt.qq.com
+  - DOMAIN-KEYWORD,open.e.kuaishou.com
+  - DOMAIN-KEYWORD,open.e.kuaishou.cn
+  - DOMAIN-KEYWORD,wanxiang.e.kuaishou.com
+  - DOMAIN-KEYWORD,kssyt.e.kuaishou.com
+  - DOMAIN-KEYWORD,xiansuo.kuaishou.com
+  - DOMAIN-KEYWORD,log-sdk.ksapisrv.com
+  - DOMAIN-KEYWORD,api-access.pangolin-sdk-toutiao-b.com
+  - DOMAIN-KEYWORD,log-api.pangolin-sdk-toutiao-b.com
+  - DOMAIN-KEYWORD,log-api.pangolin-sdk-toutiao.com
+  - DOMAIN-KEYWORD,ether-pack.pangolin-sdk-toutiao.com
+  - DOMAIN-KEYWORD,mobads.baidu.com
+  - DOMAIN-KEYWORD,v3-be-pack.pglstatp-toutiao.com
+  - DOMAIN-KEYWORD,p3-be-pack-sign.pglstatp-toutiao.com
+  - DOMAIN-KEYWORD,v9-be-pack.pglstatp-toutiao.com
+  - DOMAIN-KEYWORD,v6-be-pack.pglstatp-toutiao.com
+  - DOMAIN-KEYWORD,v5-be-pack.pglstatp-toutiao.com
+  - DOMAIN-KEYWORD,qzs.gdtimg.com
+  - DOMAIN-KEYWORD,adashx.ut.uc.cn
+  - DOMAIN-KEYWORD,h-adashx.ut.uc.cn
+  - DOMAIN-KEYWORD,v2mi.gdt.qq.com
+  - DOMAIN-KEYWORD,pgdt.ugdtimg.com
+  - DOMAIN-KEYWORD,applog.uc.cn
+  - DOMAIN-KEYWORD,px.ucweb.com
+  - DOMAIN-KEYWORD,s-adashx.ut.uc.cn

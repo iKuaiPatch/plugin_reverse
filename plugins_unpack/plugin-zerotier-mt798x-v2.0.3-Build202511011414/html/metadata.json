@@ -1,0 +1,9 @@
+{
+  "name": "zerotier",
+  "alias": "Zerotier",
+  "manufacturer": "飞鱼",
+  "version": "2.0.3",
+  "type": "external",
+  "description": "ZeroTier 是一款开源的虚拟局域网（VPN）解决方案，旨在通过软件定义的网络技术让设备跨越不同的网络环境（如局域网、广域网、互联网等）进行无缝连接。<br>详情访问：<a>https://www.zerotier.com/</a>",
+  "scripts":["service"]
+}

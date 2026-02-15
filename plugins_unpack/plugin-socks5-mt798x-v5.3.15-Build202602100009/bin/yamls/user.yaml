@@ -1,0 +1,13 @@
+dns:
+  enable: true
+  listen: :1053
+  use-hosts: true
+  ipv6: false
+  enhanced-mode: redir-host
+  default-nameserver: [ 223.5.5.5, 1.2.4.8 ]
+  proxy-server-nameserver: [ 223.5.5.5, 8.8.8.8 ] 
+  nameserver-policy: {'rule-set:cn': [ 223.5.5.5, 1.2.4.8 ]} 
+  nameserver: [ 1.1.1.1, 8.8.8.8 ]
+  fallback: [1.1.1.1, 8.8.4.4]
+  fallback-filter:
+    geoip: true

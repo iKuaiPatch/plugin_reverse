@@ -97,3 +97,11 @@ https://routerostop.oss-cn-shanghai.aliyuncs.com/plugins/release/ipk/plugin-exta
 https://routerostop.oss-cn-shanghai.aliyuncs.com/plugins/release/ipk/plugin-socks5-mt7621-v4.2.0-Build202510061401.ipk
 https://routerostop.oss-cn-shanghai.aliyuncs.com/plugins/release/ipk/plugin-socks5-mt798x-v4.2.0-Build202510061401.ipk
 https://routerostop.oss-cn-shanghai.aliyuncs.com/plugins/release/ipk/plugin-socks5-x86-v4.2.0-Build202510061401.ipk
+https://routerostop.oss-cn-shanghai.aliyuncs.com/plugins/release/ipk/plugin-extapi-mt7621-v1.1.2-Build202512030028.ipk
+https://routerostop.oss-cn-shanghai.aliyuncs.com/plugins/release/ipk/plugin-extapi-mt798x-v1.1.2-Build202512030028.ipk
+https://routerostop.oss-cn-shanghai.aliyuncs.com/plugins/release/ipk/plugin-extapi-x86-v1.1.2-Build202512030028.ipk
+https://routerostop.oss-cn-shanghai.aliyuncs.com/plugins/release/ipk/plugin-socks5-mt7621-v5.3.15-Build202602100009.ipk
+https://routerostop.oss-cn-shanghai.aliyuncs.com/plugins/release/ipk/plugin-socks5-mt798x-v5.3.15-Build202602100009.ipk
+https://routerostop.oss-cn-shanghai.aliyuncs.com/plugins/release/ipk/plugin-socks5-x86-v5.3.15-Build202602100009.ipk
+https://routerostop.oss-cn-shanghai.aliyuncs.com/plugins/release/ipk/plugin-zerotier-mt798x-v2.0.3-Build202511011414.ipk
+https://routerostop.oss-cn-shanghai.aliyuncs.com/plugins/release/ipk/plugin-zerotier-x86-v2.0.3-Build202511011414.ipk
