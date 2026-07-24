@@ -343,7 +343,7 @@
   "name": "soloip",
   "alias": "飞鱼分流 V7",
   "manufacturer": "iKuai",
-  "version": "7.0.15",
+  "version": "7.0.10",
   "type": "external",
   "onlyOfflineInstall": "false",
   "description": "飞鱼分流（SoloIP）专为工作室场景打造，支持游戏、电商运营多账号环境，实现真正一机一网独立IP。<br> 全面支持SK5、SS、VMess、VLess、Trojan、Hysteria等众多主流协议。详细文档请访问：<a href='https://feiyu2483.feishu.cn/wiki/DgSaw56XCic0wJkRIj8ceKsenzg' target='_blank'>WIFI文档</a>",
@@ -351,7 +351,7 @@
   "scripts": [
     "service"
   ],
-  "build": "202607202239",
+  "build": "202607190029",
   "featureId": "5",
   "compatibility": [
     "mt798x",
